@@ -1,0 +1,10 @@
+{
+    "name": "Word Notifier",
+    "description" : "Get notified when a word is found.",
+    "version": "0.1",
+    "manifest_version": 2,
+    "browser_action": {
+        "default_title": "Word Notifier",
+        "default_popup": "index.html"
+    }
+  }
