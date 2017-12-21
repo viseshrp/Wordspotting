@@ -13,5 +13,9 @@
         "storage",
         "contextMenus",
         "*://*/*"
-        ]
+    ],
+    "background": {
+        "scripts": ["js/eventPage.js"],
+        "persistent": false
+    }
   }
