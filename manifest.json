@@ -8,6 +8,10 @@
         "default_popup": "index.html"
     },
     "permissions": [
-          "tabs"
+        "notifications",
+        "tabs",
+        "storage",
+        "contextMenus",
+        "*://*/*"
         ]
   }
