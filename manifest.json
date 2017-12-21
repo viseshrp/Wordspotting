@@ -6,5 +6,8 @@
     "browser_action": {
         "default_title": "Word Notifier",
         "default_popup": "index.html"
-    }
+    },
+    "permissions": [
+          "tabs"
+        ]
   }
