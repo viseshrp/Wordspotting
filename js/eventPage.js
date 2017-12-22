@@ -21,7 +21,33 @@ chrome.runtime.onMessage.addListener(
 
             if (request.wordfound === true) {
                 //fire notification.
+                showNotification("img/48.png", 'basic',
+                    'Keyword found!', sender.tab.title, 1);
+
             }
 
         }
     });
+
+
+function showNotification(iconUrl, type, title, message, priority) {
+
+    var opt = {
+        iconUrl: iconUrl,
+        type: type,
+        title: title,
+        message: message,
+        priority: priority
+    };
+
+    // var randomnumber = getRandomInt(1,5000000000);
+
+    chrome.notifications.create('', opt, function () {
+        console.log('created!');
+    });
+
+}
+
+function getRandomInt(maximum, minimum) {
+    return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
+}
