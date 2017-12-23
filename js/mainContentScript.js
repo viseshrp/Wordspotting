@@ -11,7 +11,7 @@ chrome.runtime.sendMessage({wordfound: isWordFound()}, function (response) {
 
 function isWordFound() {
     var isFound = false;
-    var keyword_list = ['Citizenship', 'us citizen', 'clearance', 'security clearance', 'sponsorship', 'contract'];
+    var keyword_list = ['Citizenship', 'us citizen', 'clearance', 'security clearance'];
     //todo get it from options page. //might have to use message passing to get it.
 
     for (var key in keyword_list) {

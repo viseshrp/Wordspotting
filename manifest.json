@@ -36,6 +36,8 @@
   ],
   "web_accessible_resources": [
     "img/*.png",
-    "css/*.css"
-  ]
+    "css/*.css",
+    "options.html"
+  ],
+  "options_page": "options.html"
 }
