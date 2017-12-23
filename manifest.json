@@ -1,10 +1,10 @@
 {
-  "name": "Word Notifier",
+  "name": "Wordspotting",
   "description": "Get notified when a word is found.",
   "version": "0.1",
   "manifest_version": 2,
   "browser_action": {
-    "default_title": "Word Notifier",
+    "default_title": "Wordspotting",
     "default_popup": "index.html"
   },
   "permissions": [
