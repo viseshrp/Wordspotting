@@ -7,6 +7,24 @@
  Handles state and state changes of UI elements.
  */
 
+
+chrome.runtime.onInstalled.addListener(function () {
+
+    //initialize storage values on installation.
+    saveToStorage({"wordspotting_notifications_on": true}, function () {
+        //do nothing
+    });
+    saveToStorage({"wordspotting_extension_on": true}, function () {
+        //do nothing
+    });
+    saveToStorage({"wordspotting_website_list": []}, function () {
+        //nada
+    });
+
+
+});
+
+//this listens to events fired by the contentscript
 chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
 
@@ -30,6 +48,8 @@ chrome.runtime.onMessage.addListener(
     });
 
 
+//use chrome notifications api to fire notifications when a word is found in
+//a web page.
 function showNotification(iconUrl, type, title, message, priority) {
 
     var opt = {
@@ -46,8 +66,4 @@ function showNotification(iconUrl, type, title, message, priority) {
         logit('created!');
     });
 
-}
-
-function getRandomInt(maximum, minimum) {
-    return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
 }
