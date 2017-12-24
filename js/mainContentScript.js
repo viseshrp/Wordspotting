@@ -1,13 +1,37 @@
-//global variables
+//contentscript to inject into websites.
 
-//fire event
+var allowed_sites = [];
+var isSiteValid = false;
 
-chrome.runtime.sendMessage({wordfound: isWordFound()}, function (response) {
-    console.log(response.tab_url);
-    console.log("contentscript ack: " + response.ack);
+getFromStorage("wordspotting_website_list", function (items) {
+    var valid_site_list = items.wordspotting_website_list;
+    if (isValidObj(valid_site_list)) {
+        allowed_sites = items.wordspotting_website_list;
+    } else
+        allowed_sites = [];
+
+    if (allowed_sites.length > 0) {
+        for (var key in allowed_sites) {
+            var site = allowed_sites[key];
+            var regex = new RegExp(site, "ig");
+
+            //if one of the allowed sites matches regex, set true
+            // and exit loop. Else keep looping.
+            if (regex.test(location.href)) {
+                isSiteValid = true;
+                break;
+            }
+        }
+    }
+
+    if (isSiteValid) {
+        logit("firing message from content script...");
+        //fire event
+        chrome.runtime.sendMessage({wordfound: isWordFound()}, function (response) {
+            logit("eventPage acking: " + response.ack);
+        });
+    }
 });
-
-// other functions
 
 function isWordFound() {
     var isFound = false;
@@ -37,5 +61,3 @@ function isWordFound() {
 
     return isFound;
 }
-
-console.log(isWordFound());
