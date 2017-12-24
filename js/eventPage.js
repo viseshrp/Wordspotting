@@ -43,7 +43,7 @@ function showNotification(iconUrl, type, title, message, priority) {
     // var randomnumber = getRandomInt(1,5000000000);
 
     chrome.notifications.create('', opt, function () {
-        console.log('created!');
+        logit('created!');
     });
 
 }
