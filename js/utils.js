@@ -1,5 +1,5 @@
 /*
-* Utils to abstract API calls.
+* Utils to abstract API calls and other frequent usages.
 * */
 
 function saveToStorage(obj, callback) {
@@ -34,4 +34,8 @@ function logit(message) {
     var utcDate = dt.toUTCString();
 
     console.log("[" + utcDate + "]" + "\t" + message);
+}
+
+function getRandomInt(maximum, minimum) {
+    return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
 }
