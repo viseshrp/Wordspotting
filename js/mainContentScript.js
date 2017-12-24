@@ -1,8 +1,10 @@
 //contentscript to inject into websites.
 
 var allowed_sites = [];
-var isSiteValid = false;
 
+// get user specified list. If list exists/object exists/not empty - run using it.
+//else run and show browser-action badge on all websites.
+// todo: But don't run notifications on all sites, thats just annoying.
 getFromStorage("wordspotting_website_list", function (items) {
     var valid_site_list = items.wordspotting_website_list;
     if (isValidObj(valid_site_list)) {
@@ -15,23 +17,26 @@ getFromStorage("wordspotting_website_list", function (items) {
             var site = allowed_sites[key];
             var regex = new RegExp(site, "ig");
 
-            //if one of the allowed sites matches regex, set true
+            //if one of the allowed sites matches regex, talk to the bgscript
+            //to send a notification
             // and exit loop. Else keep looping.
             if (regex.test(location.href)) {
-                isSiteValid = true;
+                talkToBackgroundScript();
                 break;
             }
         }
-    }
-
-    if (isSiteValid) {
-        logit("firing message from content script...");
-        //fire event
-        chrome.runtime.sendMessage({wordfound: isWordFound()}, function (response) {
-            logit("eventPage acking: " + response.ack);
-        });
+    } else {
+        //todo: do something if there is no user list.
+        logit("Not doing anything at the moment.");
     }
 });
+
+function talkToBackgroundScript() {
+    logit("firing message from content script...");
+    chrome.runtime.sendMessage({wordfound: isWordFound()}, function (response) {
+        logit("eventPage acking: " + response.ack);
+    });
+}
 
 function isWordFound() {
     var isFound = false;
