@@ -57,7 +57,17 @@ function talkToBackgroundScript() {
                 //whatever is in the key list.
                 var filtered_elements = $("body").filter(function () {
                     var regex = new RegExp(word, "ig");
-                    return regex.test($(this).text());
+                    var content = $(this).text();
+                    if (regex.test(content)) {
+                        //highlight text.
+
+                        var new_regex = new RegExp('(' + word + ')', 'ig');
+                        $(this).text(content.replace(new_regex, '<span class="highlight">$1</span>'));
+                        // sentences.innerHTML = text;
+
+                        return true;
+                    } else
+                        return false;
                 });
 
                 //if returned list length is greater than 0,

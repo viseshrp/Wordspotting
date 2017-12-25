@@ -4,3 +4,6 @@
 .left {
     float: left;
 }
+.highlight {
+    font-weight: bold;
+}
