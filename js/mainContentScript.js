@@ -1,7 +1,5 @@
 //contentscript to inject into websites.
 
-var allowed_sites = [];
-
 //get extension status from storage then proceed to notifications.
 getFromStorage("wordspotting_extension_on", function (items) {
     var status = items.wordspotting_extension_on;
@@ -15,13 +13,8 @@ function proceedWithSiteListCheck() {
     //else run and show browser-action badge on all websites.
     // todo: But don't run notifications on all sites, thats just annoying.
     getFromStorage("wordspotting_website_list", function (items) {
-        var valid_site_list = items.wordspotting_website_list;
-        if (isValidObj(valid_site_list)) {
-            allowed_sites = items.wordspotting_website_list;
-        } else
-            allowed_sites = [];
-
-        if (allowed_sites.length > 0) {
+        var allowed_sites = items.wordspotting_website_list;
+        if (isValidObj(allowed_sites) && allowed_sites.length > 0) { //always valid obj because I initialize storage.
             for (var key in allowed_sites) {
                 var site = allowed_sites[key];
                 var regex = new RegExp(site, "ig");
@@ -36,6 +29,7 @@ function proceedWithSiteListCheck() {
             }
         } else {
             //todo: do something if there is no user list.
+            //send a message to bgscript and update browser action.
             logit("Not doing anything at the moment.");
         }
     });
@@ -49,7 +43,7 @@ function talkToBackgroundScript() {
         //  items = [ { "yourBody": "myBody" } ]
         var keyword_list = items.wordspotting_word_list;
 
-        if (isValidObj(keyword_list)) {
+        if (isValidObj(keyword_list) && keyword_list.length > 0) {
 
             for (var key in keyword_list) {
 
@@ -69,7 +63,6 @@ function talkToBackgroundScript() {
                 if (filtered_elements.length > 0) {
                     isFound = true;
                     logit("firing message from content script...");
-                    //todo: put this inside is wordfound.
                     chrome.runtime.sendMessage({wordfound: isFound}, function (response) {
                         logit("eventPage acking: " + response.ack);
                     });
@@ -79,7 +72,9 @@ function talkToBackgroundScript() {
             }
 
         } else {
-            logit("Word list empty.");
+            //todo: do something if there is no user list.
+            //send a message to bgscript and update browser action.
+            logit("Not doing anything at the moment.");
         }
     });
 }
