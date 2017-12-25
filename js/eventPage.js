@@ -40,6 +40,9 @@ chrome.runtime.onInstalled.addListener(function () {
                 logit("first start complete.")
             });
 
+            //and then redirect user to options and tutorial.
+            chrome.tabs.create({ url: "options.html" });
+            // chrome.tabs.create({ url: "http://www.viseshprasad.com/Wordspotting" });
         }
     });
 
