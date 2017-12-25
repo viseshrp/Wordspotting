@@ -62,6 +62,7 @@ chrome.runtime.onMessage.addListener(
                     var status = items.wordspotting_notifications_on;
                     if (status) {
                         //fire
+                        logit("firing notification!");
                         showNotification("img/48.png", 'basic',
                             'Keyword found!', sender.tab.title, 1);
                     } else {
@@ -89,7 +90,6 @@ function showNotification(iconUrl, type, title, message, priority) {
     };
 
     chrome.notifications.create('', opt, function () {
-        logit('created!');
     });
 
 }

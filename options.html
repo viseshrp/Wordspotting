@@ -50,7 +50,8 @@
         <div class="card">
             <div class="card-body" id="keyword_options_card">
                 <h4 class="card-title">Add keywords</h4>
-                <p class="card-text"><h6>Blacklist (These will be notified in red when found.)</h6>
+                <p class="card-text"><h6>Specify and add words to search for.</h6></p>
+                <!--<p class="card-text"><h6>Blacklist (These will be notified in red when found.)</h6>-->
                 <div class="col-md-4 text-center container" id="bl_word_container">
                     <div class="input-group">
                         <input type="text" class="form-control" placeholder="Add words here." id="bl_word_input">
@@ -63,19 +64,19 @@
                 </div>
 
 
-                <br>
+                <!--<br>-->
 
-                <p class="card-text"><h6>Whitelist (These will be notified in green when found.)</h6>
-                <div class="col-md-4 text-center container" id="wl_word_container">
-                    <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Add words here." id="wl_word_input">
-                        <button type="button" class="btn btn-primary" id="add_wl_word">ADD</button>
-                    </div><!-- /input-group -->
-                </div>
-                </p>
+                <!--<p class="card-text"><h6>Whitelist (These will be notified in green when found.)</h6>-->
+                <!--<div class="col-md-4 text-center container" id="wl_word_container">-->
+                <!--<div class="input-group">-->
+                <!--<input type="text" class="form-control" placeholder="Add words here." id="wl_word_input">-->
+                <!--<button type="button" class="btn btn-primary" id="add_wl_word">ADD</button>-->
+                <!--</div>&lt;!&ndash; /input-group &ndash;&gt;-->
+                <!--</div>-->
+                <!--</p>-->
 
-                <div class="col-md-4 text-center container" id="wl_word_list_container">
-                </div>
+                <!--<div class="col-md-4 text-center container" id="wl_word_list_container">-->
+                <!--</div>-->
 
             </div>
         </div>
@@ -84,11 +85,17 @@
         <div class="card">
             <div class="card-body" id="website_options_card">
                 <h4 class="card-title">Website options</h4>
-                <p class="card-text"><h6>Specify keywords to identify sites to execute the extension on.<br>
-                If none specified, extension will not run(You can run it on all pages, but that's just annoying).<br>
-                You can use wildcards(like *) as well. Example: <code>linkedin*</code> OR <code>linkedin.com</code> OR <code>www.linkedin.com</code> will
-                run the extension on the LinkedIn website.
-            </h6></p>
+                <p class="card-text">
+                <h6>Specify keywords to identify sites to execute the extension on.<br>
+                    If none specified, extension will not run (You can't run it on all pages,
+                    that's just going to be
+                    annoying).<br>
+                    You can use wildcards(like *) as well. <br>
+                    You can also specify multiple websites separated by a comma(,).<br><br>
+                    Examples: <code>linkedin*</code>&nbsp;
+                    <code>facebook,google</code>&nbsp;<code>glassdoor</code>
+                </h6>
+                </p>
                 <p>
                 <div class="col-md-4 text-center container">
                     <div class="input-group">
