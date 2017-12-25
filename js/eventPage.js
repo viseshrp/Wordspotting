@@ -53,7 +53,7 @@ chrome.runtime.onInstalled.addListener(function () {
 chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
 
-        if (request.wordfound !== null) {
+        if (request.wordfound !== null && request.keyword_count !== null) {
 
             sendResponse({
                 ack: "gotcha", tab_url: sender.tab ?
@@ -63,8 +63,7 @@ chrome.runtime.onMessage.addListener(
             //responds synchronously, after everything is done
 
             //set badgetext only for that tab
-            //todo: get number of occurences and pass to text.
-            chrome.browserAction.setBadgeText({text: "1", tabId: sender.tab.id});
+            chrome.browserAction.setBadgeText({text: request.keyword_count.toString(), tabId: sender.tab.id});
 
             if (request.wordfound === true) {
 

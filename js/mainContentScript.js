@@ -2,6 +2,7 @@
 
 //get extension status from storage then proceed to notifications.
 getFromStorage("wordspotting_extension_on", function (items) {
+    logit("checking if extension is on..");
     var status = items.wordspotting_extension_on;
     if (status)
         proceedWithSiteListCheck();
@@ -37,13 +38,15 @@ function proceedWithSiteListCheck() {
 
 function talkToBackgroundScript() {
 
-    var isFound = false;
-
     getFromStorage("wordspotting_word_list", function (items) {
         //  items = [ { "yourBody": "myBody" } ]
         var keyword_list = items.wordspotting_word_list;
 
         if (isValidObj(keyword_list) && keyword_list.length > 0) {
+
+            var isFound = false;
+
+            var keyword_count = 0;
 
             for (var key in keyword_list) {
 
@@ -62,14 +65,15 @@ function talkToBackgroundScript() {
                 //now set bool and break.
                 if (filtered_elements.length > 0) {
                     isFound = true;
-                    logit("firing message from content script...");
-                    chrome.runtime.sendMessage({wordfound: isFound}, function (response) {
-                        logit("eventPage acking: " + response.ack);
-                    });
-
-                    break;
+                    // break; //dont break, because we need number of keywords found.
+                    keyword_count++;
                 }
             }
+
+            logit("firing message from content script...");
+            chrome.runtime.sendMessage({wordfound: isFound, keyword_count: keyword_count}, function (response) {
+                logit("eventPage acking: " + response.ack);
+            });
 
         } else {
             //todo: do something if there is no user list.
