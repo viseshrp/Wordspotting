@@ -5,7 +5,7 @@ var allowed_sites = [];
 //get extension status from storage then proceed to notifications.
 getFromStorage("wordspotting_extension_on", function (items) {
     var status = items.wordspotting_extension_on;
-    if(status)
+    if (status)
         proceedWithSiteListCheck();
 });
 
@@ -42,37 +42,44 @@ function proceedWithSiteListCheck() {
 }
 
 function talkToBackgroundScript() {
-    logit("firing message from content script...");
-    chrome.runtime.sendMessage({wordfound: isWordFound()}, function (response) {
-        // logit("eventPage acking: " + response.ack);
-    });
-}
 
-function isWordFound() {
     var isFound = false;
-    var keyword_list = ['Citizenship', 'us citizen', 'clearance', 'security clearance'];
-    //todo get it from options page. //might have to use message passing to get it.
 
-    for (var key in keyword_list) {
+    getFromStorage("wordspotting_word_list", function (items) {
+        //  items = [ { "yourBody": "myBody" } ]
+        var keyword_list = items.wordspotting_word_list;
 
-        var word = keyword_list[key];
+        if (isValidObj(keyword_list)) {
 
-        // $("*:contains('" + word.toLowerCase() + "')")
-        //get list of elements matching the word or regex,
-        //whatever is in the key list.
-        var filtered_elements = $("body").filter(function () {
-            var regex = new RegExp(word, "ig");
-            return regex.test($(this).text());
-        });
+            for (var key in keyword_list) {
 
-        //if returned list length is greater than 0,
-        //we know the doc's got the word somewhere,
-        //now set bool and break.
-        if (filtered_elements.length > 0) {
-            isFound = true;
-            return isFound;
+                var word = keyword_list[key];
+
+                // $("*:contains('" + word.toLowerCase() + "')")
+                //get list of elements matching the word or regex,
+                //whatever is in the key list.
+                var filtered_elements = $("body").filter(function () {
+                    var regex = new RegExp(word, "ig");
+                    return regex.test($(this).text());
+                });
+
+                //if returned list length is greater than 0,
+                //we know the doc's got the word somewhere,
+                //now set bool and break.
+                if (filtered_elements.length > 0) {
+                    isFound = true;
+                    logit("firing message from content script...");
+                    //todo: put this inside is wordfound.
+                    chrome.runtime.sendMessage({wordfound: isFound}, function (response) {
+                        logit("eventPage acking: " + response.ack);
+                    });
+
+                    break;
+                }
+            }
+
+        } else {
+            logit("Word list empty.");
         }
-    }
-
-    return isFound;
+    });
 }

@@ -30,6 +30,10 @@ chrome.runtime.onInstalled.addListener(function () {
             saveToStorage({"wordspotting_website_list": []}, function () {
                 //nada
             });
+            saveToStorage({"wordspotting_word_list": []}, function () {
+                //nada
+            });
+
 
             //and then set is_first_start as false, cos its starting now.
             saveToStorage({"is_first_start": false}, function () {
