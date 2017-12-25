@@ -40,8 +40,7 @@
         "js/jquery-3.2.1.min.js",
         "js/utils.js",
         "js/mainContentScript.js"
-      ],
-      "all_frames": true
+      ]
     }
   ],
   "web_accessible_resources": [
