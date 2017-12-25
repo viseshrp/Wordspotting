@@ -41,7 +41,7 @@ chrome.runtime.onInstalled.addListener(function () {
             });
 
             //and then redirect user to options and tutorial.
-            chrome.tabs.create({ url: "options.html" });
+            chrome.tabs.create({url: "options.html"});
             // chrome.tabs.create({ url: "http://www.viseshprasad.com/Wordspotting" });
         }
     });
@@ -61,6 +61,10 @@ chrome.runtime.onMessage.addListener(
                     "from the extension"
             });
             //responds synchronously, after everything is done
+
+            //set badgetext only for that tab
+            //todo: get number of occurences and pass to text.
+            chrome.browserAction.setBadgeText({text: "1", tabId: sender.tab.id});
 
             if (request.wordfound === true) {
 
@@ -82,6 +86,11 @@ chrome.runtime.onMessage.addListener(
 
         }
     });
+
+
+chrome.browserAction.onClicked.addListener(function (mql) {
+
+});
 
 
 //use chrome notifications api to fire notifications when a word is found in

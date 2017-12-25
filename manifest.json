@@ -4,8 +4,15 @@
   "version": "0.1",
   "manifest_version": 2,
   "browser_action": {
+    "default_icon": {
+      "16": "img/ws16.png",
+      "24": "img/ws24.png",
+      "32": "img/ws32.png",
+      "48": "img/ws48.png",
+      "128": "img/ws128.png"
+    },
     "default_title": "Wordspotting",
-    "default_popup": "index.html"
+    "default_popup": "popup.html"
   },
   "permissions": [
     "notifications",
