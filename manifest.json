@@ -1,8 +1,18 @@
 {
   "name": "Wordspotting",
-  "description": "Get notified when a word is found.",
+  "description": "Get notified when a word is found in a web page.",
   "version": "0.1",
+  "author": "Visesh Prasad",
+  "homepage_url": "http://www.viseshprasad.com/Wordspotting",
+  "incognito": "not_allowed",
   "manifest_version": 2,
+  "icons": {
+    "16": "img/ws16.png",
+    "24": "img/ws24.png",
+    "32": "img/ws32.png",
+    "48": "img/ws48.png",
+    "128": "img/ws128.png"
+  },
   "browser_action": {
     "default_icon": {
       "16": "img/ws16.png",
@@ -48,5 +58,9 @@
     "css/*.css",
     "options.html"
   ],
-  "options_page": "options.html"
+  "options_page": "options.html",
+  "options_ui": {
+    "page": "options.html"
+  },
+  "version_name": "0.1 beta"
 }
