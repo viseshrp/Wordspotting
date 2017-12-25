@@ -26,6 +26,10 @@ function isValidObj(obj) {
     return !jQuery.isEmptyObject(obj) && typeof obj !== 'undefined' && obj !== null;
 }
 
+function isValidBool(bool) {
+    return typeof obj !== 'undefined' && obj !== null;
+}
+
 function trimAndClean(string) {
     return string.trim().replace(/\s+/g, '');
 }

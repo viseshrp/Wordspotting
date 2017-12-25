@@ -1,7 +1,7 @@
 $(document).ready(function () {
     $('body').bootstrapMaterialDesign();
 
-    updateWebListDisplay();
+    updateViews();
 
     //on 'add' clicked, get the value, store it and then display it.
     $("#add_sites").click(function () {
@@ -50,38 +50,79 @@ $(document).ready(function () {
 
     });
 
-});
 
-//removes itself if we try to delete an item in a list.
-$(document).on('click', '.weblistitem', function () {
-
-    var item_index = this.id;
-    //get from storage, delete list item and save.
-    getFromStorage("wordspotting_website_list", function (items) {
-        var stored_list_obj = items.wordspotting_website_list;
-
-        if (isValidObj(stored_list_obj)) {
-
-            // logit("oldlist=" + stored_list_obj);
-
-            stored_list_obj.splice(item_index, 1);
-
-            // logit("newlist=" + stored_list_obj);
-
-            saveToStorage({"wordspotting_website_list": stored_list_obj}, function () {
-                // notify user.
-                // showAlert("Website added to list!", "Success!", true);
-                location.reload();
-            });
-
-            // showAlert("Item removed!", "Success!", true);
-        } else {
-            showAlert("Something went wrong! Please try again.", "Error!", false);
-        }
+    //onchange for notifications_switch
+    $("#notifications_switch").change(function () {
+        var notifications_switch_status = this.checked;
+        saveToStorage({"wordspotting_notifications_on": notifications_switch_status}, function () {
+            var status = notifications_switch_status ? "ON" : "OFF";
+            showAlert("Notifications turned " + status, "Done!", true);
+        })
     });
 
-    $(this).remove();
+    //onchange for extension_switch
+    $("#extension_switch").change(function () {
+        var extension_switch_status = this.checked;
+        saveToStorage({"wordspotting_extension_on": extension_switch_status}, function () {
+            var status = extension_switch_status ? "ON" : "OFF";
+            showAlert("Extension turned " + status, "Done!", true);
+        })
+    });
+
+
+//removes itself if we try to delete an item in a list.
+    $(document).on('click', '.weblistitem', function () {
+
+        var item_index = this.id;
+        //get from storage, delete list item and save.
+        getFromStorage("wordspotting_website_list", function (items) {
+            var stored_list_obj = items.wordspotting_website_list;
+
+            if (isValidObj(stored_list_obj)) {
+
+                // logit("oldlist=" + stored_list_obj);
+
+                stored_list_obj.splice(item_index, 1);
+
+                // logit("newlist=" + stored_list_obj);
+
+                saveToStorage({"wordspotting_website_list": stored_list_obj}, function () {
+                    // notify user.
+                    // showAlert("Website added to list!", "Success!", true);
+                    location.reload();
+                });
+
+                // showAlert("Item removed!", "Success!", true);
+            } else {
+                showAlert("Something went wrong! Please try again.", "Error!", false);
+            }
+        });
+    });
+
+
 });
+
+function updateViews() {
+    updateWebListDisplay();
+    updateNotifSwitchDisplay();
+    updateExtSwitchDisplay();
+    // updateBLWordListDisplay();
+    // updateWLWordListDisplay();
+}
+
+function updateNotifSwitchDisplay() {
+    getFromStorage("wordspotting_notifications_on", function (items) {
+        var status = items.wordspotting_notifications_on;
+        $("#notifications_switch").prop('checked', status);
+    });
+}
+
+function updateExtSwitchDisplay() {
+    getFromStorage("wordspotting_extension_on", function (items) {
+        var status = items.wordspotting_extension_on;
+        $("#extension_switch").prop('checked', status);
+    });
+}
 
 function updateWebListDisplay() {
     //update the UI
@@ -97,7 +138,6 @@ function updateWebListDisplay() {
             logit("Website list empty.");
         }
     });
-
 }
 
 function updateDisplayList(list_dom_id, data_list) {

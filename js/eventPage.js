@@ -13,7 +13,7 @@ chrome.runtime.onInstalled.addListener(function () {
     getFromStorage("is_first_start", function (item) {
         var is_first_start = item.is_first_start;
 
-        //hack: oninstalled is messed up. runs even on update. so we use this
+        //Hack: oninstalled is messed up. runs even on update. so we use this
         //to run only when it actually starts for the first time.
         //if the item is not valid, means its empty and hasnt been set before.
         //i.e. the extension never started before.
@@ -41,6 +41,7 @@ chrome.runtime.onInstalled.addListener(function () {
 
 });
 
+
 //this listens to events fired by the contentscript
 chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
@@ -55,9 +56,19 @@ chrome.runtime.onMessage.addListener(
             //responds synchronously, after everything is done
 
             if (request.wordfound === true) {
-                //fire notification.
-                showNotification("img/48.png", 'basic',
-                    'Keyword found!', sender.tab.title, 1);
+
+                //first check if notifications are turned on
+                getFromStorage("wordspotting_notifications_on", function (items) {
+                    var status = items.wordspotting_notifications_on;
+                    if (status) {
+                        //fire
+                        showNotification("img/48.png", 'basic',
+                            'Keyword found!', sender.tab.title, 1);
+                    } else {
+                        logit("Notifications are " + status);
+                        //do something else, like update a badge on browser action.
+                    }
+                });
 
             }
 
@@ -76,8 +87,6 @@ function showNotification(iconUrl, type, title, message, priority) {
         message: message,
         priority: priority
     };
-
-    // var randomnumber = getRandomInt(1,5000000000);
 
     chrome.notifications.create('', opt, function () {
         logit('created!');
