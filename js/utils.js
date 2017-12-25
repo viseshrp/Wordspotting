@@ -21,6 +21,7 @@ function showAlert(message, title, isSuccess) {
         toastr.error(message, title);
 }
 
+//note: does not work for boolean values, only js objects.
 function isValidObj(obj) {
     return !jQuery.isEmptyObject(obj) && typeof obj !== 'undefined' && obj !== null;
 }
