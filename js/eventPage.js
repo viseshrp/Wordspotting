@@ -87,11 +87,6 @@ chrome.runtime.onMessage.addListener(
     });
 
 
-chrome.browserAction.onClicked.addListener(function (mql) {
-
-});
-
-
 //use chrome notifications api to fire notifications when a word is found in
 //a web page.
 function showNotification(iconUrl, type, title, message, priority) {
