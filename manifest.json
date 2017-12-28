@@ -1,7 +1,7 @@
 {
   "name": "Wordspotting",
   "description": "Get notified when a word is found in a web page.",
-  "version": "0.1",
+  "version": "0.1.0",
   "author": "Visesh Prasad",
   "homepage_url": "http://www.viseshprasad.com/Wordspotting",
   "incognito": "not_allowed",
@@ -62,6 +62,5 @@
   "options_ui": {
     "page": "options.html"
   },
-  "version_name": "0.1 beta",
   "update_url": "http://www.viseshprasad.com/Wordspotting"
 }
