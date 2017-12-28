@@ -62,5 +62,6 @@
   "options_ui": {
     "page": "options.html"
   },
+  "minimum_chrome_version": "22.0",
   "update_url": "http://www.viseshprasad.com/Wordspotting"
 }
