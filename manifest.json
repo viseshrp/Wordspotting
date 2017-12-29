@@ -1,7 +1,7 @@
 {
   "name": "Wordspotting",
   "description": "Get notified when a word is found in a web page.",
-  "version": "0.1",
+  "version": "0.1.0",
   "author": "Visesh Prasad",
   "homepage_url": "http://www.viseshprasad.com/Wordspotting",
   "incognito": "not_allowed",
@@ -50,7 +50,9 @@
         "js/jquery-3.2.1.min.js",
         "js/utils.js",
         "js/mainContentScript.js"
-      ]
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
   "web_accessible_resources": [
@@ -62,6 +64,6 @@
   "options_ui": {
     "page": "options.html"
   },
-  "version_name": "0.1 beta",
+  "minimum_chrome_version": "22.0",
   "update_url": "http://www.viseshprasad.com/Wordspotting"
 }

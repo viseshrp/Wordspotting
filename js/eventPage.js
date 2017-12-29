@@ -5,8 +5,13 @@
  Exists for the lifetime of the extension.
  Only triggered based on events as opposed to persistent bg pages. (persistent:false)
  Handles state and state changes of UI elements.
- */
 
+ Current use cases:
+ -initialize storage
+ -check and fire notif
+ -set badge
+
+ */
 
 chrome.runtime.onInstalled.addListener(function () {
 
@@ -53,14 +58,23 @@ chrome.runtime.onInstalled.addListener(function () {
 chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
 
-        if (request.wordfound !== null && request.keyword_count !== null) {
+        // we check the request object to make sure it was fired from the right spot
+        // and it is what we want. i.e to differentiate between the different
+        // sendMessage events.
+        //because the required keys in the dict vary between different requests, this
+        //validation cannot be abstracted.
+        if (request.wordfound !== null
+            && request.keyword_count !== null) {
 
-            sendResponse({
-                ack: "gotcha", tab_url: sender.tab ?
-                    "from a content script:" + sender.tab.url :
-                    "from the extension"
-            });
+            var response_args = {
+                ack: "gotcha"
+            };
+            //call the 'callback' function(response) from the sendMessage firing
+            //in the content script.
             //responds synchronously, after everything is done
+            sendResponse(response_args);
+            // The sendMessage(of the contentscript) function's callback will be invoked automatically
+            // if no handlers return true or if the sendResponse callback is garbage-collected.
 
             //set badgetext only for that tab
             chrome.browserAction.setBadgeText({text: request.keyword_count.toString(), tabId: sender.tab.id});
@@ -80,7 +94,6 @@ chrome.runtime.onMessage.addListener(
                         //do something else, like update a badge on browser action.
                     }
                 });
-
             }
 
         }
