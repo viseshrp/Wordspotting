@@ -1,14 +1,18 @@
 $(document).ready(function () {
+
     chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
         var currTab = tabs[0];
         if (currTab) { // Sanity check
-            chrome.browserAction.getBadgeText({tabId: currTab.id}, function (result) {
-                if (result > 0)
-                    $("#keyword_count").html("<h1><strong>" + result + "</strong></h1>");
-            });
+            chrome.tabs.sendMessage(
+                tabs[0].id,
+                {from: 'popup', subject: 'word_list_request'},
+                // ...also specifying a callback to be called
+                //    from the receiving end (content script)
+                function (response) {
+                    setWordList(response.word_list);
+                });
         }
     });
-
 
     $("#options_btn").click(function () {
         if (chrome.runtime.openOptionsPage) {
@@ -19,4 +23,10 @@ $(document).ready(function () {
             window.open(chrome.runtime.getURL('options.html'));
         }
     });
+
+    function setWordList(list) {
+        if (list.length > 0)
+            $("#keyword_count").html("<small><strong>" + list + "</strong></small>");
+    }
+
 });
