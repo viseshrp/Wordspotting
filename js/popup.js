@@ -9,8 +9,20 @@ $(document).ready(function () {
                 // ...also specifying a callback to be called
                 //    from the receiving end (content script)
                 function (response) {
-                    setWordList(response.word_list);
+                    //error handling if it cant connect to the tab
+                   if(response){
+                       //set wordlist on popup
+                       setWordList(response.word_list);
+                       //set badgetext only for that tab
+                       chrome.browserAction.setBadgeText({
+                           text: response.word_list.length.toString(),
+                           tabId: currTab.id
+                       });
+                   } else {
+                       setWordList("Error occured. Try again.")
+                   }
                 });
+
         }
     });
 
@@ -26,7 +38,7 @@ $(document).ready(function () {
 
     function setWordList(list) {
         if (list.length > 0)
-            $("#keyword_count").html("<small><strong>" + list + "</strong></small>");
+            $("#keyword_count").html("<strong>" + list + "</strong>");
     }
 
 });
