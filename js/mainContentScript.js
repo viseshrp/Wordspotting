@@ -13,25 +13,37 @@ getFromStorage("wordspotting_extension_on", function (items) {
 //listener for requests from popup.
 chrome.runtime.onMessage.addListener(function (msg, sender, setWordList) {
 
-    // First, validate the message's structure
-    if ((msg.from === 'popup') && (msg.subject === 'word_list_request')) {
+    //first check if extension enabled.
+    getFromStorage("wordspotting_extension_on", function (items) {
+        logit("checking if extension is on..");
+        var status = items.wordspotting_extension_on;
+        if (status) {
 
-        getFromStorage("wordspotting_word_list", function (items) {
-            //  items = [ { "yourBody": "myBody" } ]
-            var keyword_list = items.wordspotting_word_list;
+            // First, validate the message's structure
+            if ((msg.from === 'popup') && (msg.subject === 'word_list_request')) {
 
-            if (isValidObj(keyword_list) && keyword_list.length > 0) {
+                //get the wordlist from storage to scan page
+                getFromStorage("wordspotting_word_list", function (items) {
+                    //  items = [ { "yourBody": "myBody" } ]
+                    var keyword_list = items.wordspotting_word_list;
 
-                var occurring_word_list = getWordList(keyword_list);
+                    if (isValidObj(keyword_list) && keyword_list.length > 0) {
 
-                // Directly respond to the sender (popup),
-                // through the specified callback */
-                setWordList({word_list: occurring_word_list});
+                        var occurring_word_list = getWordList(keyword_list);
+
+                        // Directly respond to the sender (popup),
+                        // through the specified callback */
+                        // set the wordlist in popup's ui using this callback.
+                        setWordList({word_list: occurring_word_list});
+                    }
+                });
             }
-        });
-    }
 
-    /*
+        }
+    });
+
+
+        /*
     setWordList callback:
     This function becomes invalid when the event listener returns (synchronous),
      unless you return true from the event listener to indicate

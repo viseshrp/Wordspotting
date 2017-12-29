@@ -19,7 +19,7 @@ $(document).ready(function () {
                            tabId: currTab.id
                        });
                    } else {
-                       setWordList("Error occured. Try again.")
+                       logit("Error occured. Try again.")
                    }
                 });
 
