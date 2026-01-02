@@ -2,35 +2,72 @@
 * Utils to abstract API calls and other frequent usages.
 * */
 
-function saveToStorage(obj, callback) {
-    chrome.storage.sync.set(obj, callback);
+/**
+ * Save object to chrome.storage.sync
+ * @param {Object} obj
+ * @returns {Promise<void>}
+ */
+function saveToStorage(obj) {
+    return new Promise((resolve, reject) => {
+        chrome.storage.sync.set(obj, () => {
+            if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+            } else {
+                resolve();
+            }
+        });
+    });
 }
 
-function getFromStorage(obj_key, callback) {
-    chrome.storage.sync.get(obj_key, callback);
+/**
+ * Get object from chrome.storage.sync
+ * @param {string|string[]|Object} keys
+ * @returns {Promise<Object>}
+ */
+function getFromStorage(keys) {
+    return new Promise((resolve, reject) => {
+        chrome.storage.sync.get(keys, (items) => {
+            if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+            } else {
+                resolve(items);
+            }
+        });
+    });
 }
 
 function showAlert(message, title, isSuccess) {
-
-    toastr.options.escapeHtml = true;
-    toastr.options.closeButton = true;
-
-    if (isSuccess)
-        toastr.success(message, title);
-    else
-        toastr.error(message, title);
+    if (typeof document !== 'undefined') {
+        // Simple vanilla JS toast
+        let toast = document.createElement('div');
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.backgroundColor = isSuccess ? '#4caf50' : '#f44336';
+        toast.style.color = 'white';
+        toast.style.padding = '16px';
+        toast.style.borderRadius = '4px';
+        toast.style.zIndex = '10000';
+        toast.style.fontFamily = 'sans-serif';
+        toast.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        toast.textContent = (title ? title + ": " : "") + message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.5s';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    } else {
+        logit("Alert: " + title + " - " + message);
+    }
 }
 
-//note: does not work for boolean values, only js objects.
 function isValidObj(obj) {
-    return !jQuery.isEmptyObject(obj) && typeof obj !== 'undefined' && obj !== null;
-}
-
-function isValidBool(bool) {
-    return typeof obj !== 'undefined' && obj !== null;
+    return obj !== null && typeof obj !== 'undefined' && Object.keys(obj).length > 0;
 }
 
 function trimAndClean(string) {
+    if (!string) return '';
     return string.trim().replace(/\s+/g, '');
 }
 
