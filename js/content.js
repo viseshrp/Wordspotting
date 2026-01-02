@@ -24,11 +24,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     const keyword_list = storage.wordspotting_word_list;
 
                     if (isValidObj(keyword_list) && keyword_list.length > 0) {
-                        // For popup request, we might want immediate result,
-                        // but getWordList is now potentially async if we use idleCallback?
-                        // Actually, getWordList is pure logic. The scheduling happens in talkToBackgroundScript.
-                        // However, scanning huge text is synchronous.
-                        // For the popup, the user is waiting, so we run it synchronously.
                         const occurring_word_list = getWordList(keyword_list);
                         sendResponse({word_list: occurring_word_list});
                     } else {
@@ -44,7 +39,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 /**
- * optimizedGetWordList - Scans text using a single combined Regex.
+ * optimizedGetWordList - Scans text using a single combined Regex with Named Capture Groups.
  * @param {string[]} keyword_list
  * @returns {string[]} List of found keywords
  */
@@ -56,47 +51,44 @@ function getWordList(keyword_list) {
     const bodyText = document.body.innerText;
     const foundKeywords = new Set();
 
-    // Valid patterns and their mapping
+    // Build Combined Regex with Named Groups: (?<k0>...)|(?<k1>...)
     const patterns = [];
     const patternMap = []; // index -> original keyword
 
-    for (const word of validKeywords) {
+    validKeywords.forEach((word, index) => {
         try {
-            // Test validity of regex
+            // Validate regex
             new RegExp(word);
-            patterns.push(`(${word})`);
-            patternMap.push(word);
+            // Escape the index just in case, though it's an integer
+            patterns.push(`(?<k${index}>${word})`);
+            patternMap[index] = word;
         } catch (e) {
             console.warn("Skipping invalid regex:", word);
         }
-    }
+    });
 
     if (patterns.length === 0) return [];
 
-    // Join with OR
     const combinedPattern = patterns.join('|');
+    // We cannot optimize further easily because we need to know WHICH one matched.
     const regex = new RegExp(combinedPattern, 'ig');
 
     let match;
-    // Execute regex.
-    // Optimization: If we just need to know *what* was found, we can iterate.
-    // Ideally we want unique keywords.
-
     while ((match = regex.exec(bodyText)) !== null) {
-        // match[0] is the full match.
-        // match[1]..match[N] are the capturing groups.
-        // There are patternMap.length groups.
-
-        for (let i = 1; i < match.length; i++) {
-            if (match[i] !== undefined) {
-                foundKeywords.add(patternMap[i-1]);
-                // Optimization: If we found all keywords, we can stop?
-                // No, because we don't know if we found all until we find all.
-                // But we could stop scanning if foundKeywords.size === patternMap.length.
-                if (foundKeywords.size === patternMap.length) {
-                    return Array.from(foundKeywords);
+        if (match.groups) {
+            for (const key in match.groups) {
+                if (match.groups[key] !== undefined) {
+                    // key is "k0", "k1", etc.
+                    const index = parseInt(key.substring(1));
+                    if (patternMap[index]) {
+                        foundKeywords.add(patternMap[index]);
+                    }
                 }
             }
+        }
+
+        if (foundKeywords.size === validKeywords.length) {
+            return Array.from(foundKeywords);
         }
     }
 

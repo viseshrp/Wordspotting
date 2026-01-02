@@ -2,132 +2,141 @@ document.addEventListener('DOMContentLoaded', function () {
 
     updateViews();
 
-    // Add Website
-    document.getElementById("add_sites").addEventListener("click", function () {
-        const input = document.getElementById("website_input");
-        const website = trimAndClean(input.value);
+    // --- Event Listeners ---
 
-        if (website.length > 0) {
-            let websites_list = [];
+    // Sites
+    const siteInput = document.getElementById("website_input");
+    const siteBtn = document.getElementById("add_sites");
+    const siteClearBtn = document.getElementById("clear_sites");
 
-            if (website.includes(",")) {
-                websites_list = website.split(",");
-            } else {
-                websites_list.push(website);
-            }
-
-            getFromStorage("wordspotting_website_list").then((items) => {
-                let stored_list_obj = items.wordspotting_website_list;
-
-                if (isValidObj(stored_list_obj)) {
-                    // Push all new items
-                    websites_list.forEach(w => stored_list_obj.push(w));
-                } else {
-                    stored_list_obj = websites_list;
-                }
-
-                return saveToStorage({"wordspotting_website_list": stored_list_obj});
-            }).then(() => {
-                input.value = "";
-                updateWebListDisplay();
-                showAlert("Website added to list!", "Success", true);
-            }).catch(e => {
-                console.error(e);
-                showAlert("Failed to save.", "Error", false);
-            });
-
-        } else {
-            showAlert("Please add in something!", "Failed!", false);
-        }
+    siteBtn.addEventListener("click", () => addSite(siteInput));
+    siteInput.addEventListener("keypress", (e) => {
+        if (e.key === 'Enter') addSite(siteInput);
     });
+    siteClearBtn.addEventListener("click", () => clearList("wordspotting_website_list", updateWebListDisplay));
 
-    // Add Word
-    document.getElementById("add_bl_word").addEventListener("click", function () {
-        const input = document.getElementById("bl_word_input");
-        const word = input.value.trim();
+    // Keywords
+    const wordInput = document.getElementById("bl_word_input");
+    const wordBtn = document.getElementById("add_bl_word");
+    const wordClearBtn = document.getElementById("clear_keywords");
 
-        if (word.length > 0) {
-            let word_list = [];
-
-            if (word.includes(",")) {
-                word_list = word.split(",");
-            } else {
-                word_list.push(word);
-            }
-
-            getFromStorage("wordspotting_word_list").then((items) => {
-                let stored_list_obj = items.wordspotting_word_list;
-
-                if (isValidObj(stored_list_obj)) {
-                    word_list.forEach(w => stored_list_obj.push(w));
-                } else {
-                    stored_list_obj = word_list;
-                }
-
-                return saveToStorage({"wordspotting_word_list": stored_list_obj});
-            }).then(() => {
-                input.value = "";
-                updateBLWordListDisplay();
-                showAlert("Word added to list!", "Success", true);
-            }).catch(e => {
-                console.error(e);
-                showAlert("Failed to save.", "Error", false);
-            });
-
-        } else {
-            showAlert("Please add in something!", "Failed!", false);
-        }
+    wordBtn.addEventListener("click", () => addWord(wordInput));
+    wordInput.addEventListener("keypress", (e) => {
+        if (e.key === 'Enter') addWord(wordInput);
     });
+    wordClearBtn.addEventListener("click", () => clearList("wordspotting_word_list", updateBLWordListDisplay));
 
-    // Notifications Switch
+    // Switches
     document.getElementById("notifications_switch").addEventListener("change", function () {
         const status = this.checked;
         saveToStorage({"wordspotting_notifications_on": status}).then(() => {
-            showAlert("Notifications turned " + (status ? "ON" : "OFF"), "Done!", true);
+            showAlert("Notifications turned " + (status ? "ON" : "OFF"), "Settings Saved", true);
         });
     });
 
-    // Extension Switch
     document.getElementById("extension_switch").addEventListener("change", function () {
         const status = this.checked;
         saveToStorage({"wordspotting_extension_on": status}).then(() => {
-            showAlert("Extension turned " + (status ? "ON" : "OFF"), "Done!", true);
+            showAlert("Extension turned " + (status ? "ON" : "OFF"), "Settings Saved", true);
         });
+    });
+
+    // Delegate click for removing items
+    document.body.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('chip')) {
+            const type = e.target.dataset.type; // 'site' or 'word'
+            const index = parseInt(e.target.dataset.index);
+            removeIndex(type, index);
+        }
     });
 
 });
 
-// Event Delegation for removing items (since buttons are dynamic)
-document.addEventListener('click', function(e) {
-    if (e.target && e.target.classList.contains('weblistitem')) {
-        const index = parseInt(e.target.dataset.index);
+// --- Logic ---
 
-        getFromStorage("wordspotting_website_list").then((items) => {
-            const stored_list_obj = items.wordspotting_website_list;
-            if (isValidObj(stored_list_obj)) {
-                stored_list_obj.splice(index, 1);
-                return saveToStorage({"wordspotting_website_list": stored_list_obj});
-            }
-        }).then(() => {
-            updateWebListDisplay();
-        });
+function addSite(input) {
+    const rawValue = input.value;
+    if (!rawValue || !rawValue.trim()) {
+        shakeInput(input);
+        return;
     }
 
-    if (e.target && e.target.classList.contains('wordlistitem')) {
-        const index = parseInt(e.target.dataset.index);
+    // Split and Clean
+    let list = rawValue.split(",").map(s => s.trim()).filter(s => s.length > 0);
 
-        getFromStorage("wordspotting_word_list").then((items) => {
-            const stored_list_obj = items.wordspotting_word_list;
-            if (isValidObj(stored_list_obj)) {
-                stored_list_obj.splice(index, 1);
-                return saveToStorage({"wordspotting_word_list": stored_list_obj});
-            }
-        }).then(() => {
-            updateBLWordListDisplay();
+    if (list.length === 0) {
+        shakeInput(input);
+        return;
+    }
+
+    getFromStorage("wordspotting_website_list").then((items) => {
+        let stored = items.wordspotting_website_list;
+        if (isValidObj(stored)) {
+            list.forEach(w => stored.push(w));
+        } else {
+            stored = list;
+        }
+        return saveToStorage({"wordspotting_website_list": stored});
+    }).then(() => {
+        input.value = "";
+        updateWebListDisplay();
+        showAlert("Website(s) added.", "Success", true);
+    }).catch(console.error);
+}
+
+function addWord(input) {
+    const rawValue = input.value;
+    if (!rawValue || !rawValue.trim()) {
+        shakeInput(input);
+        return;
+    }
+
+    // Split and Clean
+    let list = rawValue.split(",").map(s => s.trim()).filter(s => s.length > 0);
+
+    if (list.length === 0) {
+        shakeInput(input);
+        return;
+    }
+
+    getFromStorage("wordspotting_word_list").then((items) => {
+        let stored = items.wordspotting_word_list;
+        if (isValidObj(stored)) {
+            list.forEach(w => stored.push(w));
+        } else {
+            stored = list;
+        }
+        return saveToStorage({"wordspotting_word_list": stored});
+    }).then(() => {
+        input.value = "";
+        updateBLWordListDisplay();
+        showAlert("Keyword(s) added.", "Success", true);
+    }).catch(console.error);
+}
+
+function removeIndex(type, index) {
+    const key = (type === 'site') ? "wordspotting_website_list" : "wordspotting_word_list";
+
+    getFromStorage(key).then((items) => {
+        const stored = items[key];
+        if (isValidObj(stored)) {
+            stored.splice(index, 1);
+            return saveToStorage({[key]: stored});
+        }
+    }).then(() => {
+        if (type === 'site') updateWebListDisplay();
+        else updateBLWordListDisplay();
+    });
+}
+
+function clearList(key, updateFn) {
+    if (confirm("Are you sure you want to clear this list?")) {
+        saveToStorage({[key]: []}).then(() => {
+            updateFn();
+            showAlert("List cleared.", "Success", true);
         });
     }
-});
-
+}
 
 function updateViews() {
     updateWebListDisplay();
@@ -138,32 +147,51 @@ function updateViews() {
 
 function updateWebListDisplay() {
     getFromStorage("wordspotting_website_list").then((items) => {
-        const stored_list_obj = items.wordspotting_website_list;
-        if (isValidObj(stored_list_obj)) {
-            updateDisplayList("#website_list_container", stored_list_obj, "weblistitem");
+        const stored = items.wordspotting_website_list;
+        const container = document.getElementById("website_list_container");
+        container.innerHTML = "";
+
+        if (isValidObj(stored) && stored.length > 0) {
+            stored.forEach((item, index) => {
+                const chip = createChip(item, index, 'site');
+                container.appendChild(chip);
+            });
         } else {
-            document.querySelector("#website_list_container").innerHTML = "<small>No sites added.</small>";
+            container.innerHTML = "<small>No sites added.</small>";
         }
     });
 }
 
-function updateDisplayList(selector, data_list, item_class) {
-    const container = document.querySelector(selector);
-    container.innerHTML = "";
+function updateBLWordListDisplay() {
+    getFromStorage("wordspotting_word_list").then((items) => {
+        const stored = items.wordspotting_word_list;
+        const container = document.getElementById("bl_word_list_container");
+        container.innerHTML = "";
 
-    data_list.forEach((item, index) => {
-        const chip = document.createElement("span");
-        chip.className = `chip ${item_class}`;
-        chip.textContent = item;
-        chip.dataset.index = index;
-        container.appendChild(chip);
+        if (isValidObj(stored) && stored.length > 0) {
+            stored.forEach((item, index) => {
+                const chip = createChip(item, index, 'word');
+                container.appendChild(chip);
+            });
+        } else {
+            container.innerHTML = "<small>No keywords added.</small>";
+        }
     });
+}
+
+function createChip(text, index, type) {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = text;
+    chip.dataset.index = index;
+    chip.dataset.type = type;
+    chip.title = "Click to remove";
+    return chip;
 }
 
 function updateNotifSwitchDisplay() {
     getFromStorage("wordspotting_notifications_on").then((items) => {
         const status = items.wordspotting_notifications_on;
-        // Default to true if undefined
         document.getElementById("notifications_switch").checked = (status !== false);
     });
 }
@@ -171,18 +199,13 @@ function updateNotifSwitchDisplay() {
 function updateExtSwitchDisplay() {
     getFromStorage("wordspotting_extension_on").then((items) => {
         const status = items.wordspotting_extension_on;
-        // Default to true if undefined
         document.getElementById("extension_switch").checked = (status !== false);
     });
 }
 
-function updateBLWordListDisplay() {
-    getFromStorage("wordspotting_word_list").then((items) => {
-        const stored_list_obj = items.wordspotting_word_list;
-        if (isValidObj(stored_list_obj)) {
-            updateDisplayList("#bl_word_list_container", stored_list_obj, "wordlistitem");
-        } else {
-            document.querySelector("#bl_word_list_container").innerHTML = "<small>No keywords added.</small>";
-        }
-    });
+function shakeInput(input) {
+    input.style.borderColor = "var(--danger-color)";
+    setTimeout(() => {
+        input.style.borderColor = "var(--border-color)";
+    }, 500);
 }
