@@ -24,6 +24,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                     const keyword_list = storage.wordspotting_word_list;
 
                     if (isValidObj(keyword_list) && keyword_list.length > 0) {
+                        // For popup request, we might want immediate result,
+                        // but getWordList is now potentially async if we use idleCallback?
+                        // Actually, getWordList is pure logic. The scheduling happens in talkToBackgroundScript.
+                        // However, scanning huge text is synchronous.
+                        // For the popup, the user is waiting, so we run it synchronously.
                         const occurring_word_list = getWordList(keyword_list);
                         sendResponse({word_list: occurring_word_list});
                     } else {
@@ -38,31 +43,64 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true; // Keep channel open
 });
 
+/**
+ * optimizedGetWordList - Scans text using a single combined Regex.
+ * @param {string[]} keyword_list
+ * @returns {string[]} List of found keywords
+ */
 function getWordList(keyword_list) {
-    let keywords_found = [];
-
-    // Get all text content from body
-    // Using a more efficient approach than scanning entire body text repeatedly
-    // But for simplicity and migration parity, we will scan text content.
-    // Modern approach: maybe TreeWalker or just body.innerText
+    // Filter out empty or invalid strings first
+    const validKeywords = keyword_list.filter(k => k && k.trim().length > 0);
+    if (validKeywords.length === 0) return [];
 
     const bodyText = document.body.innerText;
+    const foundKeywords = new Set();
 
-    for (const word of keyword_list) {
-        // Escape special regex characters in word if user input is literal?
-        // The original extension seemingly treated them as Regex ("new RegExp(word, 'ig')")
-        // We will stick to that behavior.
+    // Valid patterns and their mapping
+    const patterns = [];
+    const patternMap = []; // index -> original keyword
+
+    for (const word of validKeywords) {
         try {
-            const regex = new RegExp(word, "ig");
-            if (regex.test(bodyText)) {
-                keywords_found.push(word);
-            }
+            // Test validity of regex
+            new RegExp(word);
+            patterns.push(`(${word})`);
+            patternMap.push(word);
         } catch (e) {
-            console.warn("Invalid regex in word list:", word);
+            console.warn("Skipping invalid regex:", word);
         }
     }
 
-    return keywords_found;
+    if (patterns.length === 0) return [];
+
+    // Join with OR
+    const combinedPattern = patterns.join('|');
+    const regex = new RegExp(combinedPattern, 'ig');
+
+    let match;
+    // Execute regex.
+    // Optimization: If we just need to know *what* was found, we can iterate.
+    // Ideally we want unique keywords.
+
+    while ((match = regex.exec(bodyText)) !== null) {
+        // match[0] is the full match.
+        // match[1]..match[N] are the capturing groups.
+        // There are patternMap.length groups.
+
+        for (let i = 1; i < match.length; i++) {
+            if (match[i] !== undefined) {
+                foundKeywords.add(patternMap[i-1]);
+                // Optimization: If we found all keywords, we can stop?
+                // No, because we don't know if we found all until we find all.
+                // But we could stop scanning if foundKeywords.size === patternMap.length.
+                if (foundKeywords.size === patternMap.length) {
+                    return Array.from(foundKeywords);
+                }
+            }
+        }
+    }
+
+    return Array.from(foundKeywords);
 }
 
 async function proceedWithSiteListCheck() {
@@ -87,7 +125,7 @@ async function proceedWithSiteListCheck() {
 
             if (shouldRun) {
                 // Initial check
-                talkToBackgroundScript();
+                scheduleScan();
 
                 // Set up observer for SPA
                 setupObserver();
@@ -97,6 +135,17 @@ async function proceedWithSiteListCheck() {
         }
     } catch (e) {
         console.error("Error in proceedWithSiteListCheck:", e);
+    }
+}
+
+function scheduleScan() {
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+            talkToBackgroundScript();
+        }, { timeout: 2000 });
+    } else {
+        // Fallback
+        setTimeout(talkToBackgroundScript, 500);
     }
 }
 
@@ -145,7 +194,7 @@ function setupObserver() {
     // Create an observer instance linked to the callback function
     // Debounce the scan to avoid performance hit on frequent updates
     const observer = new MutationObserver(debounce(() => {
-        talkToBackgroundScript();
+        scheduleScan();
     }, 1000)); // Scan at most once per second on changes
 
     // Start observing the target node for configured mutations
