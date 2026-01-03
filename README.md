@@ -17,7 +17,7 @@
 1.  Download the latest release zip.
 2.  Open Chrome and navigate to `chrome://extensions`.
 3.  Enable **Developer Mode** (top right).
-4.  Drag and drop the zip file or click **Load unpacked** and select the extension folder.
+4.  Unzip the downloaded file, then click **Load unpacked** and select the extension folder.
 
 ## Usage
 
