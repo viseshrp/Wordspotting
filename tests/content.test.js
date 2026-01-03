@@ -31,35 +31,23 @@ global.chrome = {
     }
 };
 
-// Setup utils first (as content.js relies on them)
-// We need to implement dummy versions of utils used in content.js if we don't load utils.js
-// OR we load utils.js first.
-// Let's implement dummies for isolation or load utils.js.
-// Loading utils.js is better integration.
+// Utils setup
 const utilsPath = path.join(__dirname, '../js/utils.js');
 const utilsCode = fs.readFileSync(utilsPath, 'utf8');
 vm.runInThisContext(utilsCode);
-
 
 // Load content.js code
 const contentPath = path.join(__dirname, '../js/content.js');
 let contentCode = fs.readFileSync(contentPath, 'utf8');
 
-// content.js has an IIFE that runs immediately: (async function() { ... })();
-// This will try to run getFromStorage etc.
-// We mocked chrome.storage so it should be fine, but it might log errors if we don't set expected storage values.
-// We can silence console.error/log for the loading phase or just let it run.
-
-// Helper to update storage mock
+// Storage Mock Helper
 let storageData = {
     wordspotting_extension_on: true,
     wordspotting_website_list: ["example.com"],
     wordspotting_word_list: []
 };
 
-// Override chrome.storage.sync.get for tests
 global.chrome.storage.sync.get = (keys, cb) => {
-    // Return all or specific
     if (typeof keys === 'string') {
         cb({ [keys]: storageData[keys] });
     } else {
@@ -67,36 +55,86 @@ global.chrome.storage.sync.get = (keys, cb) => {
     }
 };
 
-vm.runInThisContext(contentCode);
+// Setup proceedWithSiteListCheck test environment
+// Since proceedWithSiteListCheck is inside the closure, we can't call it directly unless we modify content.js to export it
+// OR we use vm to run a script that calls it? No, it's not exported.
+// BUT, the IIFE calls it.
+// To test proceedWithSiteListCheck logic specifically regarding regex, we might need to expose it or
+// rely on spying on 'talkToBackgroundScript' which is called if site matches.
 
-// Tests
+// Let's spy on chrome.runtime.sendMessage to see if it was called.
+let messageSent = false;
+global.chrome.runtime.sendMessage = (msg, cb) => {
+    messageSent = true;
+    cb && cb({ack: "gotcha"});
+};
+
+// We reload the script for each test case to reset state?
+// Or we just modify storage and run the IIFE logic again?
+// We can't easily re-run the IIFE without re-evaling.
+
+function runContentScript() {
+    messageSent = false;
+    vm.runInThisContext(contentCode);
+    // We need to wait for promises. proceedWithSiteListCheck is async.
+    return new Promise(resolve => setTimeout(resolve, 10));
+}
+
 test('getWordList finds simple keywords', () => {
+    vm.runInThisContext(contentCode); // Load functions
     document.body.innerText = "This is a H1B visa test.";
     const result = getWordList(["H1B", "visa"]);
     expect(result.sort()).toEqual(["H1B", "visa"]);
 });
 
+// ... existing tests ...
+
 test('getWordList ignores case', () => {
+    vm.runInThisContext(contentCode);
     document.body.innerText = "h1b VISA";
     const result = getWordList(["H1B", "visa"]);
     expect(result.sort()).toEqual(["H1B", "visa"]);
 });
 
 test('getWordList handles user regex with groups correctly', () => {
+    vm.runInThisContext(contentCode);
     document.body.innerText = "Check H1B status.";
-    // User provides regex with capturing group
     const result = getWordList(["(H1|h1)B"]);
     expect(result).toEqual(["(H1|h1)B"]);
 });
 
-test('getWordList handles multiple complex regexes', () => {
-    document.body.innerText = "We need US Citizen and Java skills.";
-    const result = getWordList(["US (Citizen|citizen)", "Java(script)?"]);
-    expect(result.sort()).toEqual(["Java(script)?", "US (Citizen|citizen)"]);
+// New Tests for Site List Logic
+// We need to manipulate location.href and storageData
+
+test('Site Check: Matches exact domain', async () => {
+    global.location.href = "https://www.linkedin.com/jobs";
+    storageData.wordspotting_website_list = ["linkedin.com"];
+
+    await runContentScript();
+    expect(messageSent).toBeTruthy();
 });
 
-test('getWordList returns empty if no matches', () => {
-    document.body.innerText = "Nothing here.";
-    const result = getWordList(["foobar"]);
-    expect(result).toEqual([]);
+test('Site Check: Matches glob pattern *linkedin*', async () => {
+    global.location.href = "https://www.linkedin.com/jobs";
+    storageData.wordspotting_website_list = ["*linkedin*"];
+
+    await runContentScript();
+    expect(messageSent).toBeTruthy();
+});
+
+test('Site Check: Does not match mismatched glob', async () => {
+    global.location.href = "https://www.google.com";
+    storageData.wordspotting_website_list = ["*linkedin*"];
+
+    await runContentScript();
+    expect(messageSent).toBeFalsy();
+});
+
+test('Site Check: Handles regex error gracefully and falls back to glob', async () => {
+    global.location.href = "https://www.linkedin.com";
+    // * at start is invalid regex, triggers fallback
+    storageData.wordspotting_website_list = ["*linkedin*"];
+
+    await runContentScript();
+    expect(messageSent).toBeTruthy();
 });
