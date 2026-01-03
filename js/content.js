@@ -105,13 +105,23 @@ async function proceedWithSiteListCheck() {
         if (isValidObj(allowed_sites) && allowed_sites.length > 0) {
             for (const site of allowed_sites) {
                 try {
-                    const regex = new RegExp(site, "ig");
+                    let regex;
+                    try {
+                        regex = new RegExp(site, "ig");
+                    } catch (e) {
+                        // If invalid regex, assume it's a glob pattern (e.g. *linkedin*)
+                        // Escape regex chars but convert wildcard * to .*
+                        const escaped = site.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const globbed = escaped.replace(/\\\*/g, '.*');
+                        regex = new RegExp(globbed, "ig");
+                    }
+
                     if (regex.test(location.href)) {
                         shouldRun = true;
                         break;
                     }
                 } catch (e) {
-                    console.warn("Invalid regex in site list:", site);
+                    console.warn("Invalid regex/glob in site list:", site, e);
                 }
             }
 

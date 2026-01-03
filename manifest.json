@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Wordspotting",
   "description": "Get notified when a word is found in a web page.",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "icons": {
     "16": "img/ws16.png",
     "24": "img/ws24.png",
