@@ -1,11 +1,8 @@
 {
+  "manifest_version": 3,
   "name": "Wordspotting",
   "description": "Get notified when a word is found in a web page.",
-  "version": "0.1.0",
-  "author": "Visesh Prasad",
-  "homepage_url": "http://www.viseshprasad.com/Wordspotting",
-  "incognito": "not_allowed",
-  "manifest_version": 2,
+  "version": "0.2.0",
   "icons": {
     "16": "img/ws16.png",
     "24": "img/ws24.png",
@@ -13,7 +10,7 @@
     "48": "img/ws48.png",
     "128": "img/ws128.png"
   },
-  "browser_action": {
+  "action": {
     "default_icon": {
       "16": "img/ws16.png",
       "24": "img/ws24.png",
@@ -26,17 +23,13 @@
   },
   "permissions": [
     "notifications",
-    "tabs",
-    "storage",
+    "storage"
+  ],
+  "host_permissions": [
     "*://*/*"
   ],
   "background": {
-    "scripts": [
-      "js/jquery-3.2.1.min.js",
-      "js/utils.js",
-      "js/eventPage.js"
-    ],
-    "persistent": false
+    "service_worker": "js/background.js"
   },
   "content_scripts": [
     {
@@ -47,23 +40,20 @@
         "css/index.css"
       ],
       "js": [
-        "js/jquery-3.2.1.min.js",
         "js/utils.js",
-        "js/mainContentScript.js"
+        "js/content.js"
       ],
-      "run_at": "document_idle",
-      "all_frames": false
+      "run_at": "document_idle"
     }
   ],
-  "web_accessible_resources": [
-    "img/*.png",
-    "css/*.css",
-    "options.html"
-  ],
-  "options_page": "options.html",
   "options_ui": {
-    "page": "options.html"
+    "page": "options.html",
+    "open_in_tab": true
   },
-  "minimum_chrome_version": "22.0",
-  "update_url": "http://www.viseshprasad.com/Wordspotting"
+  "web_accessible_resources": [
+    {
+      "resources": ["img/*.png", "css/*.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

@@ -1,237 +1,211 @@
-$(document).ready(function () {
-    $('body').bootstrapMaterialDesign();
+document.addEventListener('DOMContentLoaded', function () {
 
     updateViews();
 
-    //on 'add' clicked, get the value, store it and then display it.
-    $("#add_sites").click(function () {
-        var website = trimAndClean($("#website_input").val());
+    // --- Event Listeners ---
 
+    // Sites
+    const siteInput = document.getElementById("website_input");
+    const siteBtn = document.getElementById("add_sites");
+    const siteClearBtn = document.getElementById("clear_sites");
 
-        if (website.length > 0) {
-            var websites_list = [];
-
-            //check if it is a list.
-            if (website.includes(",")) {
-                websites_list = website.split(",");
-            } else
-                websites_list.push(website);
-
-            getFromStorage("wordspotting_website_list", function (items) {
-                var stored_list_obj = items.wordspotting_website_list;
-
-                if (isValidObj(stored_list_obj)) {
-                    //if the object exists already, use it.
-                    // logit("oldlist=" + stored_list_obj);
-                    Array.prototype.push.apply(stored_list_obj, websites_list);
-                    // logit("newlist=" + stored_list_obj);
-                    saveToStorage({"wordspotting_website_list": stored_list_obj}, function () {
-                        // notify user.
-                        // showAlert("Website added to list!", "Success!", true);
-                    });
-                } else {
-                    // if not, create a new one
-                    saveToStorage({"wordspotting_website_list": websites_list}, function () {
-                        // notify user.
-                        // showAlert("Website added to list!", "Success!", true);
-                    });
-                }
-
-                location.reload();
-            });
-
-            // updateWebListDisplay(); //todo fix bug where getfromstorage returns the old list
-            //and not the updated/recently saved one.
-
-
-        } else {
-            showAlert("Please add in something!", "Failed!", false);
-        }
-
+    siteBtn.addEventListener("click", () => addSite(siteInput));
+    siteInput.addEventListener("keypress", (e) => {
+        if (e.key === 'Enter') addSite(siteInput);
     });
+    siteClearBtn.addEventListener("click", () => clearList("wordspotting_website_list", updateWebListDisplay));
 
+    // Keywords
+    const wordInput = document.getElementById("bl_word_input");
+    const wordBtn = document.getElementById("add_bl_word");
+    const wordClearBtn = document.getElementById("clear_keywords");
 
-    //on 'add' clicked, get the value, store it and then display it.
-    $("#add_bl_word").click(function () {
-        var word = $("#bl_word_input").val().trim();
-
-
-        if (word.length > 0) {
-            var word_list = [];
-
-            //check if it is a list.
-            if (word.includes(",")) {
-                word_list = word.split(",");
-            } else
-                word_list.push(word);
-
-            getFromStorage("wordspotting_word_list", function (items) {
-                var stored_list_obj = items.wordspotting_word_list;
-
-                if (isValidObj(stored_list_obj)) {
-                    //if the object exists already, use it.
-                    // logit("oldlist=" + stored_list_obj);
-                    Array.prototype.push.apply(stored_list_obj, word_list);
-                    // logit("newlist=" + stored_list_obj);
-                    saveToStorage({"wordspotting_word_list": stored_list_obj}, function () {
-                        // notify user.
-                        // showAlert("Word added to list!", "Success!", true);
-                    });
-                } else {
-                    // if not, create a new one
-                    saveToStorage({"wordspotting_word_list": word_list}, function () {
-                        // notify user.
-                        // showAlert("Word added to list!", "Success!", true);
-                    });
-                }
-
-                location.reload();
-            });
-
-            // updateWebListDisplay(); //todo fix bug where getfromstorage returns the old list
-            //and not the updated/recently saved one.
-
-
-        } else {
-            showAlert("Please add in something!", "Failed!", false);
-        }
-
+    wordBtn.addEventListener("click", () => addWord(wordInput));
+    wordInput.addEventListener("keypress", (e) => {
+        if (e.key === 'Enter') addWord(wordInput);
     });
+    wordClearBtn.addEventListener("click", () => clearList("wordspotting_word_list", updateBLWordListDisplay));
 
-
-    //onchange for notifications_switch
-    $("#notifications_switch").change(function () {
-        var notifications_switch_status = this.checked;
-        saveToStorage({"wordspotting_notifications_on": notifications_switch_status}, function () {
-            var status = notifications_switch_status ? "ON" : "OFF";
-            showAlert("Notifications turned " + status, "Done!", true);
-        })
-    });
-
-    //onchange for extension_switch
-    $("#extension_switch").change(function () {
-        var extension_switch_status = this.checked;
-        saveToStorage({"wordspotting_extension_on": extension_switch_status}, function () {
-            var status = extension_switch_status ? "ON" : "OFF";
-            showAlert("Extension turned " + status, "Done!", true);
-        })
-    });
-
-
-//removes itself if we try to delete an item in a list.
-    $(document).on('click', '.weblistitem', function () {
-
-        var item_index = this.id;
-        //get from storage, delete list item and save.
-        getFromStorage("wordspotting_website_list", function (items) {
-            var stored_list_obj = items.wordspotting_website_list;
-
-            if (isValidObj(stored_list_obj)) {
-
-                // logit("oldlist=" + stored_list_obj);
-
-                stored_list_obj.splice(item_index, 1);
-
-                // logit("newlist=" + stored_list_obj);
-
-                saveToStorage({"wordspotting_website_list": stored_list_obj}, function () {
-                    // notify user.
-                    // showAlert("Website added to list!", "Success!", true);
-                    location.reload();
-                });
-
-                // showAlert("Item removed!", "Success!", true);
-            } else {
-                showAlert("Something went wrong! Please try again.", "Error!", false);
-            }
+    // Switches
+    document.getElementById("notifications_switch").addEventListener("change", function () {
+        const status = this.checked;
+        saveToStorage({"wordspotting_notifications_on": status}).then(() => {
+            showAlert("Notifications turned " + (status ? "ON" : "OFF"), "Settings Saved", true);
         });
     });
 
-    //for word list
-    //removes itself if we try to delete an item in a list.
-    $(document).on('click', '.wordlistitem', function () {
-
-        var item_index = this.id;
-        //get from storage, delete list item and save.
-        getFromStorage("wordspotting_word_list", function (items) {
-            var stored_list_obj = items.wordspotting_word_list;
-
-            if (isValidObj(stored_list_obj)) {
-                //remove from list
-                stored_list_obj.splice(item_index, 1);
-
-                saveToStorage({"wordspotting_word_list": stored_list_obj}, function () {
-                    location.reload();
-                });
-
-                // showAlert("Item removed!", "Success!", true);
-            } else {
-                showAlert("Something went wrong! Please try again.", "Error!", false);
-            }
+    document.getElementById("extension_switch").addEventListener("change", function () {
+        const status = this.checked;
+        saveToStorage({"wordspotting_extension_on": status}).then(() => {
+            showAlert("Extension turned " + (status ? "ON" : "OFF"), "Settings Saved", true);
         });
     });
 
+    // Delegate click for removing items
+    document.body.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('chip')) {
+            const type = e.target.dataset.type; // 'site' or 'word'
+            const index = parseInt(e.target.dataset.index);
+            removeIndex(type, index);
+        }
+    });
 
 });
+
+// --- Logic ---
+
+function addSite(input) {
+    const rawValue = input.value;
+    if (!rawValue || !rawValue.trim()) {
+        shakeInput(input);
+        return;
+    }
+
+    // Split and Clean
+    let list = rawValue.split(",").map(s => s.trim()).filter(s => s.length > 0);
+
+    if (list.length === 0) {
+        shakeInput(input);
+        return;
+    }
+
+    getFromStorage("wordspotting_website_list").then((items) => {
+        let stored = items.wordspotting_website_list;
+        if (isValidObj(stored)) {
+            list.forEach(w => stored.push(w));
+        } else {
+            stored = list;
+        }
+        return saveToStorage({"wordspotting_website_list": stored});
+    }).then(() => {
+        input.value = "";
+        updateWebListDisplay();
+        showAlert("Website(s) added.", "Success", true);
+    }).catch(console.error);
+}
+
+function addWord(input) {
+    const rawValue = input.value;
+    if (!rawValue || !rawValue.trim()) {
+        shakeInput(input);
+        return;
+    }
+
+    // Split and Clean
+    let list = rawValue.split(",").map(s => s.trim()).filter(s => s.length > 0);
+
+    if (list.length === 0) {
+        shakeInput(input);
+        return;
+    }
+
+    getFromStorage("wordspotting_word_list").then((items) => {
+        let stored = items.wordspotting_word_list;
+        if (isValidObj(stored)) {
+            list.forEach(w => stored.push(w));
+        } else {
+            stored = list;
+        }
+        return saveToStorage({"wordspotting_word_list": stored});
+    }).then(() => {
+        input.value = "";
+        updateBLWordListDisplay();
+        showAlert("Keyword(s) added.", "Success", true);
+    }).catch(console.error);
+}
+
+function removeIndex(type, index) {
+    const key = (type === 'site') ? "wordspotting_website_list" : "wordspotting_word_list";
+
+    getFromStorage(key).then((items) => {
+        const stored = items[key];
+        if (isValidObj(stored)) {
+            stored.splice(index, 1);
+            return saveToStorage({[key]: stored});
+        }
+    }).then(() => {
+        if (type === 'site') updateWebListDisplay();
+        else updateBLWordListDisplay();
+    });
+}
+
+function clearList(key, updateFn) {
+    if (confirm("Are you sure you want to clear this list?")) {
+        saveToStorage({[key]: []}).then(() => {
+            updateFn();
+            showAlert("List cleared.", "Success", true);
+        });
+    }
+}
 
 function updateViews() {
     updateWebListDisplay();
     updateNotifSwitchDisplay();
     updateExtSwitchDisplay();
     updateBLWordListDisplay();
-    // updateWLWordListDisplay();
 }
 
 function updateWebListDisplay() {
-    //update the UI
-    getFromStorage("wordspotting_website_list", function (items) {
-        //  items = [ { "yourBody": "myBody" } ]
-        var stored_list_obj = items.wordspotting_website_list;
-        // logit("websitelist=" + stored_list_obj);
+    getFromStorage("wordspotting_website_list").then((items) => {
+        const stored = items.wordspotting_website_list;
+        const container = document.getElementById("website_list_container");
+        container.innerHTML = "";
 
-        if (isValidObj(stored_list_obj)) {
-            updateDisplayList("#website_list_container", stored_list_obj, "weblistitem");
-            // logit(stored_list_obj)
+        if (isValidObj(stored) && stored.length > 0) {
+            stored.forEach((item, index) => {
+                const chip = createChip(item, index, 'site');
+                container.appendChild(chip);
+            });
         } else {
-            logit("Website list empty.");
+            container.innerHTML = "<small>No sites added.</small>";
         }
-    });
-}
-
-function updateDisplayList(list_dom_id, data_list, item_name) {
-    $(list_dom_id).html("");
-    for (var key in data_list) {
-        $(list_dom_id).append("<button id=\"" + key + "\" type=\"button\"" +
-            " class=\"btn " + item_name + " btn-outline-secondary\">" + data_list[key] + "</button>&nbsp;");
-    }
-}
-
-function updateNotifSwitchDisplay() {
-    getFromStorage("wordspotting_notifications_on", function (items) {
-        var status = items.wordspotting_notifications_on;
-        $("#notifications_switch").prop('checked', status);
-    });
-}
-
-function updateExtSwitchDisplay() {
-    getFromStorage("wordspotting_extension_on", function (items) {
-        var status = items.wordspotting_extension_on;
-        $("#extension_switch").prop('checked', status);
     });
 }
 
 function updateBLWordListDisplay() {
-    //update the UI
-    getFromStorage("wordspotting_word_list", function (items) {
-        //  items = [ { "yourBody": "myBody" } ]
-        var stored_list_obj = items.wordspotting_word_list;
+    getFromStorage("wordspotting_word_list").then((items) => {
+        const stored = items.wordspotting_word_list;
+        const container = document.getElementById("bl_word_list_container");
+        container.innerHTML = "";
 
-        if (isValidObj(stored_list_obj)) {
-            updateDisplayList("#bl_word_list_container", stored_list_obj, "wordlistitem");
+        if (isValidObj(stored) && stored.length > 0) {
+            stored.forEach((item, index) => {
+                const chip = createChip(item, index, 'word');
+                container.appendChild(chip);
+            });
         } else {
-            logit("Word list empty.");
+            container.innerHTML = "<small>No keywords added.</small>";
         }
     });
 }
 
+function createChip(text, index, type) {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = text;
+    chip.dataset.index = index;
+    chip.dataset.type = type;
+    chip.title = "Click to remove";
+    return chip;
+}
 
+function updateNotifSwitchDisplay() {
+    getFromStorage("wordspotting_notifications_on").then((items) => {
+        const status = items.wordspotting_notifications_on;
+        document.getElementById("notifications_switch").checked = (status !== false);
+    });
+}
+
+function updateExtSwitchDisplay() {
+    getFromStorage("wordspotting_extension_on").then((items) => {
+        const status = items.wordspotting_extension_on;
+        document.getElementById("extension_switch").checked = (status !== false);
+    });
+}
+
+function shakeInput(input) {
+    input.style.borderColor = "var(--danger-color)";
+    setTimeout(() => {
+        input.style.borderColor = "var(--border-color)";
+    }, 500);
+}
