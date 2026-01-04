@@ -5,6 +5,7 @@ importScripts('settings.js');
 
 const CONTENT_SCRIPT_FILES = ['js/utils.js', 'js/settings.js', 'js/content.js'];
 const CONTENT_STYLE_FILES = ['css/index.css'];
+let compiledAllowedSites = [];
 
 /**
  * Handle extension installation/update
@@ -12,6 +13,7 @@ const CONTENT_STYLE_FILES = ['css/index.css'];
 chrome.runtime.onInstalled.addListener(async (details) => {
     try {
         await ensureSettingsInitialized();
+        await refreshAllowedSitePatterns();
 
         if (details.reason === 'install') {
             logit("First start initialization complete.");
@@ -87,6 +89,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
     if (!changes.wordspotting_website_list && !changes.wordspotting_extension_on) return;
 
+    if (changes.wordspotting_website_list) {
+        refreshAllowedSitePatterns();
+    }
+
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tab = tabs[0];
         if (tab && tab.url) {
@@ -103,7 +109,11 @@ async function maybeInjectContentScripts(tabId, url) {
         }
 
         const allowedSites = settings.wordspotting_website_list || [];
-        if (!isUrlAllowed(url, allowedSites)) {
+        const isAllowed = compiledAllowedSites.length > 0
+            ? isUrlAllowedCompiled(url, compiledAllowedSites)
+            : isUrlAllowed(url, allowedSites);
+
+        if (!isAllowed) {
             return;
         }
 
@@ -166,4 +176,14 @@ async function injectScripts(tabId) {
         target: { tabId },
         files: CONTENT_SCRIPT_FILES
     });
+}
+
+async function refreshAllowedSitePatterns() {
+    try {
+        const items = await getFromStorage("wordspotting_website_list");
+        compiledAllowedSites = compileSitePatterns(items.wordspotting_website_list || []);
+    } catch (e) {
+        console.warn("Failed to refresh allowed site patterns:", e);
+        compiledAllowedSites = [];
+    }
 }

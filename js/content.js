@@ -114,8 +114,9 @@ async function proceedWithSiteListCheck() {
     try {
         const items = await getFromStorage("wordspotting_website_list");
         const allowed_sites = items.wordspotting_website_list || [];
+        const compiled = compileSitePatterns(allowed_sites);
 
-        if (isUrlAllowed(location.href, allowed_sites)) {
+        if (isUrlAllowedCompiled(location.href, compiled)) {
             // Initial check after load/idle
             deferUntilPageIdle();
 

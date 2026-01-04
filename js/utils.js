@@ -123,3 +123,24 @@ function isUrlAllowed(url, allowedSites) {
         return regex ? regex.test(url) : false;
     });
 }
+
+/**
+ * Precompile a list of site patterns to regexes.
+ * @param {string[]} patterns
+ * @returns {RegExp[]}
+ */
+function compileSitePatterns(patterns) {
+    if (!Array.isArray(patterns)) return [];
+    return patterns.map((p) => buildSiteRegex(p)).filter(Boolean);
+}
+
+/**
+ * Test URL against precompiled regex list.
+ * @param {string} url
+ * @param {RegExp[]} compiled
+ * @returns {boolean}
+ */
+function isUrlAllowedCompiled(url, compiled) {
+    if (!url || !Array.isArray(compiled) || compiled.length === 0) return false;
+    return compiled.some((regex) => regex.test(url));
+}
