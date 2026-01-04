@@ -69,12 +69,23 @@ function addSite(input) {
         return;
     }
 
+    const { valid, invalid } = partitionSitePatterns(list);
+
+    if (invalid.length > 0) {
+        showAlert(`Skipped invalid pattern(s): ${invalid.join(", ")}`, "Validation", false);
+    }
+
+    if (valid.length === 0) {
+        shakeInput(input);
+        return;
+    }
+
     getFromStorage("wordspotting_website_list").then((items) => {
         let stored = items.wordspotting_website_list;
         if (isValidObj(stored)) {
-            list.forEach(w => stored.push(w));
+            valid.forEach(w => stored.push(w));
         } else {
-            stored = list;
+            stored = valid;
         }
         return saveToStorage({"wordspotting_website_list": stored});
     }).then(() => {
@@ -99,12 +110,23 @@ function addWord(input) {
         return;
     }
 
+    const { valid, invalid } = partitionKeywordPatterns(list);
+
+    if (invalid.length > 0) {
+        showAlert(`Skipped invalid regex: ${invalid.join(", ")}`, "Validation", false);
+    }
+
+    if (valid.length === 0) {
+        shakeInput(input);
+        return;
+    }
+
     getFromStorage("wordspotting_word_list").then((items) => {
         let stored = items.wordspotting_word_list;
         if (isValidObj(stored)) {
-            list.forEach(w => stored.push(w));
+            valid.forEach(w => stored.push(w));
         } else {
-            stored = list;
+            stored = valid;
         }
         return saveToStorage({"wordspotting_word_list": stored});
     }).then(() => {
@@ -208,4 +230,37 @@ function shakeInput(input) {
     setTimeout(() => {
         input.style.borderColor = "var(--border-color)";
     }, 500);
+}
+
+function partitionKeywordPatterns(list) {
+    const valid = [];
+    const invalid = [];
+
+    list.forEach((item) => {
+        try {
+            // Validate regex
+            new RegExp(item);
+            valid.push(item);
+        } catch (e) {
+            invalid.push(item);
+        }
+    });
+
+    return { valid, invalid };
+}
+
+function partitionSitePatterns(list) {
+    const valid = [];
+    const invalid = [];
+
+    list.forEach((item) => {
+        const regex = buildSiteRegex(item);
+        if (regex) {
+            valid.push(item);
+        } else {
+            invalid.push(item);
+        }
+    });
+
+    return { valid, invalid };
 }
