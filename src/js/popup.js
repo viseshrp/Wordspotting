@@ -126,38 +126,11 @@ document.addEventListener('DOMContentLoaded', function () {
             const items = await getFromStorage("wordspotting_website_list");
             const allowedSites = items.wordspotting_website_list || [];
             const allowed = isUrlAllowed(tab.url, allowedSites);
-
-            let hasPermission = false;
-            if (allowed) {
-                const originPattern = getOriginPattern(tab.url);
-                if (originPattern) {
-                    hasPermission = await containsOriginPermission(originPattern);
-                }
-            }
-
-            return { allowed, hasPermission };
+            return { allowed, hasPermission: true };
         } catch (e) {
             console.error("Activation check failed:", e);
             return { allowed: false, hasPermission: false };
         }
-    }
-
-    function getOriginPattern(url) {
-        try {
-            const parsed = new URL(url);
-            if (!/^https?:/i.test(parsed.protocol)) return null;
-            return `${parsed.protocol}//${parsed.host}/*`;
-        } catch (e) {
-            return null;
-        }
-    }
-
-    function containsOriginPermission(originPattern) {
-        return new Promise((resolve) => {
-            chrome.permissions.contains({ origins: [originPattern] }, (result) => {
-                resolve(!!result);
-            });
-        });
     }
 
 });

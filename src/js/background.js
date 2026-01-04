@@ -117,15 +117,6 @@ async function maybeInjectContentScripts(tabId, url) {
             return;
         }
 
-        const originPattern = getOriginPattern(url);
-        if (!originPattern) return;
-
-        const hasPermission = await containsOriginPermission(originPattern);
-        if (!hasPermission) {
-            const granted = await requestOriginPermission(originPattern);
-            if (!granted) return;
-        }
-
         await injectStyles(tabId);
         await injectScripts(tabId);
     } catch (e) {
@@ -141,22 +132,6 @@ function getOriginPattern(url) {
     } catch (e) {
         return null;
     }
-}
-
-function containsOriginPermission(originPattern) {
-    return new Promise((resolve) => {
-        chrome.permissions.contains({ origins: [originPattern] }, (result) => {
-            resolve(!!result);
-        });
-    });
-}
-
-function requestOriginPermission(originPattern) {
-    return new Promise((resolve) => {
-        chrome.permissions.request({ origins: [originPattern] }, (granted) => {
-            resolve(granted);
-        });
-    });
 }
 
 async function injectStyles(tabId) {
