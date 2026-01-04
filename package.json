@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Get notified when a word is found in a web page.",
   "scripts": {
-    "test": "node tests/runner.js",
+    "test": "jest --coverage",
     "lint": "eslint .",
     "format": "prettier --write .",
     "smoke": "node scripts/smoke_test.js"
