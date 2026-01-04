@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
 
     // UI References
     const extSwitch = document.getElementById("extension_switch");
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Connect to Content Script
-    chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         var currTab = tabs[0];
         if (currTab) {
             checkActivation(currTab).then((activation) => {
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 chrome.tabs.sendMessage(
                     currTab.id,
                     {from: 'popup', subject: 'word_list_request'},
-                    function (response) {
+                    (response) => {
                        if(chrome.runtime.lastError) {
                            // Content script might not be injected yet
                            renderEmpty("Not active on this page.");
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Options Button
-    document.getElementById("options_btn").addEventListener("click", function () {
+    document.getElementById("options_btn").addEventListener("click", () => {
         if (chrome.runtime.openOptionsPage) {
             chrome.runtime.openOptionsPage();
         } else {

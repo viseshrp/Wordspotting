@@ -9,13 +9,13 @@ global.chrome = {
   },
   storage: {
     sync: {
-      set: jest.fn((obj, cb) => cb && cb()),
-      get: jest.fn((keys, cb) => cb && cb({}))
+      set: jest.fn((_obj, cb) => cb?.()),
+      get: jest.fn((_keys, cb) => cb?.({}))
     }
   },
   permissions: {
-    contains: jest.fn((_, cb) => cb && cb(true)),
-    request: jest.fn((_, cb) => cb && cb(true))
+    contains: jest.fn((_, cb) => cb?.(true)),
+    request: jest.fn((_, cb) => cb?.(true))
   },
   action: {
     setBadgeText: jest.fn()

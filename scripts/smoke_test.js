@@ -1,6 +1,6 @@
 // scripts/smoke_test.js
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 console.log("Running Smoke Test...");
 
@@ -20,7 +20,7 @@ try {
         process.exit(1);
     }
     console.log("PASS: manifest.json is valid");
-} catch (e) {
+} catch (_e) {
     console.error("FAIL: manifest.json is not valid JSON");
     process.exit(1);
 }

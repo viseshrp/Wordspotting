@@ -1,64 +1,64 @@
-document.addEventListener('DOMContentLoaded', function () {
+if (typeof document !== 'undefined') {
+    document.addEventListener('DOMContentLoaded', () => {
+        updateViews();
 
-    updateViews();
+        // --- Event Listeners ---
 
-    // --- Event Listeners ---
+        // Sites
+        const siteInput = document.getElementById("website_input");
+        const siteBtn = document.getElementById("add_sites");
+        const siteClearBtn = document.getElementById("clear_sites");
 
-    // Sites
-    const siteInput = document.getElementById("website_input");
-    const siteBtn = document.getElementById("add_sites");
-    const siteClearBtn = document.getElementById("clear_sites");
+        siteBtn.addEventListener("click", () => addSite(siteInput));
+        siteInput.addEventListener("keypress", (e) => {
+            if (e.key === 'Enter') addSite(siteInput);
+        });
+        siteClearBtn.addEventListener("click", () => clearList("wordspotting_website_list", updateWebListDisplay));
 
-    siteBtn.addEventListener("click", () => addSite(siteInput));
-    siteInput.addEventListener("keypress", (e) => {
-        if (e.key === 'Enter') addSite(siteInput);
-    });
-    siteClearBtn.addEventListener("click", () => clearList("wordspotting_website_list", updateWebListDisplay));
+        // Keywords
+        const wordInput = document.getElementById("bl_word_input");
+        const wordBtn = document.getElementById("add_bl_word");
+        const wordClearBtn = document.getElementById("clear_keywords");
 
-    // Keywords
-    const wordInput = document.getElementById("bl_word_input");
-    const wordBtn = document.getElementById("add_bl_word");
-    const wordClearBtn = document.getElementById("clear_keywords");
+        wordBtn.addEventListener("click", () => addWord(wordInput));
+        wordInput.addEventListener("keypress", (e) => {
+            if (e.key === 'Enter') addWord(wordInput);
+        });
+        wordClearBtn.addEventListener("click", () => clearList("wordspotting_word_list", updateBLWordListDisplay));
 
-    wordBtn.addEventListener("click", () => addWord(wordInput));
-    wordInput.addEventListener("keypress", (e) => {
-        if (e.key === 'Enter') addWord(wordInput);
-    });
-    wordClearBtn.addEventListener("click", () => clearList("wordspotting_word_list", updateBLWordListDisplay));
+        // Switches
+        document.getElementById("notifications_switch").addEventListener("change", function () {
+            const status = this.checked;
+            saveToStorage({"wordspotting_notifications_on": status}).then(() => {
+                showAlert(`Notifications turned ${status ? "ON" : "OFF"}`, "Settings Saved", true);
+            });
+        });
 
-    // Switches
-    document.getElementById("notifications_switch").addEventListener("change", function () {
-        const status = this.checked;
-        saveToStorage({"wordspotting_notifications_on": status}).then(() => {
-            showAlert("Notifications turned " + (status ? "ON" : "OFF"), "Settings Saved", true);
+        document.getElementById("extension_switch").addEventListener("change", function () {
+            const status = this.checked;
+            saveToStorage({"wordspotting_extension_on": status}).then(() => {
+                showAlert(`Extension turned ${status ? "ON" : "OFF"}`, "Settings Saved", true);
+            });
+        });
+
+        // Theme select
+        const themeSelect = document.getElementById("theme_select");
+        themeSelect.addEventListener("change", () => {
+            const value = themeSelect.value;
+            applyTheme(value);
+            saveToStorage({"wordspotting_theme": value});
+        });
+
+        // Delegate click for removing items
+        document.body.addEventListener('click', (e) => {
+            if (e.target?.classList.contains('chip')) {
+                const type = e.target.dataset.type; // 'site' or 'word'
+                const index = parseInt(e.target.dataset.index, 10);
+                removeIndex(type, index);
+            }
         });
     });
-
-    document.getElementById("extension_switch").addEventListener("change", function () {
-        const status = this.checked;
-        saveToStorage({"wordspotting_extension_on": status}).then(() => {
-            showAlert("Extension turned " + (status ? "ON" : "OFF"), "Settings Saved", true);
-        });
-    });
-
-    // Theme select
-    const themeSelect = document.getElementById("theme_select");
-    themeSelect.addEventListener("change", () => {
-        const value = themeSelect.value;
-        applyTheme(value);
-        saveToStorage({"wordspotting_theme": value});
-    });
-
-    // Delegate click for removing items
-    document.body.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('chip')) {
-            const type = e.target.dataset.type; // 'site' or 'word'
-            const index = parseInt(e.target.dataset.index);
-            removeIndex(type, index);
-        }
-    });
-
-});
+}
 
 // --- Logic ---
 
@@ -70,7 +70,7 @@ function addSite(input) {
     }
 
     // Split and Clean
-    let list = rawValue.split(",").map(s => s.trim()).filter(s => s.length > 0);
+    const list = rawValue.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
 
     if (list.length === 0) {
         shakeInput(input);
@@ -107,7 +107,7 @@ function addWord(input) {
     }
 
     // Split and Clean
-    let list = rawValue.split(",").map(s => s.trim()).filter(s => s.length > 0);
+    const list = rawValue.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
 
     if (list.length === 0) {
         shakeInput(input);
@@ -146,8 +146,11 @@ function removeIndex(type, index) {
             return saveToStorage({[key]: stored});
         }
     }).then(() => {
-        if (type === 'site') updateWebListDisplay();
-        else updateBLWordListDisplay();
+        if (type === 'site') {
+            updateWebListDisplay();
+        } else {
+            updateBLWordListDisplay();
+        }
     });
 }
 
@@ -264,7 +267,7 @@ function partitionKeywordPatterns(list) {
             // Validate regex
             new RegExp(item);
             valid.push(item);
-        } catch (e) {
+        } catch (_e) {
             invalid.push(item);
         }
     });
@@ -272,12 +275,12 @@ function partitionKeywordPatterns(list) {
     return { valid, invalid };
 }
 
-function partitionSitePatterns(list) {
+function partitionSitePatterns(list, siteRegexBuilder = buildSiteRegex) {
     const valid = [];
     const invalid = [];
 
     list.forEach((item) => {
-        const regex = buildSiteRegex(item);
+        const regex = siteRegexBuilder(item);
         if (regex) {
             valid.push(item);
         } else {
@@ -290,4 +293,13 @@ function partitionSitePatterns(list) {
 
 function mergeUnique(existing, additions) {
     return Array.from(new Set([...(existing || []), ...(additions || [])]));
+}
+
+/* istanbul ignore next */
+if (typeof module !== 'undefined') {
+    module.exports = {
+        partitionSitePatterns,
+        partitionKeywordPatterns,
+        mergeUnique
+    };
 }

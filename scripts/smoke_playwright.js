@@ -5,8 +5,8 @@
  * - Sends a message to the background to set a badge
  * - Confirms badge text and that notifications.create is called
  */
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 const { chromium } = require('playwright-chromium');
 
 async function main() {
@@ -33,7 +33,7 @@ async function main() {
   await serviceWorker.evaluate(() => {
     let count = 0;
     const original = chrome.notifications.create;
-    chrome.notifications.create = function (...args) {
+    chrome.notifications.create = (...args) => {
       count += 1;
       return original.apply(chrome.notifications, args);
     };

@@ -2,8 +2,8 @@ describe('utils', () => {
   let utils;
 
   beforeEach(() => {
-    global.chrome.storage.sync.set = jest.fn((obj, cb) => cb && cb());
-    global.chrome.storage.sync.get = jest.fn((keys, cb) => cb && cb({ example: 1 }));
+    global.chrome.storage.sync.set = jest.fn((_obj, cb) => cb?.());
+    global.chrome.storage.sync.get = jest.fn((_keys, cb) => cb?.({ example: 1 }));
     utils = require('../src/js/utils.js');
   });
 

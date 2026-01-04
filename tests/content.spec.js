@@ -71,7 +71,7 @@ describe('content helpers', () => {
       }
       return {};
     });
-    global.chrome.runtime.sendMessage = jest.fn((msg, cb) => cb && cb({ ack: 'ok' }));
+    global.chrome.runtime.sendMessage = jest.fn((_msg, cb) => cb?.({ ack: 'ok' }));
     await content.performScan({ aborted: false });
     expect(global.chrome.runtime.sendMessage).toHaveBeenCalled();
   });

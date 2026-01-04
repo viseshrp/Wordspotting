@@ -17,7 +17,7 @@ let lastSnapshot = { text: '', timestamp: 0 };
 
 // Main execution (ignored during tests)
 /* istanbul ignore next */
-(async function() {
+(async () => {
     try {
         const items = await getFromStorage("wordspotting_extension_on");
         logit("Checking if extension is on...");
@@ -30,7 +30,7 @@ let lastSnapshot = { text: '', timestamp: 0 };
 })();
 
 // Listen for messages from popup
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     (async () => {
         try {
             const items = await getFromStorage("wordspotting_extension_on");
@@ -61,8 +61,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             }
 
             sendResponse({}); // Always respond to avoid leaving the channel open
-        } catch (e) {
-            console.error("Error in onMessage:", e);
+        } catch (error) {
+            console.error("Error in onMessage:", error);
             sendResponse({ word_list: [] });
         }
     })();
@@ -94,7 +94,7 @@ function getWordList(keyword_list, bodyText) {
             // Escape the index just in case, though it's an integer
             patterns.push(`(?<k${index}>${word})`);
             patternMap[index] = word;
-        } catch (e) {
+        } catch (_e) {
             console.warn("Skipping invalid regex:", word);
         }
     });
@@ -106,12 +106,13 @@ function getWordList(keyword_list, bodyText) {
     const regex = new RegExp(combinedPattern, 'ig');
 
     let match;
-    while ((match = regex.exec(textToScan)) !== null) {
+    match = regex.exec(textToScan);
+    while (match !== null) {
         if (match.groups) {
             for (const key in match.groups) {
                 if (match.groups[key] !== undefined) {
                     // key is "k0", "k1", etc.
-                    const index = parseInt(key.substring(1));
+                    const index = parseInt(key.substring(1), 10);
                     if (patternMap[index]) {
                         foundKeywords.add(patternMap[index]);
                     }
@@ -122,6 +123,8 @@ function getWordList(keyword_list, bodyText) {
         if (foundKeywords.size === validKeywords.length) {
             return Array.from(foundKeywords);
         }
+
+        match = regex.exec(textToScan);
     }
 
     return Array.from(foundKeywords);
@@ -183,7 +186,7 @@ function deferUntilPageIdle() {
 
 async function performScan(signal) {
     try {
-        if (signal && signal.aborted) return;
+        if (signal?.aborted) return;
         if (!chrome.runtime || !chrome.runtime.id) return;
 
         const items = await getFromStorage("wordspotting_word_list");
@@ -191,7 +194,7 @@ async function performScan(signal) {
 
         if (isValidObj(keyword_list) && keyword_list.length > 0) {
             const bodyText = await getBodyTextSnapshot(signal);
-            if (signal.aborted) return;
+            if (signal?.aborted) return;
 
             const signature = `${bodyText.length}:${hashString(bodyText)}`;
             if (signature === lastScanSignature) {
@@ -243,7 +246,7 @@ async function getBodyTextSnapshot(signal) {
         return lastSnapshot.text;
     }
 
-    if (signal.aborted) return '';
+    if (signal?.aborted) return '';
 
     const text = document.body ? document.body.innerText || '' : '';
     lastSnapshot = { text, timestamp: now };
@@ -303,7 +306,7 @@ function setupObserver() {
     window.addEventListener('pagehide', () => {
         if (observer) observer.disconnect();
         cancelScheduledScan();
-        if (observerDebounce && observerDebounce.cancel) {
+        if (observerDebounce?.cancel) {
             observerDebounce.cancel();
         }
     });

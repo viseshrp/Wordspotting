@@ -45,7 +45,7 @@ function showAlert(message, title, isSuccess) {
     if (typeof document !== 'undefined') {
         const toast = document.createElement('div');
         toast.className = `ws-toast ${isSuccess ? 'success' : 'error'}`;
-        toast.textContent = (title ? title + ": " : "") + message;
+        toast.textContent = (title ? `${title}: ` : "") + message;
         document.body.appendChild(toast);
         setTimeout(() => {
             toast.style.opacity = '0';
@@ -54,7 +54,7 @@ function showAlert(message, title, isSuccess) {
         }, 3000);
     } /* istanbul ignore else */ else {
         /* istanbul ignore next */
-        logit("Alert: " + title + " - " + message);
+        logit(`Alert: ${title} - ${message}`);
     }
 }
 
@@ -71,7 +71,7 @@ function logit(message) {
     var dt = new Date();
     var utcDate = dt.toUTCString();
 
-    console.log("[" + utcDate + "]" + "\t" + message);
+    console.log(`[${utcDate}]\t${message}`);
 }
 
 function getRandomInt(maximum, minimum) {
@@ -92,13 +92,13 @@ function buildSiteRegex(pattern) {
     // If the user explicitly included regex markers, respect as-is.
     try {
         return new RegExp(cleaned, 'i');
-    } catch (e) {
+    } catch (_e) {
         // If invalid regex, treat * as wildcard and escape the rest.
         const escaped = cleaned.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const globbed = escaped.replace(/\\\*/g, '.*');
         try {
             return new RegExp(globbed, 'i');
-        } catch (err) {
+        } catch (_err) {
             return null;
         }
     }
@@ -144,7 +144,7 @@ function isUrlAllowedCompiled(url, compiled) {
     try {
         const u = new URL(url);
         candidates.push(`${u.hostname}${u.pathname}`);
-    } catch (e) {
+    } catch (_e) {
         // ignore
     }
     return compiled.some((regex) => candidates.some((c) => regex.test(c)));

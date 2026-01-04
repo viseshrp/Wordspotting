@@ -115,7 +115,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
         if (!tab || !tab.id) return;
         try {
             chrome.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
-        } catch (e) {
+        } catch (_e) {
             // ignore send errors; content may not be injected
         }
     });
@@ -141,16 +141,6 @@ async function maybeInjectContentScripts(tabId, url) {
         await injectScripts(tabId);
     } catch (e) {
         console.error("Error during dynamic injection:", e);
-    }
-}
-
-function getOriginPattern(url) {
-    try {
-        const parsed = new URL(url);
-        if (!/^https?:/i.test(parsed.protocol)) return null;
-        return `${parsed.protocol}//${parsed.host}/*`;
-    } catch (e) {
-        return null;
     }
 }
 
@@ -192,8 +182,8 @@ async function isContentAlreadyInjected(tabId) {
             target: { tabId },
             func: () => Boolean(globalThis.__WORDSPOTTING_CONTENT_LOADED__),
         });
-        return Boolean(result && result.result);
-    } catch (e) {
+        return Boolean(result?.result);
+    } catch (_e) {
         // If we can't check (navigation/restricted), assume not injected.
         return false;
     }
