@@ -3,8 +3,8 @@
 importScripts('utils.js');
 importScripts('settings.js');
 
-const CONTENT_SCRIPT_FILES = ['js/utils.js', 'js/settings.js', 'js/content.js'];
-const CONTENT_STYLE_FILES = ['css/index.css'];
+const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/content.js'];
+const CONTENT_STYLE_FILES = ['src/css/index.css'];
 let compiledAllowedSites = [];
 
 /**
@@ -17,7 +17,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 
         if (details.reason === 'install') {
             logit("First start initialization complete.");
-            chrome.tabs.create({url: "options.html"});
+            chrome.tabs.create({url: "src/pages/options.html"});
         }
     } catch (e) {
         console.error("Error during initialization:", e);
@@ -52,7 +52,7 @@ async function handleMessage(request, sender) {
             if (items.wordspotting_notifications_on) {
                 logit("Firing notification!");
                 showNotification(
-                    "img/ws48.png",
+                    "src/assets/ws48.png",
                     'basic',
                     'Keyword found!',
                     sender.tab ? sender.tab.title : "Page",
