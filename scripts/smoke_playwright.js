@@ -16,18 +16,14 @@ async function main() {
   }
 
   const context = await chromium.launchPersistentContext('', {
-    headless: true,
+    headless: false,
     args: [
       `--disable-extensions-except=${extensionPath}`,
-      `--load-extension=${extensionPath}`,
-      '--headless=new'
+      `--load-extension=${extensionPath}`
     ]
   });
 
-  const [serviceWorker] = context.serviceWorkers();
-  if (!serviceWorker) {
-    throw new Error('Service worker not registered');
-  }
+  const serviceWorker = await waitForServiceWorker(context);
 
   // Capture notifications
   await serviceWorker.evaluate(() => {
@@ -47,15 +43,25 @@ async function main() {
   const page = await context.newPage();
   await page.goto(optionsUrl);
 
-  // Trigger badge and notification via runtime message
-  const badgeText = await page.evaluate(async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    await chrome.runtime.sendMessage({ wordfound: true, keyword_count: 3 });
-    return await new Promise((resolve) => chrome.action.getBadgeText({ tabId: tab.id }, resolve));
-  });
+  // Trigger badge and notification via a real tab + injected content script
+  const { badgeText, notificationCount } = await serviceWorker.evaluate(async () => {
+    const tab = await chrome.tabs.create({ url: 'https://example.com', active: true });
 
-  const notificationCount = await serviceWorker.evaluate(() => {
-    return typeof self.__wsNotificationCount === 'function' ? self.__wsNotificationCount() : 0;
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        chrome.runtime.sendMessage({ wordfound: true, keyword_count: 3 });
+      }
+    });
+
+    // Allow the message to propagate and badge to update.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const text = await new Promise((resolve) => chrome.action.getBadgeText({ tabId: tab.id }, resolve));
+    const notificationCount = typeof self.__wsNotificationCount === 'function' ? self.__wsNotificationCount() : 0;
+
+    await chrome.tabs.remove(tab.id);
+    return { badgeText: text, notificationCount };
   });
 
   await context.close();
@@ -74,3 +80,21 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+async function waitForServiceWorker(context, timeout = 15000) {
+  const end = Date.now() + timeout;
+
+  // Poll existing workers in case registration is slow.
+  while (Date.now() < end) {
+    const [existing] = context.serviceWorkers();
+    if (existing) return existing;
+    try {
+      const sw = await context.waitForEvent('serviceworker', { timeout: 500 });
+      if (sw) return sw;
+    } catch {
+      // continue polling
+    }
+  }
+
+  throw new Error(`Service worker not registered within ${timeout}ms`);
+}
