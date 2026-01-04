@@ -23,29 +23,16 @@
   },
   "permissions": [
     "notifications",
-    "storage"
+    "storage",
+    "scripting"
   ],
-  "host_permissions": [
-    "*://*/*"
+  "host_permissions": [],
+  "optional_host_permissions": [
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "js/background.js"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "css": [
-        "css/index.css"
-      ],
-      "js": [
-        "js/utils.js",
-        "js/content.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ],
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
