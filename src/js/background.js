@@ -66,8 +66,9 @@ async function handleMessage(request, sender) {
 }
 
 function showNotification(iconUrl, type, title, message, priority) {
+    const icon = chrome.runtime.getURL(iconUrl);
     var opt = {
-        iconUrl: iconUrl,
+        iconUrl: icon,
         type: type,
         title: title,
         message: message,
