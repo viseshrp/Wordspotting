@@ -31,10 +31,6 @@
             <button type="button" class="btn-primary" id="add_bl_word">ADD</button>
         </div>
 
-        <div class="preset-row">
-            <button type="button" class="btn-secondary" id="add_keyword_presets">Add job-search presets</button>
-        </div>
-
         <div id="bl_word_list_container" class="chip-container"></div>
     </div>
 
@@ -46,16 +42,12 @@
         </div>
         <p class="helper-text">
             Specify sites to enable the extension on. Supports wildcards (*) or regex. Comma-separated allowed.<br>
-            Examples: <code>linkedin*</code>, <code>glassdoor</code>
+            Examples: <code>*example*</code>, <code>news.*</code>
         </p>
 
         <div class="input-group">
             <input type="text" placeholder="Add website (Press Enter)" id="website_input">
             <button type="button" class="btn-primary" id="add_sites">ADD</button>
-        </div>
-
-        <div class="preset-row">
-            <button type="button" class="btn-secondary" id="add_site_presets">Add common job boards</button>
         </div>
 
         <div id="website_list_container" class="chip-container"></div>

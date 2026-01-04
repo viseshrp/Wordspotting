@@ -168,35 +168,9 @@ button.btn-text:focus-visible {
   color: var(--danger-color);
 }
 
-button.btn-secondary {
-  background-color: transparent;
-  color: var(--primary-color);
-  border: 1px solid var(--primary-color);
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
-}
-
-button.btn-secondary:hover,
-button.btn-secondary:focus-visible {
-  background-color: rgba(0, 150, 136, 0.08);
-  color: var(--primary-hover);
-  border-color: var(--primary-hover);
-  outline: none;
-}
-
 button:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
-}
-
-.preset-row {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 12px;
 }
 
 .chip-container {

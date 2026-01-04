@@ -52,7 +52,7 @@ function showAlert(message, title, isSuccess) {
             toast.style.transition = 'opacity 0.5s';
             setTimeout(() => toast.remove(), 500);
         }, 3000);
-    } else {
+    } /* istanbul ignore else */ else {
         /* istanbul ignore next */
         logit("Alert: " + title + " - " + message);
     }

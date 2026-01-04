@@ -18,8 +18,8 @@ describe('utils', () => {
   });
 
   test('buildSiteRegex handles regex and glob', () => {
-    expect(utils.buildSiteRegex('linkedin')).toBeInstanceOf(RegExp);
-    expect(utils.buildSiteRegex('*linkedin*').test('https://www.linkedin.com')).toBe(true);
+    expect(utils.buildSiteRegex('example')).toBeInstanceOf(RegExp);
+    expect(utils.buildSiteRegex('*example*').test('https://www.example.com')).toBe(true);
   });
 
   test('isUrlAllowed matches with compiled patterns', () => {

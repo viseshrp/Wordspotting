@@ -20,9 +20,9 @@ describe('content helpers', () => {
   });
 
   test('getWordList finds keywords case-insensitively', () => {
-    document.body.innerText = 'This has h1b and visa.';
-    const result = content.getWordList(['H1B', 'visa']);
-    expect(result.sort()).toEqual(['H1B', 'visa']);
+    document.body.innerText = 'This has alpha and beta.';
+    const result = content.getWordList(['ALPHA', 'beta']);
+    expect(result.sort()).toEqual(['ALPHA', 'beta']);
   });
 
   test('getWordList skips invalid regex', () => {
@@ -64,10 +64,10 @@ describe('content helpers', () => {
   });
 
   test('performScan sends message when keywords match', async () => {
-    document.body.innerText = 'visa only';
+    document.body.innerText = 'sample keyword';
     global.getFromStorage = jest.fn(async (key) => {
       if (key === "wordspotting_word_list") {
-        return { wordspotting_word_list: ['visa'] };
+        return { wordspotting_word_list: ['keyword'] };
       }
       return {};
     });

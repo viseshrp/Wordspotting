@@ -2,36 +2,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
     updateViews();
 
-    const KEYWORD_PRESETS = ["H1B", "US Citizen", "GC only", "Sponsorship unavailable", "No visa sponsorship"];
-    const SITE_PRESETS = ["*linkedin*", "*glassdoor*", "*indeed*", "*monster*"];
-
     // --- Event Listeners ---
 
     // Sites
     const siteInput = document.getElementById("website_input");
     const siteBtn = document.getElementById("add_sites");
     const siteClearBtn = document.getElementById("clear_sites");
-    const sitePresetBtn = document.getElementById("add_site_presets");
 
     siteBtn.addEventListener("click", () => addSite(siteInput));
     siteInput.addEventListener("keypress", (e) => {
         if (e.key === 'Enter') addSite(siteInput);
     });
     siteClearBtn.addEventListener("click", () => clearList("wordspotting_website_list", updateWebListDisplay));
-    sitePresetBtn.addEventListener("click", () => addPresets(SITE_PRESETS, "wordspotting_website_list", updateWebListDisplay));
 
     // Keywords
     const wordInput = document.getElementById("bl_word_input");
     const wordBtn = document.getElementById("add_bl_word");
     const wordClearBtn = document.getElementById("clear_keywords");
-    const keywordPresetBtn = document.getElementById("add_keyword_presets");
 
     wordBtn.addEventListener("click", () => addWord(wordInput));
     wordInput.addEventListener("keypress", (e) => {
         if (e.key === 'Enter') addWord(wordInput);
     });
     wordClearBtn.addEventListener("click", () => clearList("wordspotting_word_list", updateBLWordListDisplay));
-    keywordPresetBtn.addEventListener("click", () => addPresets(KEYWORD_PRESETS, "wordspotting_word_list", updateBLWordListDisplay));
 
     // Switches
     document.getElementById("notifications_switch").addEventListener("change", function () {
@@ -260,23 +253,6 @@ function applyTheme(value) {
     } else {
         root.removeAttribute('data-theme');
     }
-}
-
-function addPresets(list, storageKey, refreshFn) {
-    const { valid } = storageKey === "wordspotting_website_list"
-        ? partitionSitePatterns(list)
-        : partitionKeywordPatterns(list);
-
-    if (valid.length === 0) return;
-
-    getFromStorage(storageKey).then((items) => {
-        const stored = Array.isArray(items[storageKey]) ? items[storageKey] : [];
-        const merged = mergeUnique(stored, valid);
-        return saveToStorage({ [storageKey]: merged });
-    }).then(() => {
-        refreshFn();
-        showAlert("Presets added.", "Success", true);
-    });
 }
 
 function partitionKeywordPatterns(list) {
