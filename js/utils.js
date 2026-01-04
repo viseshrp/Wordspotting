@@ -134,3 +134,20 @@ function isUrlAllowedCompiled(url, compiled) {
     if (!url || !Array.isArray(compiled) || compiled.length === 0) return false;
     return compiled.some((regex) => regex.test(url));
 }
+
+// Export for tests
+if (typeof module !== 'undefined') {
+    module.exports = {
+        saveToStorage,
+        getFromStorage,
+        showAlert,
+        isValidObj,
+        trimAndClean,
+        logit,
+        getRandomInt,
+        buildSiteRegex,
+        isUrlAllowed,
+        compileSitePatterns,
+        isUrlAllowedCompiled
+    };
+}

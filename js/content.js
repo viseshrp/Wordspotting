@@ -235,6 +235,15 @@ function hashString(str) {
     return hash.toString();
 }
 
+if (typeof module !== 'undefined') {
+    module.exports = {
+        getWordList,
+        debounce,
+        getBodyTextSnapshot,
+        hashString
+    };
+}
+
 function setupObserver() {
     // Observer config
     const config = { childList: true, subtree: true, characterData: true };

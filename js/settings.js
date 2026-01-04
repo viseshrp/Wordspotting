@@ -66,3 +66,14 @@ async function ensureSettingsInitialized() {
         await saveToStorage(toWrite);
     }
 }
+
+if (typeof module !== 'undefined') {
+    module.exports = {
+        SETTINGS_VERSION_KEY,
+        SETTINGS_VERSION,
+        DEFAULT_SETTINGS,
+        applySettingsDefaults,
+        getSettings,
+        ensureSettingsInitialized
+    };
+}
