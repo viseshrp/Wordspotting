@@ -26,14 +26,22 @@
 3.  **Add Keywords**: Enter the words or phrases you are looking for (e.g., `H1B`, `Remote`).
 4.  Navigate to a whitelisted site. If a keyword is found, the extension icon will show a badge count, and you will receive a notification.
 
-## Development
+## Permissions & Development
 
-This extension is built with vanilla JavaScript, CSS, and HTML. It uses Manifest V3.
+- Permissions: `notifications`, `storage`, `scripting`, and `host_permissions: <all_urls>`. Adding a site to your allowed list is considered opt-in; there are no runtime permission prompts.
+- Built with vanilla JavaScript, CSS, and HTML (Manifest V3).
 
 ### Running Tests
 
 ```bash
-node tests/runner.js
+npm test
+```
+
+### Smoke Tests
+
+```bash
+npm run smoke        # filesystem checks
+npm run smoke:e2e    # headless extension check (requires Playwright)
 ```
 
 ### Building for Release
