@@ -110,42 +110,16 @@ function getWordList(keyword_list, bodyText) {
 async function proceedWithSiteListCheck() {
     try {
         const items = await getFromStorage("wordspotting_website_list");
-        const allowed_sites = items.wordspotting_website_list;
+        const allowed_sites = items.wordspotting_website_list || [];
 
-        let shouldRun = false;
+        if (isUrlAllowed(location.href, allowed_sites)) {
+            // Initial check after load/idle
+            deferUntilPageIdle();
 
-        if (isValidObj(allowed_sites) && allowed_sites.length > 0) {
-            for (const site of allowed_sites) {
-                try {
-                    let regex;
-                    try {
-                        regex = new RegExp(site, "ig");
-                    } catch (e) {
-                        // If invalid regex, assume it's a glob pattern (e.g. *linkedin*)
-                        // Escape regex chars but convert wildcard * to .*
-                        const escaped = site.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        const globbed = escaped.replace(/\\\*/g, '.*');
-                        regex = new RegExp(globbed, "ig");
-                    }
-
-                    if (regex.test(location.href)) {
-                        shouldRun = true;
-                        break;
-                    }
-                } catch (e) {
-                    console.warn("Invalid regex/glob in site list:", site, e);
-                }
-            }
-
-            if (shouldRun) {
-                // Initial check after load/idle
-                deferUntilPageIdle();
-
-                // Set up observer for SPA
-                setupObserver();
-            }
+            // Set up observer for SPA
+            setupObserver();
         } else {
-            logit("No allowed sites configured. Idling.");
+            logit("No matching allowed site. Idling.");
         }
     } catch (e) {
         console.error("Error in proceedWithSiteListCheck:", e);
