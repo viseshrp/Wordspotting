@@ -4,6 +4,7 @@ let lastScanSignature = null;
 let idleHandle = null;
 let currentScanController = null;
 let observer = null;
+let observerDebounce = null;
 let lastSnapshot = { text: '', timestamp: 0 };
 
 // Main execution (ignored during tests)
@@ -131,20 +132,23 @@ async function proceedWithSiteListCheck() {
     }
 }
 
-function scheduleScan() {
-    // Cancel any pending idle callback to avoid redundant work.
+function cancelScheduledScan() {
     if (idleHandle && 'cancelIdleCallback' in window) {
         window.cancelIdleCallback(idleHandle);
     } else if (idleHandle) {
         clearTimeout(idleHandle);
     }
-
-    // Abort any in-flight scan.
+    idleHandle = null;
     if (currentScanController) {
         currentScanController.abort();
+        currentScanController = null;
     }
-    currentScanController = new AbortController();
+}
 
+function scheduleScan() {
+    cancelScheduledScan();
+
+    currentScanController = new AbortController();
     const run = () => performScan(currentScanController.signal);
 
     if ('requestIdleCallback' in window) {
@@ -201,15 +205,16 @@ async function performScan(signal) {
 
 // Debounce function to limit how often we scan
 function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+    let timeout = null;
+    function debounced(...args) {
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    }
+    debounced.cancel = () => {
+        if (timeout) clearTimeout(timeout);
+        timeout = null;
     };
+    return debounced;
 }
 
 // Throttled body text snapshot to avoid hammering innerText on chatty pages.
@@ -255,9 +260,11 @@ function setupObserver() {
 
     // Create an observer instance linked to the callback function
     // Debounce the scan to avoid performance hit on frequent updates
-    observer = new MutationObserver(debounce(() => {
+    observerDebounce = debounce(() => {
         scheduleScan();
-    }, 500)); // Scan at most twice per second on changes
+    }, 500); // Scan at most twice per second on changes
+
+    observer = new MutationObserver(observerDebounce);
 
     // Start observing the target node for configured mutations
     observer.observe(document.body, config);
@@ -266,7 +273,7 @@ function setupObserver() {
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             if (observer) observer.disconnect();
-            if (currentScanController) currentScanController.abort();
+            cancelScheduledScan();
         } else {
             if (document.body) {
                 observer.observe(document.body, config);
@@ -277,6 +284,9 @@ function setupObserver() {
 
     window.addEventListener('pagehide', () => {
         if (observer) observer.disconnect();
-        if (currentScanController) currentScanController.abort();
+        cancelScheduledScan();
+        if (observerDebounce && observerDebounce.cancel) {
+            observerDebounce.cancel();
+        }
     });
 }
