@@ -1,10 +1,10 @@
+(() => {
 // Prevent duplicate injection in the same frame
 if (globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
     // Already loaded; do nothing.
-    // Wrapped in a block to avoid illegal return at top level.
-} else {
-    globalThis.__WORDSPOTTING_CONTENT_LOADED__ = true;
+    return;
 }
+globalThis.__WORDSPOTTING_CONTENT_LOADED__ = true;
 
 // content.js - Content Script
 
@@ -308,3 +308,5 @@ function setupObserver() {
         }
     });
 }
+
+})();

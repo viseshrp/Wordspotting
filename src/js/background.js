@@ -6,6 +6,7 @@ importScripts('./settings.js');
 const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/content.js'];
 const CONTENT_STYLE_FILES = ['src/css/index.css'];
 let compiledAllowedSites = [];
+const lastFoundByTab = new Map(); // tabId -> boolean
 
 /**
  * Handle extension installation/update
@@ -51,17 +52,25 @@ async function handleMessage(request, sender) {
             });
         }
 
-        if (request.wordfound === true) {
-            const items = await getFromStorage("wordspotting_notifications_on");
-            if (items.wordspotting_notifications_on) {
-                logit("Firing notification!");
-                showNotification(
-                    "src/assets/ws48.png",
-                    'basic',
-                    'Keyword found!',
-                    sender.tab ? sender.tab.title : "Page",
-                    1
-                );
+        const tabId = sender?.tab?.id;
+
+        if (tabId !== null) {
+            const prevFound = lastFoundByTab.get(tabId) ?? false;
+            lastFoundByTab.set(tabId, request.wordfound === true);
+
+            // Notify only on rising edge
+            if (!prevFound && request.wordfound === true) {
+                const items = await getFromStorage("wordspotting_notifications_on");
+                if (items.wordspotting_notifications_on) {
+                    logit("Firing notification!");
+                    showNotification(
+                        "src/assets/ws48.png",
+                        'basic',
+                        'Keyword found!',
+                        sender.tab ? sender.tab.title : "Page",
+                        1
+                    );
+                }
             }
         }
 
@@ -128,11 +137,6 @@ async function maybeInjectContentScripts(tabId, url) {
             return;
         }
 
-        const alreadyInjected = await markInjected(tabId);
-        if (alreadyInjected) {
-            return;
-        }
-
         await injectStyles(tabId);
         await injectScripts(tabId);
     } catch (e) {
@@ -163,6 +167,9 @@ async function injectStyles(tabId) {
 }
 
 async function injectScripts(tabId) {
+    const already = await isContentAlreadyInjected(tabId);
+    if (already) return;
+
     await chrome.scripting.executeScript({
         target: { tabId },
         files: CONTENT_SCRIPT_FILES
@@ -179,19 +186,15 @@ async function refreshAllowedSitePatterns() {
     }
 }
 
-async function markInjected(tabId) {
+async function isContentAlreadyInjected(tabId) {
     try {
         const [result] = await chrome.scripting.executeScript({
             target: { tabId },
-            func: () => {
-                if (window.__wordspottingInjected) return true;
-                window.__wordspottingInjected = true;
-                return false;
-            }
+            func: () => Boolean(globalThis.__WORDSPOTTING_CONTENT_LOADED__),
         });
-        return !!(result && result.result);
+        return Boolean(result && result.result);
     } catch (e) {
-        console.warn("Injection mark failed:", e);
+        // If we can't check (navigation/restricted), assume not injected.
         return false;
     }
 }
