@@ -6,11 +6,13 @@ describe('content helpers', () => {
     global.getFromStorage = jest.fn(async () => ({}));
     global.saveToStorage = jest.fn(async () => ({}));
     global.logit = jest.fn();
+    console.warn = jest.fn();
     global.isValidObj = (obj) => obj !== null && typeof obj !== 'undefined' && Object.keys(obj).length > 0;
     const utils = require('../src/js/utils.js');
     global.compileSitePatterns = utils.compileSitePatterns;
     global.isUrlAllowedCompiled = utils.isUrlAllowedCompiled;
     jest.useFakeTimers();
+    global.chrome.runtime.id = 'test-runtime';
     content = require('../src/js/content.js');
   });
 

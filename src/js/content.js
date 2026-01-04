@@ -1,7 +1,7 @@
 (() => {
-// Prevent duplicate injection in the same frame
-if (globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
-    // Already loaded; do nothing.
+const isCommonJs = typeof module !== 'undefined' && module.exports;
+// Prevent duplicate injection in the same frame (skip for CommonJS/tests so exports are available)
+if (!isCommonJs && globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
     return;
 }
 globalThis.__WORDSPOTTING_CONTENT_LOADED__ = true;
