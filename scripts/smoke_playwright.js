@@ -7,19 +7,28 @@
  */
 const path = require('node:path');
 const fs = require('node:fs');
+const { spawn } = require('node:child_process');
 const { chromium } = require('playwright-chromium');
 
 async function main() {
+  const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
+  const displaySession = useXvfb ? await startXvfb() : null;
+  const headless = false; // Extensions require headful; Xvfb handles CI.
   const extensionPath = path.resolve(__dirname, '..');
   if (!fs.existsSync(path.join(extensionPath, 'manifest.json'))) {
     throw new Error('manifest.json not found; run from repo root');
   }
 
   const context = await chromium.launchPersistentContext('', {
-    headless: false,
+    headless,
+    env: {
+      ...process.env,
+      ...(displaySession ? { DISPLAY: displaySession.display } : {})
+    },
     args: [
       `--disable-extensions-except=${extensionPath}`,
-      `--load-extension=${extensionPath}`
+      `--load-extension=${extensionPath}`,
+      ...(headless ? ['--headless=new'] : [])
     ]
   });
 
@@ -65,6 +74,9 @@ async function main() {
   });
 
   await context.close();
+  if (displaySession) {
+    displaySession.stop();
+  }
 
   if (badgeText !== '3') {
     throw new Error(`Badge text mismatch: expected "3" got "${badgeText}"`);
@@ -97,4 +109,33 @@ async function waitForServiceWorker(context, timeout = 15000) {
   }
 
   throw new Error(`Service worker not registered within ${timeout}ms`);
+}
+
+function startXvfb() {
+  return new Promise((resolve, reject) => {
+    const display = ':99';
+    const xvfb = spawn('Xvfb', [display, '-screen', '0', '1280x720x24', '-nolisten', 'tcp'], {
+      stdio: 'ignore',
+      detached: true
+    });
+    xvfb.unref();
+
+    const readyTimer = setTimeout(() => {
+      resolve({
+        display,
+        stop: () => {
+          try {
+            process.kill(-xvfb.pid);
+          } catch {
+            // ignore
+          }
+        }
+      });
+    }, 300);
+
+    xvfb.once('error', (err) => {
+      clearTimeout(readyTimer);
+      reject(err);
+    });
+  });
 }
