@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (Biome)
+        run: npm run biome
+
+      - name: Test (Jest with coverage)
+        run: npm test -- --runInBand
+
+      - name: Smoke test
+        run: npm run smoke
+
+      - name: Build package
+        run: bash build.sh
+
+      - name: Enforce size budget
+        run: |
+          max_kb=5000
+          size_kb=$(du -k wordspotting.zip | cut -f1)
+          echo "Package size: ${size_kb} KB (limit ${max_kb} KB)"
+          if [ "$size_kb" -gt "$max_kb" ]; then
+            echo "Package exceeds size budget."
+            exit 1
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wordspotting.zip
+          path: wordspotting.zip
+
+      - name: Deploy (placeholder)
+        run: echo "Deploy step placeholder - wire to store/release as needed."
