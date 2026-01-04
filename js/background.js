@@ -2,6 +2,9 @@
 
 importScripts('utils.js');
 
+const CONTENT_SCRIPT_FILES = ['js/utils.js', 'js/content.js'];
+const CONTENT_STYLE_FILES = ['css/index.css'];
+
 /**
  * Handle extension installation/update
  */
@@ -79,4 +82,97 @@ function showNotification(iconUrl, type, title, message, priority) {
     };
 
     chrome.notifications.create('', opt);
+}
+
+// Dynamically inject content scripts on allowed sites only.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.url) {
+        maybeInjectContentScripts(tabId, tab.url);
+    }
+});
+
+// Re-evaluate active tab when allowed sites or on/off switch changes.
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'sync') return;
+    if (!changes.wordspotting_website_list && !changes.wordspotting_extension_on) return;
+
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const tab = tabs[0];
+        if (tab && tab.url) {
+            maybeInjectContentScripts(tab.id, tab.url);
+        }
+    });
+});
+
+async function maybeInjectContentScripts(tabId, url) {
+    try {
+        const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
+        if (settings.wordspotting_extension_on === false) {
+            return;
+        }
+
+        const allowedSites = settings.wordspotting_website_list || [];
+        if (!isUrlAllowed(url, allowedSites)) {
+            return;
+        }
+
+        const originPattern = getOriginPattern(url);
+        if (!originPattern) return;
+
+        const hasPermission = await containsOriginPermission(originPattern);
+        if (!hasPermission) {
+            const granted = await requestOriginPermission(originPattern);
+            if (!granted) return;
+        }
+
+        await injectStyles(tabId);
+        await injectScripts(tabId);
+    } catch (e) {
+        console.error("Error during dynamic injection:", e);
+    }
+}
+
+function getOriginPattern(url) {
+    try {
+        const parsed = new URL(url);
+        if (!/^https?:/i.test(parsed.protocol)) return null;
+        return `${parsed.protocol}//${parsed.host}/*`;
+    } catch (e) {
+        return null;
+    }
+}
+
+function containsOriginPermission(originPattern) {
+    return new Promise((resolve) => {
+        chrome.permissions.contains({ origins: [originPattern] }, (result) => {
+            resolve(!!result);
+        });
+    });
+}
+
+function requestOriginPermission(originPattern) {
+    return new Promise((resolve) => {
+        chrome.permissions.request({ origins: [originPattern] }, (granted) => {
+            resolve(granted);
+        });
+    });
+}
+
+async function injectStyles(tabId) {
+    try {
+        await chrome.scripting.insertCSS({
+            target: { tabId },
+            files: CONTENT_STYLE_FILES
+        });
+    } catch (e) {
+        // Ignore styling failures; script can still run.
+        console.warn("Style injection skipped:", e);
+    }
+}
+
+async function injectScripts(tabId) {
+    await chrome.scripting.executeScript({
+        target: { tabId },
+        files: CONTENT_SCRIPT_FILES
+    });
 }
