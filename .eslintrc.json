@@ -27,7 +27,16 @@
     "isValidObj": "readonly",
     "trimAndClean": "readonly",
     "logit": "readonly",
-    "getRandomInt": "readonly"
+    "getRandomInt": "readonly",
+
+    "// Settings Globals": "readonly",
+    "ensureSettingsInitialized": "readonly",
+
+    "// Matching Globals": "readonly",
+    "buildSiteRegex": "readonly",
+    "isUrlAllowed": "readonly",
+    "compileSitePatterns": "readonly",
+    "isUrlAllowedCompiled": "readonly"
   },
   "overrides": [
     {
@@ -35,7 +44,14 @@
       "globals": {
         "test": "readonly",
         "expect": "readonly",
-        "getWordList": "writable"
+        "describe": "readonly",
+        "beforeAll": "readonly",
+        "beforeEach": "readonly",
+        "afterEach": "readonly",
+        "jest": "readonly",
+        "getWordList": "writable",
+        "partitionSitePatterns": "writable",
+        "mergeUnique": "writable"
       }
     },
     {
