@@ -1,29 +1,20 @@
 // background.js - Service Worker
 
 importScripts('utils.js');
+importScripts('settings.js');
 
-const CONTENT_SCRIPT_FILES = ['js/utils.js', 'js/content.js'];
+const CONTENT_SCRIPT_FILES = ['js/utils.js', 'js/settings.js', 'js/content.js'];
 const CONTENT_STYLE_FILES = ['css/index.css'];
 
 /**
  * Handle extension installation/update
  */
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
     try {
-        const item = await getFromStorage("is_first_start");
-        const is_first_start = item.is_first_start;
+        await ensureSettingsInitialized();
 
-        if (is_first_start === null || typeof is_first_start === 'undefined') {
-            logit("First start initialization...");
-
-            await saveToStorage({"wordspotting_notifications_on": true});
-            await saveToStorage({"wordspotting_extension_on": true});
-            await saveToStorage({"wordspotting_website_list": []});
-            await saveToStorage({"wordspotting_word_list": []});
-            await saveToStorage({"is_first_start": false});
-
-            logit("First start complete.");
-
+        if (details.reason === 'install') {
+            logit("First start initialization complete.");
             chrome.tabs.create({url: "options.html"});
         }
     } catch (e) {
