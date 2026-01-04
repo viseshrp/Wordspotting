@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const extSwitch = document.getElementById("extension_switch");
     const keywordContainer = document.getElementById("keyword_container");
     const resultsWrapper = document.getElementById("results_wrapper");
+    let activeTabId = null;
 
     // Theme
     getFromStorage("wordspotting_theme").then((items) => {
@@ -40,6 +41,7 @@ document.addEventListener('DOMContentLoaded', function () {
     chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
         var currTab = tabs[0];
         if (currTab) {
+            activeTabId = currTab.id;
             checkActivation(currTab).then((activation) => {
                 if (!activation.allowed) {
                     toggleResultsOpacity(false);
@@ -102,6 +104,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const chip = document.createElement("span");
             chip.className = "chip";
             chip.textContent = word;
+            chip.title = "Click to jump to this keyword";
+            chip.addEventListener('click', () => {
+                if (!activeTabId) return;
+                chrome.tabs.sendMessage(
+                    activeTabId,
+                    { from: 'popup', subject: 'scroll_to_keyword', keyword: word },
+                    () => {}
+                );
+            });
             keywordContainer.appendChild(chip);
         });
     }

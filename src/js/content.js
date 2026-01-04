@@ -42,6 +42,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 } else {
                     sendResponse({ word_list: [] });
                 }
+            } else if (msg.from === 'popup' && msg.subject === 'scroll_to_keyword' && msg.keyword) {
+                if (!extensionOn) {
+                    sendResponse({ ok: false });
+                    return;
+                }
+                const found = scrollToKeyword(msg.keyword);
+                sendResponse({ ok: found });
             } else {
                 sendResponse({}); // Always respond to avoid leaving the channel open
             }
@@ -236,6 +243,63 @@ function hashString(str) {
     return hash.toString();
 }
 
+function scrollToKeyword(keyword) {
+    if (!keyword) return false;
+    const regex = safeRegex(keyword);
+    if (!regex) return false;
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+    let node;
+    while ((node = walker.nextNode())) {
+        if (!node.nodeValue || !node.nodeValue.trim()) continue;
+        const match = node.nodeValue.match(regex);
+        if (match) {
+            const range = document.createRange();
+            range.setStart(node, match.index);
+            range.setEnd(node, match.index + match[0].length);
+            const rect = range.getBoundingClientRect();
+            const scrollY = rect.top + window.scrollY - 100;
+            window.scrollTo({ top: scrollY, behavior: 'smooth' });
+            highlightRange(range);
+            return true;
+        }
+    }
+    return false;
+}
+
+function safeRegex(pattern) {
+    try {
+        return new RegExp(pattern, 'i');
+    } catch (e) {
+        // Escape literal for safety
+        const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        try {
+            return new RegExp(escaped, 'i');
+        } catch (err) {
+            return null;
+        }
+    }
+}
+
+function highlightRange(range) {
+    const mark = document.createElement('span');
+    mark.style.backgroundColor = 'yellow';
+    mark.style.color = 'black';
+    mark.style.padding = '1px 2px';
+    mark.style.borderRadius = '2px';
+    mark.style.transition = 'opacity 1s';
+    range.surroundContents(mark);
+    setTimeout(() => {
+        mark.style.opacity = '0.2';
+        setTimeout(() => {
+            const parent = mark.parentNode;
+            if (parent) {
+                parent.replaceChild(document.createTextNode(mark.textContent), mark);
+            }
+        }, 1000);
+    }, 1200);
+}
+
 if (typeof module !== 'undefined') {
     module.exports = {
         getWordList,
@@ -245,7 +309,10 @@ if (typeof module !== 'undefined') {
         performScan,
         scheduleScan,
         deferUntilPageIdle,
-        proceedWithSiteListCheck
+        proceedWithSiteListCheck,
+        scrollToKeyword,
+        safeRegex,
+        highlightRange
     };
 }
 
