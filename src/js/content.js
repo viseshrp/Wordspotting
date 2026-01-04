@@ -183,23 +183,16 @@ async function performScan(signal) {
             const occurring_word_list = getWordList(keyword_list, bodyText);
 
             logit("Firing message from content script...");
-            try {
-                chrome.runtime.sendMessage({
-                    wordfound: occurring_word_list.length > 0,
-                    keyword_count: occurring_word_list.length
-                }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        if (chrome.runtime.lastError.message && chrome.runtime.lastError.message.includes('context invalidated')) {
-                            logit("Skipped sendMessage: context invalidated (tab likely navigated).");
-                        }
-                        return;
-                    }
-                    logit("Background ack: " + (response ? response.ack : 'no response'));
-                });
-            } catch (err) {
-                // Handle cases where the extension context is gone (e.g., page nav)
-                logit("SendMessage failed: " + err);
-            }
+            chrome.runtime.sendMessage({
+                wordfound: occurring_word_list.length > 0,
+                keyword_count: occurring_word_list.length
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    // ignore
+                } else {
+                     logit("Background ack: " + (response ? response.ack : 'no response'));
+                }
+            });
         }
     } catch (e) {
         console.error("Error in talkToBackgroundScript:", e);
