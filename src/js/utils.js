@@ -85,12 +85,18 @@ function getRandomInt(maximum, minimum) {
  */
 function buildSiteRegex(pattern) {
     if (!pattern || typeof pattern !== 'string') return null;
+    // Trim spaces to avoid accidental anchors
+    const cleaned = pattern.trim();
+    if (!cleaned) return null;
+
+    // If the user explicitly included regex markers, respect as-is.
     try {
-        return new RegExp(pattern, 'i');
+        return new RegExp(cleaned, 'i');
     } catch (e) {
+        // If invalid regex, treat * as wildcard and escape the rest.
+        const escaped = cleaned.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const globbed = escaped.replace(/\\\*/g, '.*');
         try {
-            const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const globbed = escaped.replace(/\\\*/g, '.*');
             return new RegExp(globbed, 'i');
         } catch (err) {
             return null;
@@ -133,7 +139,15 @@ function compileSitePatterns(patterns) {
  */
 function isUrlAllowedCompiled(url, compiled) {
     if (!url || !Array.isArray(compiled) || compiled.length === 0) return false;
-    return compiled.some((regex) => regex.test(url));
+    // Ensure we test against the full href, but also fallback to hostname+path.
+    const candidates = [url];
+    try {
+        const u = new URL(url);
+        candidates.push(`${u.hostname}${u.pathname}`);
+    } catch (e) {
+        // ignore
+    }
+    return compiled.some((regex) => candidates.some((c) => regex.test(c)));
 }
 
 // Export for tests
