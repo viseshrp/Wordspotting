@@ -2,6 +2,9 @@
 
 let lastScanSignature = null;
 let idleHandle = null;
+let currentScanController = null;
+let observer = null;
+let lastSnapshot = { text: '', timestamp: 0 };
 
 // Main execution
 (async function() {
@@ -130,14 +133,22 @@ function scheduleScan() {
     // Cancel any pending idle callback to avoid redundant work.
     if (idleHandle && 'cancelIdleCallback' in window) {
         window.cancelIdleCallback(idleHandle);
+    } else if (idleHandle) {
+        clearTimeout(idleHandle);
     }
 
-    const run = () => talkToBackgroundScript();
+    // Abort any in-flight scan.
+    if (currentScanController) {
+        currentScanController.abort();
+    }
+    currentScanController = new AbortController();
+
+    const run = () => performScan(currentScanController.signal);
 
     if ('requestIdleCallback' in window) {
         idleHandle = requestIdleCallback(run, { timeout: 2000 });
     } else {
-        idleHandle = setTimeout(run, 500);
+        idleHandle = setTimeout(run, 300);
     }
 }
 
@@ -149,14 +160,18 @@ function deferUntilPageIdle() {
     }
 }
 
-async function talkToBackgroundScript() {
+async function performScan(signal) {
     try {
+        if (signal.aborted) return;
+
         const items = await getFromStorage("wordspotting_word_list");
         const keyword_list = items.wordspotting_word_list;
 
         if (isValidObj(keyword_list) && keyword_list.length > 0) {
-            const bodyText = document.body ? document.body.innerText : "";
-            const signature = `${bodyText.length}:${bodyText.slice(0, 500)}`;
+            const bodyText = await getBodyTextSnapshot(signal);
+            if (signal.aborted) return;
+
+            const signature = `${bodyText.length}:${hashString(bodyText)}`;
             if (signature === lastScanSignature) {
                 return;
             }
@@ -195,16 +210,58 @@ function debounce(func, wait) {
     };
 }
 
+// Throttled body text snapshot to avoid hammering innerText on chatty pages.
+async function getBodyTextSnapshot(signal) {
+    const now = Date.now();
+    const cacheWindow = 500; // ms
+    if (now - lastSnapshot.timestamp < cacheWindow) {
+        return lastSnapshot.text;
+    }
+
+    if (signal.aborted) return '';
+
+    const text = document.body ? document.body.innerText || '' : '';
+    lastSnapshot = { text, timestamp: now };
+    return text;
+}
+
+function hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash.toString();
+}
+
 function setupObserver() {
     // Observer config
     const config = { childList: true, subtree: true, characterData: true };
 
     // Create an observer instance linked to the callback function
     // Debounce the scan to avoid performance hit on frequent updates
-    const observer = new MutationObserver(debounce(() => {
+    observer = new MutationObserver(debounce(() => {
         scheduleScan();
-    }, 1000)); // Scan at most once per second on changes
+    }, 500)); // Scan at most twice per second on changes
 
     // Start observing the target node for configured mutations
     observer.observe(document.body, config);
+
+    // Pause scans when tab is hidden; resume when visible.
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (observer) observer.disconnect();
+            if (currentScanController) currentScanController.abort();
+        } else {
+            if (document.body) {
+                observer.observe(document.body, config);
+            }
+            scheduleScan();
+        }
+    });
+
+    window.addEventListener('pagehide', () => {
+        if (observer) observer.disconnect();
+        if (currentScanController) currentScanController.abort();
+    });
 }
