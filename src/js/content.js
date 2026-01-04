@@ -194,9 +194,7 @@ async function performScan(signal) {
                 const err = chrome.runtime.lastError;
                 if (err) {
                     const msg = String(err && err.message ? err.message : err);
-                    if (!isContextInvalidated(msg) && !isPortClosed(msg)) {
-                        console.warn("sendMessage error:", msg);
-                    }
+                    if (!isIgnorableErrorMessage(msg)) console.warn("sendMessage error:", msg);
                     return;
                 }
                 logit("Background ack: " + (response ? response.ack : 'no response'));
@@ -204,7 +202,7 @@ async function performScan(signal) {
         }
     } catch (e) {
         const msg = String(e && e.message ? e.message : e);
-        if (isContextInvalidated(msg) || isPortClosed(msg)) return;
+        if (isIgnorableErrorMessage(msg)) return;
         console.error("Error in talkToBackgroundScript:", e);
     }
 }
@@ -297,10 +295,12 @@ function setupObserver() {
     });
 }
 
-function isContextInvalidated(msg) {
-    return /context invalidated/i.test(msg || '');
-}
-
-function isPortClosed(msg) {
-    return /(message )?port closed/i.test(msg || '');
+function isIgnorableErrorMessage(msg) {
+    const m = (msg || "").toLowerCase();
+    return (
+        m.includes('context invalidated') ||
+        m.includes('message port closed') ||
+        m.includes('port closed') ||
+        m.includes('receiving end does not exist')
+    );
 }
