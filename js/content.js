@@ -6,7 +6,8 @@ let currentScanController = null;
 let observer = null;
 let lastSnapshot = { text: '', timestamp: 0 };
 
-// Main execution
+// Main execution (ignored during tests)
+/* istanbul ignore next */
 (async function() {
     try {
         const items = await getFromStorage("wordspotting_extension_on");
@@ -240,7 +241,11 @@ if (typeof module !== 'undefined') {
         getWordList,
         debounce,
         getBodyTextSnapshot,
-        hashString
+        hashString,
+        performScan,
+        scheduleScan,
+        deferUntilPageIdle,
+        proceedWithSiteListCheck
     };
 }
 

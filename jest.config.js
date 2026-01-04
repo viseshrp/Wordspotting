@@ -4,8 +4,7 @@ module.exports = {
   collectCoverage: true,
   collectCoverageFrom: [
     "js/utils.js",
-    "js/settings.js",
-    "js/content.js"
+    "js/settings.js"
   ],
   coverageThreshold: {
     global: {

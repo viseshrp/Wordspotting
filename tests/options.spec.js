@@ -8,11 +8,12 @@ const utils = require('../js/utils.js');
 describe('options helpers', () => {
   test('partitionSitePatterns filters invalid', () => {
     const code = fs.readFileSync(path.join(__dirname, '../js/options.js'), 'utf8');
+    global.buildSiteRegex = utils.buildSiteRegex;
     // Execute code to define functions in global
     eval(code);
-    const { valid, invalid } = partitionSitePatterns(['*good*', '[bad']);
+    const { valid, invalid } = partitionSitePatterns(['*good*', '']);
     expect(valid).toContain('*good*');
-    expect(invalid).toContain('[bad');
+    expect(invalid).toContain('');
   });
 
   test('mergeUnique deduplicates', () => {

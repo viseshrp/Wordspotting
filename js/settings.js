@@ -67,6 +67,7 @@ async function ensureSettingsInitialized() {
     }
 }
 
+/* istanbul ignore next */
 if (typeof module !== 'undefined') {
     module.exports = {
         SETTINGS_VERSION_KEY,

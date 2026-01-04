@@ -5,13 +5,16 @@
   "scripts": {
     "test": "jest --coverage",
     "lint": "eslint .",
+    "biome": "biome lint .",
     "format": "prettier --write .",
     "smoke": "node scripts/smoke_test.js"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.11",
     "eslint": "^8.56.0",
-    "prettier": "^3.1.0",
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "prettier": "^3.1.0"
   },
   "keywords": [
     "chrome-extension",

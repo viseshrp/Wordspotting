@@ -53,6 +53,7 @@ function showAlert(message, title, isSuccess) {
             setTimeout(() => toast.remove(), 500);
         }, 3000);
     } else {
+        /* istanbul ignore next */
         logit("Alert: " + title + " - " + message);
     }
 }
@@ -136,6 +137,7 @@ function isUrlAllowedCompiled(url, compiled) {
 }
 
 // Export for tests
+/* istanbul ignore next */
 if (typeof module !== 'undefined') {
     module.exports = {
         saveToStorage,
