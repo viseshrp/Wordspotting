@@ -168,7 +168,8 @@ function deferUntilPageIdle() {
 
 async function performScan(signal) {
     try {
-        if (signal.aborted) return;
+        if (signal && signal.aborted) return;
+        if (!chrome.runtime || !chrome.runtime.id) return;
 
         const items = await getFromStorage("wordspotting_word_list");
         const keyword_list = items.wordspotting_word_list;
@@ -187,22 +188,20 @@ async function performScan(signal) {
             const occurring_word_list = getWordList(keyword_list, bodyText);
 
             logit("Firing message from content script...");
-            chrome.runtime.sendMessage({
-                wordfound: occurring_word_list.length > 0,
-                keyword_count: occurring_word_list.length
-            }, (response) => {
-                const err = chrome.runtime.lastError;
-                if (err) {
-                    const msg = String(err && err.message ? err.message : err);
-                    if (!isIgnorableErrorMessage(msg)) console.warn("sendMessage error:", msg);
-                    return;
-                }
-                logit("Background ack: " + (response ? response.ack : 'no response'));
-            });
+            try {
+                chrome.runtime.sendMessage({
+                    wordfound: occurring_word_list.length > 0,
+                    keyword_count: occurring_word_list.length
+                }, () => {
+                    // Best-effort; ignore any errors (navigation, worker sleep, etc.)
+                    void chrome.runtime.lastError;
+                });
+            } catch (err) {
+                // Context gone; ignore.
+                void err;
+            }
         }
     } catch (e) {
-        const msg = String(e && e.message ? e.message : e);
-        if (isIgnorableErrorMessage(msg)) return;
         console.error("Error in talkToBackgroundScript:", e);
     }
 }
@@ -295,12 +294,5 @@ function setupObserver() {
     });
 }
 
-function isIgnorableErrorMessage(msg) {
-    const m = (msg || "").toLowerCase();
-    return (
-        m.includes('context invalidated') ||
-        m.includes('message port closed') ||
-        m.includes('port closed') ||
-        m.includes('receiving end does not exist')
-    );
-}
+// No-op stub retained for exports compatibility
+function isIgnorableErrorMessage() { return false; }

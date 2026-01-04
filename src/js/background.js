@@ -37,12 +37,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function handleMessage(request, sender) {
-    if (request.wordfound !== null && request.keyword_count !== null) {
+    const hasValidPayload = request &&
+        typeof request.wordfound === 'boolean' &&
+        typeof request.keyword_count === 'number';
+
+    if (hasValidPayload) {
 
         // Set badge text
         if (sender.tab) {
             chrome.action.setBadgeText({
-                text: request.keyword_count.toString(),
+                text: request.keyword_count > 0 ? String(request.keyword_count) : "",
                 tabId: sender.tab.id
             });
         }
@@ -63,6 +67,8 @@ async function handleMessage(request, sender) {
 
         return { ack: "gotcha" };
     }
+
+    return { ack: "ignored" };
 }
 
 function showNotification(iconUrl, type, title, message, priority) {
@@ -118,6 +124,11 @@ async function maybeInjectContentScripts(tabId, url) {
             return;
         }
 
+        const alreadyInjected = await markInjected(tabId);
+        if (alreadyInjected) {
+            return;
+        }
+
         await injectStyles(tabId);
         await injectScripts(tabId);
     } catch (e) {
@@ -161,5 +172,22 @@ async function refreshAllowedSitePatterns() {
     } catch (e) {
         console.warn("Failed to refresh allowed site patterns:", e);
         compiledAllowedSites = [];
+    }
+}
+
+async function markInjected(tabId) {
+    try {
+        const [result] = await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => {
+                if (window.__wordspottingInjected) return true;
+                window.__wordspottingInjected = true;
+                return false;
+            }
+        });
+        return !!(result && result.result);
+    } catch (e) {
+        console.warn("Injection mark failed:", e);
+        return false;
     }
 }
