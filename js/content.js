@@ -1,5 +1,8 @@
 // content.js - Content Script
 
+let lastScanSignature = null;
+let idleHandle = null;
+
 // Main execution
 (async function() {
     try {
@@ -18,21 +21,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     (async () => {
         try {
             const items = await getFromStorage("wordspotting_extension_on");
-            if (items.wordspotting_extension_on) {
-                if ((msg.from === 'popup') && (msg.subject === 'word_list_request')) {
-                    const storage = await getFromStorage("wordspotting_word_list");
-                    const keyword_list = storage.wordspotting_word_list;
+            const extensionOn = items.wordspotting_extension_on;
 
-                    if (isValidObj(keyword_list) && keyword_list.length > 0) {
-                        const occurring_word_list = getWordList(keyword_list);
-                        sendResponse({word_list: occurring_word_list});
-                    } else {
-                        sendResponse({word_list: []});
-                    }
+            if (msg.from === 'popup' && msg.subject === 'word_list_request') {
+                if (!extensionOn) {
+                    sendResponse({ word_list: [], disabled: true });
+                    return;
                 }
+
+                const storage = await getFromStorage("wordspotting_word_list");
+                const keyword_list = storage.wordspotting_word_list;
+
+                if (isValidObj(keyword_list) && keyword_list.length > 0) {
+                    const occurring_word_list = getWordList(keyword_list);
+                    sendResponse({ word_list: occurring_word_list });
+                } else {
+                    sendResponse({ word_list: [] });
+                }
+            } else {
+                sendResponse({}); // Always respond to avoid leaving the channel open
             }
         } catch (e) {
             console.error("Error in onMessage:", e);
+            sendResponse({ word_list: [] });
         }
     })();
     return true; // Keep channel open
@@ -41,14 +52,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 /**
  * optimizedGetWordList - Scans text using a single combined Regex with Named Capture Groups.
  * @param {string[]} keyword_list
+ * @param {string} [bodyText] Optional pre-fetched body text to avoid extra reads
  * @returns {string[]} List of found keywords
  */
-function getWordList(keyword_list) {
+function getWordList(keyword_list, bodyText) {
     // Filter out empty or invalid strings first
     const validKeywords = keyword_list.filter(k => k && k.trim().length > 0);
     if (validKeywords.length === 0) return [];
 
-    const bodyText = document.body.innerText;
+    const textToScan = typeof bodyText === 'string' ? bodyText : (document.body ? document.body.innerText : "");
     const foundKeywords = new Set();
 
     // Build Combined Regex with Named Groups: (?<k0>...)|(?<k1>...)
@@ -74,7 +86,7 @@ function getWordList(keyword_list) {
     const regex = new RegExp(combinedPattern, 'ig');
 
     let match;
-    while ((match = regex.exec(bodyText)) !== null) {
+    while ((match = regex.exec(textToScan)) !== null) {
         if (match.groups) {
             for (const key in match.groups) {
                 if (match.groups[key] !== undefined) {
@@ -126,8 +138,8 @@ async function proceedWithSiteListCheck() {
             }
 
             if (shouldRun) {
-                // Initial check
-                scheduleScan();
+                // Initial check after load/idle
+                deferUntilPageIdle();
 
                 // Set up observer for SPA
                 setupObserver();
@@ -141,13 +153,25 @@ async function proceedWithSiteListCheck() {
 }
 
 function scheduleScan() {
+    // Cancel any pending idle callback to avoid redundant work.
+    if (idleHandle && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleHandle);
+    }
+
+    const run = () => talkToBackgroundScript();
+
     if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => {
-            talkToBackgroundScript();
-        }, { timeout: 2000 });
+        idleHandle = requestIdleCallback(run, { timeout: 2000 });
     } else {
-        // Fallback
-        setTimeout(talkToBackgroundScript, 500);
+        idleHandle = setTimeout(run, 500);
+    }
+}
+
+function deferUntilPageIdle() {
+    if (document.readyState === 'complete') {
+        scheduleScan();
+    } else {
+        window.addEventListener('load', () => scheduleScan(), { once: true });
     }
 }
 
@@ -157,7 +181,15 @@ async function talkToBackgroundScript() {
         const keyword_list = items.wordspotting_word_list;
 
         if (isValidObj(keyword_list) && keyword_list.length > 0) {
-            const occurring_word_list = getWordList(keyword_list);
+            const bodyText = document.body ? document.body.innerText : "";
+            const signature = `${bodyText.length}:${bodyText.slice(0, 500)}`;
+            if (signature === lastScanSignature) {
+                return;
+            }
+
+            lastScanSignature = signature;
+
+            const occurring_word_list = getWordList(keyword_list, bodyText);
 
             logit("Firing message from content script...");
             chrome.runtime.sendMessage({

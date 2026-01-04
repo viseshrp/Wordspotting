@@ -3,13 +3,18 @@
 * */
 
 /**
+ * Storage area - use sync for cross-device persistence.
+ */
+const storageArea = chrome.storage.sync;
+
+/**
  * Save object to chrome.storage.sync
  * @param {Object} obj
  * @returns {Promise<void>}
  */
 function saveToStorage(obj) {
     return new Promise((resolve, reject) => {
-        chrome.storage.sync.set(obj, () => {
+        storageArea.set(obj, () => {
             if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
             } else {
@@ -26,7 +31,7 @@ function saveToStorage(obj) {
  */
 function getFromStorage(keys) {
     return new Promise((resolve, reject) => {
-        chrome.storage.sync.get(keys, (items) => {
+        storageArea.get(keys, (items) => {
             if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
             } else {
