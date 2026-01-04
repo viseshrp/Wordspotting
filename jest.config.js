@@ -3,8 +3,8 @@ module.exports = {
   setupFilesAfterEnv: ["<rootDir>/tests/setup.js"],
   collectCoverage: true,
   collectCoverageFrom: [
-    "js/utils.js",
-    "js/settings.js"
+    "src/js/utils.js",
+    "src/js/settings.js"
   ],
   coverageThreshold: {
     global: {

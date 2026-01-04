@@ -13,6 +13,8 @@ zip -r wordspotting.zip . \
     -x "tests/*" \
     -x "verification/*" \
     -x ".github/*" \
+    -x "node_modules/*" \
+    -x "coverage/*" \
     -x ".gitignore" \
     -x "build.sh" \
     -x "test.sh" \

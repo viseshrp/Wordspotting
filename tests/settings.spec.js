@@ -4,7 +4,7 @@ describe('settings defaults', () => {
     global.saveToStorage = jest.fn(async () => {});
   });
 
-  const settings = require('../js/settings.js');
+  const settings = require('../src/js/settings.js');
 
   test('applySettingsDefaults fills missing keys', () => {
     const partial = { wordspotting_notifications_on: false };

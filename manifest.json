@@ -4,22 +4,22 @@
   "description": "Get notified when a word is found in a web page.",
   "version": "1.0.0",
   "icons": {
-    "16": "img/ws16.png",
-    "24": "img/ws24.png",
-    "32": "img/ws32.png",
-    "48": "img/ws48.png",
-    "128": "img/ws128.png"
+    "16": "src/assets/ws16.png",
+    "24": "src/assets/ws24.png",
+    "32": "src/assets/ws32.png",
+    "48": "src/assets/ws48.png",
+    "128": "src/assets/ws128.png"
   },
   "action": {
     "default_icon": {
-      "16": "img/ws16.png",
-      "24": "img/ws24.png",
-      "32": "img/ws32.png",
-      "48": "img/ws48.png",
-      "128": "img/ws128.png"
+      "16": "src/assets/ws16.png",
+      "24": "src/assets/ws24.png",
+      "32": "src/assets/ws32.png",
+      "48": "src/assets/ws48.png",
+      "128": "src/assets/ws128.png"
     },
     "default_title": "Wordspotting",
-    "default_popup": "popup.html"
+    "default_popup": "src/pages/popup.html"
   },
   "permissions": [
     "notifications",
@@ -31,15 +31,15 @@
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "js/background.js"
+    "service_worker": "src/js/background.js"
   },
   "options_ui": {
-    "page": "options.html",
+    "page": "src/pages/options.html",
     "open_in_tab": true
   },
   "web_accessible_resources": [
     {
-      "resources": ["img/*.png", "css/*.css"],
+      "resources": ["src/assets/*.png", "src/css/*.css"],
       "matches": ["<all_urls>"]
     }
   ]

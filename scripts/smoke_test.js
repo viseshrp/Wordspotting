@@ -27,16 +27,16 @@ try {
 
 // 2. Check Critical Files
 const criticalFiles = [
-    'js/background.js',
-    'js/content.js',
-    'js/utils.js',
-    'js/popup.js',
-    'js/options.js',
-    'css/popup.css',
-    'css/options.css',
-    'popup.html',
-    'options.html',
-    'img/ws48.png'
+    'src/js/background.js',
+    'src/js/content.js',
+    'src/js/utils.js',
+    'src/js/popup.js',
+    'src/js/options.js',
+    'src/css/popup.css',
+    'src/css/options.css',
+    'src/pages/popup.html',
+    'src/pages/options.html',
+    'src/assets/ws48.png'
 ];
 
 let missing = 0;

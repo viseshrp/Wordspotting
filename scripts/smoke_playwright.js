@@ -42,7 +42,7 @@ async function main() {
 
   const workerUrl = serviceWorker.url();
   const extensionId = workerUrl.split('/')[2];
-  const optionsUrl = `chrome-extension://${extensionId}/options.html`;
+  const optionsUrl = `chrome-extension://${extensionId}/src/pages/options.html`;
 
   const page = await context.newPage();
   await page.goto(optionsUrl);

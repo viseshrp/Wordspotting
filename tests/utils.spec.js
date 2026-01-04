@@ -4,7 +4,7 @@ describe('utils', () => {
   beforeEach(() => {
     global.chrome.storage.sync.set = jest.fn((obj, cb) => cb && cb());
     global.chrome.storage.sync.get = jest.fn((keys, cb) => cb && cb({ example: 1 }));
-    utils = require('../js/utils.js');
+    utils = require('../src/js/utils.js');
   });
 
   test('trimAndClean removes whitespace', () => {

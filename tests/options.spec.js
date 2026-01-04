@@ -3,11 +3,11 @@
  */
 const fs = require('fs');
 const path = require('path');
-const utils = require('../js/utils.js');
+const utils = require('../src/js/utils.js');
 
 describe('options helpers', () => {
   test('partitionSitePatterns filters invalid', () => {
-    const code = fs.readFileSync(path.join(__dirname, '../js/options.js'), 'utf8');
+    const code = fs.readFileSync(path.join(__dirname, '../src/js/options.js'), 'utf8');
     global.buildSiteRegex = utils.buildSiteRegex;
     // Execute code to define functions in global
     eval(code);
@@ -17,7 +17,7 @@ describe('options helpers', () => {
   });
 
   test('mergeUnique deduplicates', () => {
-    const code = fs.readFileSync(path.join(__dirname, '../js/options.js'), 'utf8');
+    const code = fs.readFileSync(path.join(__dirname, '../src/js/options.js'), 'utf8');
     eval(code);
     const merged = mergeUnique(['a', 'b'], ['b', 'c']);
     expect(merged.sort()).toEqual(['a', 'b', 'c']);

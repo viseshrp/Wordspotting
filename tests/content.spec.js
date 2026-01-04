@@ -7,11 +7,11 @@ describe('content helpers', () => {
     global.saveToStorage = jest.fn(async () => ({}));
     global.logit = jest.fn();
     global.isValidObj = (obj) => obj !== null && typeof obj !== 'undefined' && Object.keys(obj).length > 0;
-    const utils = require('../js/utils.js');
+    const utils = require('../src/js/utils.js');
     global.compileSitePatterns = utils.compileSitePatterns;
     global.isUrlAllowedCompiled = utils.isUrlAllowedCompiled;
     jest.useFakeTimers();
-    content = require('../js/content.js');
+    content = require('../src/js/content.js');
   });
 
   afterEach(() => {
