@@ -43,18 +43,8 @@ function getFromStorage(keys) {
 
 function showAlert(message, title, isSuccess) {
     if (typeof document !== 'undefined') {
-        // Simple vanilla JS toast
-        let toast = document.createElement('div');
-        toast.style.position = 'fixed';
-        toast.style.bottom = '20px';
-        toast.style.right = '20px';
-        toast.style.backgroundColor = isSuccess ? '#4caf50' : '#f44336';
-        toast.style.color = 'white';
-        toast.style.padding = '16px';
-        toast.style.borderRadius = '4px';
-        toast.style.zIndex = '10000';
-        toast.style.fontFamily = 'sans-serif';
-        toast.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+        const toast = document.createElement('div');
+        toast.className = `ws-toast ${isSuccess ? 'success' : 'error'}`;
         toast.textContent = (title ? title + ": " : "") + message;
         document.body.appendChild(toast);
         setTimeout(() => {

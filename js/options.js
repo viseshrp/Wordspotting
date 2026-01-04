@@ -2,29 +2,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
     updateViews();
 
+    const KEYWORD_PRESETS = ["H1B", "US Citizen", "GC only", "Sponsorship unavailable", "No visa sponsorship"];
+    const SITE_PRESETS = ["*linkedin*", "*glassdoor*", "*indeed*", "*monster*"];
+
     // --- Event Listeners ---
 
     // Sites
     const siteInput = document.getElementById("website_input");
     const siteBtn = document.getElementById("add_sites");
     const siteClearBtn = document.getElementById("clear_sites");
+    const sitePresetBtn = document.getElementById("add_site_presets");
 
     siteBtn.addEventListener("click", () => addSite(siteInput));
     siteInput.addEventListener("keypress", (e) => {
         if (e.key === 'Enter') addSite(siteInput);
     });
     siteClearBtn.addEventListener("click", () => clearList("wordspotting_website_list", updateWebListDisplay));
+    sitePresetBtn.addEventListener("click", () => addPresets(SITE_PRESETS, "wordspotting_website_list", updateWebListDisplay));
 
     // Keywords
     const wordInput = document.getElementById("bl_word_input");
     const wordBtn = document.getElementById("add_bl_word");
     const wordClearBtn = document.getElementById("clear_keywords");
+    const keywordPresetBtn = document.getElementById("add_keyword_presets");
 
     wordBtn.addEventListener("click", () => addWord(wordInput));
     wordInput.addEventListener("keypress", (e) => {
         if (e.key === 'Enter') addWord(wordInput);
     });
     wordClearBtn.addEventListener("click", () => clearList("wordspotting_word_list", updateBLWordListDisplay));
+    keywordPresetBtn.addEventListener("click", () => addPresets(KEYWORD_PRESETS, "wordspotting_word_list", updateBLWordListDisplay));
 
     // Switches
     document.getElementById("notifications_switch").addEventListener("change", function () {
@@ -39,6 +46,14 @@ document.addEventListener('DOMContentLoaded', function () {
         saveToStorage({"wordspotting_extension_on": status}).then(() => {
             showAlert("Extension turned " + (status ? "ON" : "OFF"), "Settings Saved", true);
         });
+    });
+
+    // Theme select
+    const themeSelect = document.getElementById("theme_select");
+    themeSelect.addEventListener("change", () => {
+        const value = themeSelect.value;
+        applyTheme(value);
+        saveToStorage({"wordspotting_theme": value});
     });
 
     // Delegate click for removing items
@@ -81,13 +96,9 @@ function addSite(input) {
     }
 
     getFromStorage("wordspotting_website_list").then((items) => {
-        let stored = items.wordspotting_website_list;
-        if (isValidObj(stored)) {
-            valid.forEach(w => stored.push(w));
-        } else {
-            stored = valid;
-        }
-        return saveToStorage({"wordspotting_website_list": stored});
+        const stored = Array.isArray(items.wordspotting_website_list) ? items.wordspotting_website_list : [];
+        const merged = mergeUnique(stored, valid);
+        return saveToStorage({"wordspotting_website_list": merged});
     }).then(() => {
         input.value = "";
         updateWebListDisplay();
@@ -122,13 +133,9 @@ function addWord(input) {
     }
 
     getFromStorage("wordspotting_word_list").then((items) => {
-        let stored = items.wordspotting_word_list;
-        if (isValidObj(stored)) {
-            valid.forEach(w => stored.push(w));
-        } else {
-            stored = valid;
-        }
-        return saveToStorage({"wordspotting_word_list": stored});
+        const stored = Array.isArray(items.wordspotting_word_list) ? items.wordspotting_word_list : [];
+        const merged = mergeUnique(stored, valid);
+        return saveToStorage({"wordspotting_word_list": merged});
     }).then(() => {
         input.value = "";
         updateBLWordListDisplay();
@@ -165,6 +172,7 @@ function updateViews() {
     updateNotifSwitchDisplay();
     updateExtSwitchDisplay();
     updateBLWordListDisplay();
+    updateThemeDisplay();
 }
 
 function updateWebListDisplay() {
@@ -202,12 +210,14 @@ function updateBLWordListDisplay() {
 }
 
 function createChip(text, index, type) {
-    const chip = document.createElement("span");
+    const chip = document.createElement("button");
+    chip.type = "button";
     chip.className = "chip";
     chip.textContent = text;
     chip.dataset.index = index;
     chip.dataset.type = type;
     chip.title = "Click to remove";
+    chip.setAttribute('aria-label', `Remove ${text}`);
     return chip;
 }
 
@@ -230,6 +240,43 @@ function shakeInput(input) {
     setTimeout(() => {
         input.style.borderColor = "var(--border-color)";
     }, 500);
+}
+
+function updateThemeDisplay() {
+    getFromStorage("wordspotting_theme").then((items) => {
+        const theme = items.wordspotting_theme || 'system';
+        const select = document.getElementById("theme_select");
+        select.value = theme;
+        applyTheme(theme);
+    });
+}
+
+function applyTheme(value) {
+    const root = document.documentElement;
+    if (value === 'light') {
+        root.setAttribute('data-theme', 'light');
+    } else if (value === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+    } else {
+        root.removeAttribute('data-theme');
+    }
+}
+
+function addPresets(list, storageKey, refreshFn) {
+    const { valid } = storageKey === "wordspotting_website_list"
+        ? partitionSitePatterns(list)
+        : partitionKeywordPatterns(list);
+
+    if (valid.length === 0) return;
+
+    getFromStorage(storageKey).then((items) => {
+        const stored = Array.isArray(items[storageKey]) ? items[storageKey] : [];
+        const merged = mergeUnique(stored, valid);
+        return saveToStorage({ [storageKey]: merged });
+    }).then(() => {
+        refreshFn();
+        showAlert("Presets added.", "Success", true);
+    });
 }
 
 function partitionKeywordPatterns(list) {
@@ -263,4 +310,8 @@ function partitionSitePatterns(list) {
     });
 
     return { valid, invalid };
+}
+
+function mergeUnique(existing, additions) {
+    return Array.from(new Set([...(existing || []), ...(additions || [])]));
 }

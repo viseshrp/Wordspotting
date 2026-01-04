@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
     wordspotting_extension_on: true,
     wordspotting_website_list: [],
     wordspotting_word_list: [],
+    wordspotting_theme: 'system', // system | light | dark
     is_first_start: false
 };
 

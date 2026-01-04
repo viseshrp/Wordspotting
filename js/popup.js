@@ -5,6 +5,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const keywordContainer = document.getElementById("keyword_container");
     const resultsWrapper = document.getElementById("results_wrapper");
 
+    // Theme
+    getFromStorage("wordspotting_theme").then((items) => {
+        const theme = items.wordspotting_theme || 'system';
+        applyTheme(theme);
+    });
+
     // Initialize Switch State
     getFromStorage("wordspotting_extension_on").then((items) => {
         const status = items.wordspotting_extension_on;
@@ -102,6 +108,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderEmpty(msg) {
         keywordContainer.innerHTML = `<div class="empty-state">${msg}</div>`;
+    }
+
+    function applyTheme(value) {
+        const root = document.documentElement;
+        if (value === 'light') {
+            root.setAttribute('data-theme', 'light');
+        } else if (value === 'dark') {
+            root.setAttribute('data-theme', 'dark');
+        } else {
+            root.removeAttribute('data-theme');
+        }
     }
 
     async function checkActivation(tab) {
