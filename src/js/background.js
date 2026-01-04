@@ -1,7 +1,7 @@
 // background.js - Service Worker
 
-importScripts('utils.js');
-importScripts('settings.js');
+importScripts('./utils.js');
+importScripts('./settings.js');
 
 const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/content.js'];
 const CONTENT_STYLE_FILES = ['src/css/index.css'];
