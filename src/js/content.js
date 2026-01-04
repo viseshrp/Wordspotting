@@ -307,6 +307,3 @@ function setupObserver() {
         }
     });
 }
-
-// No-op stub retained for exports compatibility
-function isIgnorableErrorMessage() { return false; }
