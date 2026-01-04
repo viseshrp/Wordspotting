@@ -191,14 +191,20 @@ async function performScan(signal) {
                 wordfound: occurring_word_list.length > 0,
                 keyword_count: occurring_word_list.length
             }, (response) => {
-                if (chrome.runtime.lastError) {
-                    // ignore
-                } else {
-                     logit("Background ack: " + (response ? response.ack : 'no response'));
+                const err = chrome.runtime.lastError;
+                if (err) {
+                    const msg = String(err && err.message ? err.message : err);
+                    if (!isContextInvalidated(msg) && !isPortClosed(msg)) {
+                        console.warn("sendMessage error:", msg);
+                    }
+                    return;
                 }
+                logit("Background ack: " + (response ? response.ack : 'no response'));
             });
         }
     } catch (e) {
+        const msg = String(e && e.message ? e.message : e);
+        if (isContextInvalidated(msg) || isPortClosed(msg)) return;
         console.error("Error in talkToBackgroundScript:", e);
     }
 }
@@ -289,4 +295,12 @@ function setupObserver() {
             observerDebounce.cancel();
         }
     });
+}
+
+function isContextInvalidated(msg) {
+    return /context invalidated/i.test(msg || '');
+}
+
+function isPortClosed(msg) {
+    return /(message )?port closed/i.test(msg || '');
 }
