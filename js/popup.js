@@ -34,27 +34,41 @@ document.addEventListener('DOMContentLoaded', function () {
     chrome.tabs.query({active: true, currentWindow: true}, function (tabs) {
         var currTab = tabs[0];
         if (currTab) {
-            chrome.tabs.sendMessage(
-                currTab.id,
-                {from: 'popup', subject: 'word_list_request'},
-                function (response) {
-                   if(chrome.runtime.lastError) {
-                       // Content script might not be injected
-                       renderEmpty("Not active on this page.");
-                       return;
-                   }
+            checkActivation(currTab).then((activation) => {
+                if (!activation.allowed) {
+                    toggleResultsOpacity(false);
+                    renderEmpty("This site is not in your allowed list.");
+                    return;
+                }
 
-                   if(response){
-                       renderKeywords(response.word_list);
+                if (!activation.hasPermission) {
+                    toggleResultsOpacity(false);
+                    renderEmpty("Permission not granted for this site.");
+                    return;
+                }
 
-                       // Set badge text (sync with what we see)
-                       const count = response.word_list ? response.word_list.length : 0;
-                       chrome.action.setBadgeText({
-                            text: count > 0 ? count.toString() : "",
-                            tabId: currTab.id
-                       });
-                   }
-                });
+                chrome.tabs.sendMessage(
+                    currTab.id,
+                    {from: 'popup', subject: 'word_list_request'},
+                    function (response) {
+                       if(chrome.runtime.lastError) {
+                           // Content script might not be injected yet
+                           renderEmpty("Not active on this page.");
+                           return;
+                       }
+
+                       if(response){
+                           renderKeywords(response.word_list);
+
+                           // Set badge text (sync with what we see)
+                           const count = response.word_list ? response.word_list.length : 0;
+                           chrome.action.setBadgeText({
+                                text: count > 0 ? count.toString() : "",
+                                tabId: currTab.id
+                           });
+                       }
+                    });
+            });
         }
     });
 
@@ -88,6 +102,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderEmpty(msg) {
         keywordContainer.innerHTML = `<div class="empty-state">${msg}</div>`;
+    }
+
+    async function checkActivation(tab) {
+        try {
+            const items = await getFromStorage("wordspotting_website_list");
+            const allowedSites = items.wordspotting_website_list || [];
+            const allowed = isUrlAllowed(tab.url, allowedSites);
+
+            let hasPermission = false;
+            if (allowed) {
+                const originPattern = getOriginPattern(tab.url);
+                if (originPattern) {
+                    hasPermission = await containsOriginPermission(originPattern);
+                }
+            }
+
+            return { allowed, hasPermission };
+        } catch (e) {
+            console.error("Activation check failed:", e);
+            return { allowed: false, hasPermission: false };
+        }
+    }
+
+    function getOriginPattern(url) {
+        try {
+            const parsed = new URL(url);
+            if (!/^https?:/i.test(parsed.protocol)) return null;
+            return `${parsed.protocol}//${parsed.host}/*`;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function containsOriginPermission(originPattern) {
+        return new Promise((resolve) => {
+            chrome.permissions.contains({ origins: [originPattern] }, (result) => {
+                resolve(!!result);
+            });
+        });
     }
 
 });
