@@ -1,30 +1,30 @@
 # Wordspotting
 
-**Wordspotting** is a Chrome Extension that notifies you when specific keywords are found on a webpage. It’s a general-purpose page scanner you configure with your own keywords and allowed sites.
+**Wordspotting** is a Chrome extension that notifies you when specific keywords are found on a webpage. It's a general-purpose page scanner you configure with your own keywords and allowed sites.
 
 ## Features
 
-*   **Keyword Scanning**: Automatically scans webpages for your configured keywords.
-*   **Site Whitelist**: Only runs on websites you explicitly allow (e.g., `example.com`, `news.example`).
-*   **Notifications**: Get a system notification and a browser badge count when keywords are found.
-*   **SPA Support**: Works seamlessly with Single Page Applications and dynamic content.
-*   **Regex Support**: Advanced users can use Regular Expressions for powerful matching (e.g., `error|fail`).
-*   **Privacy First**: All data is stored locally on your device. No data is sent to external servers.
-*   **Dark Mode**: Native support for dark mode.
+- **Keyword Scanning**: Automatically scans webpages for your configured keywords.
+- **Site Allowlist**: Only runs on websites you explicitly allow (e.g., `example.com`, `news.example`).
+- **Notifications**: Get a system notification and a browser badge count when keywords are found.
+- **SPA Support**: Works with single page applications and dynamic content.
+- **Regex Support**: Advanced users can use regular expressions for matching (e.g., `error|fail`).
+- **Privacy First**: All data is stored locally on your device. No data is sent to external servers.
+- **Dark Mode**: Native support for dark mode.
 
 ## Installation
 
-1.  Download the latest release zip.
-2.  Open Chrome and navigate to `chrome://extensions`.
-3.  Enable **Developer Mode** (top right).
-4.  Unzip the downloaded file, then click **Load unpacked** and select the extension folder.
+1. Download the latest release zip.
+2. Open Chrome and navigate to `chrome://extensions`.
+3. Enable **Developer Mode** (top right).
+4. Unzip the downloaded file, then click **Load unpacked** and select the extension folder.
 
 ## Usage
 
-1.  Click the extension icon and select **Options**.
-2.  **Add Websites**: Enter the domains you want to scan (e.g., `example.com`, `*.docs.example`).
-3.  **Add Keywords**: Enter the words or phrases you are looking for (e.g., `error`, `TODO`, `promo`).
-4.  Navigate to a whitelisted site. If a keyword is found, the extension icon will show a badge count, and you will receive a notification.
+1. Click the extension icon and select **Options**.
+2. **Add Websites**: Enter the domains you want to scan (e.g., `example.com`, `*.docs.example`).
+3. **Add Keywords**: Enter the words or phrases you are looking for (e.g., `error`, `TODO`, `promo`).
+4. Navigate to an allowed site. If a keyword is found, the extension icon will show a badge count, and you will receive a notification.
 
 ## Permissions & Development
 
@@ -42,7 +42,7 @@ npm test
 
 ```bash
 npm run smoke        # filesystem checks
-npm run smoke:e2e    # headless extension check (requires Playwright; install via `npx playwright install chromium`)
+npm run smoke:e2e    # extension check (requires Playwright; install via `npx playwright install chromium`)
 ```
 
 ### Building for Release
@@ -50,6 +50,14 @@ npm run smoke:e2e    # headless extension check (requires Playwright; install vi
 ```bash
 ./build.sh
 ```
+
+### Chrome Web Store Submission Checklist
+
+- `npm ci`
+- `npm run biome`
+- `npm test -- --runInBand`
+- `npm run smoke:e2e` (requires `npx playwright install chromium`)
+- `./build.sh` to produce `wordspotting.zip`, then upload that zip to the Chrome Web Store.
 
 ## License
 
