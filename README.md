@@ -1,14 +1,14 @@
 # Wordspotting
 
-**Wordspotting** is a Chrome Extension that notifies you when specific keywords are found on a webpage. Originally designed to help filter job postings, it can be used for any text-scanning purpose.
+**Wordspotting** is a Chrome Extension that notifies you when specific keywords are found on a webpage. It’s a general-purpose page scanner you configure with your own keywords and allowed sites.
 
 ## Features
 
 *   **Keyword Scanning**: Automatically scans webpages for your configured keywords.
-*   **Site Whitelist**: Only runs on websites you explicitly allow (e.g., `linkedin.com`, `glassdoor.com`).
+*   **Site Whitelist**: Only runs on websites you explicitly allow (e.g., `example.com`, `news.example`).
 *   **Notifications**: Get a system notification and a browser badge count when keywords are found.
 *   **SPA Support**: Works seamlessly with Single Page Applications and dynamic content.
-*   **Regex Support**: Advanced users can use Regular Expressions for powerful matching (e.g., `(H1|h1)b`).
+*   **Regex Support**: Advanced users can use Regular Expressions for powerful matching (e.g., `error|fail`).
 *   **Privacy First**: All data is stored locally on your device. No data is sent to external servers.
 *   **Dark Mode**: Native support for dark mode.
 
@@ -22,14 +22,15 @@
 ## Usage
 
 1.  Click the extension icon and select **Options**.
-2.  **Add Websites**: Enter the domains you want to scan (e.g., `linkedin.com`).
-3.  **Add Keywords**: Enter the words or phrases you are looking for (e.g., `H1B`, `Remote`).
+2.  **Add Websites**: Enter the domains you want to scan (e.g., `example.com`, `*.docs.example`).
+3.  **Add Keywords**: Enter the words or phrases you are looking for (e.g., `error`, `TODO`, `promo`).
 4.  Navigate to a whitelisted site. If a keyword is found, the extension icon will show a badge count, and you will receive a notification.
 
 ## Permissions & Development
 
 - Permissions: `notifications`, `storage`, `scripting`, and `host_permissions: <all_urls>`. Adding a site to your allowed list is considered opt-in; there are no runtime permission prompts.
-- Built with vanilla JavaScript, CSS, and HTML (Manifest V3).
+- Built with vanilla JavaScript, CSS, and HTML (Manifest V3). Source lives under `src/` (`src/js`, `src/css`, `src/pages`, `src/assets`).
+- CI: GitHub Actions runs lint (ESLint + Biome), unit tests (Jest), smoke checks (filesystem + Playwright), enforces a 1 MB package size, and uploads `wordspotting.zip` artifacts.
 
 ### Running Tests
 
@@ -41,7 +42,7 @@ npm test
 
 ```bash
 npm run smoke        # filesystem checks
-npm run smoke:e2e    # headless extension check (requires Playwright)
+npm run smoke:e2e    # headless extension check (requires Playwright; install via `npx playwright install chromium`)
 ```
 
 ### Building for Release
