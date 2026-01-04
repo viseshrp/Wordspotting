@@ -86,3 +86,40 @@ function logit(message) {
 function getRandomInt(maximum, minimum) {
     return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
 }
+
+/**
+ * Build a regex from a user-provided site pattern (regex or wildcard with *).
+ * @param {string} pattern
+ * @returns {RegExp|null}
+ */
+function buildSiteRegex(pattern) {
+    if (!pattern || typeof pattern !== 'string') return null;
+    try {
+        return new RegExp(pattern, 'i');
+    } catch (e) {
+        try {
+            const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const globbed = escaped.replace(/\\\*/g, '.*');
+            return new RegExp(globbed, 'i');
+        } catch (err) {
+            return null;
+        }
+    }
+}
+
+/**
+ * Check if a URL matches any of the allowed site patterns.
+ * @param {string} url
+ * @param {string[]} allowedSites
+ * @returns {boolean}
+ */
+function isUrlAllowed(url, allowedSites) {
+    if (!url || !Array.isArray(allowedSites) || allowedSites.length === 0) {
+        return false;
+    }
+
+    return allowedSites.some((site) => {
+        const regex = buildSiteRegex(site);
+        return regex ? regex.test(url) : false;
+    });
+}
