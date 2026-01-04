@@ -22,21 +22,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
       - name: Lint (Biome)
         run: npm run biome
 
       - name: Test (Jest with coverage)
         run: npm test -- --runInBand
 
-      - name: Smoke test
+      - name: Smoke test (filesystem)
         run: npm run smoke
+
+      - name: Smoke test (headless extension)
+        run: npm run smoke:e2e
 
       - name: Build package
         run: bash build.sh
 
       - name: Enforce size budget
         run: |
-          max_kb=5000
+          max_kb=1024
           size_kb=$(du -k wordspotting.zip | cut -f1)
           echo "Package size: ${size_kb} KB (limit ${max_kb} KB)"
           if [ "$size_kb" -gt "$max_kb" ]; then
@@ -50,5 +56,9 @@ jobs:
           name: wordspotting.zip
           path: wordspotting.zip
 
-      - name: Deploy (placeholder)
-        run: echo "Deploy step placeholder - wire to store/release as needed."
+      - name: Create release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: wordspotting.zip
+          draft: true
