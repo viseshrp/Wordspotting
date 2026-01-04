@@ -1,3 +1,10 @@
+// Prevent duplicate injection in the same frame
+if (globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
+    // Already loaded; do nothing.
+    return;
+}
+globalThis.__WORDSPOTTING_CONTENT_LOADED__ = true;
+
 // content.js - Content Script
 
 let lastScanSignature = null;
@@ -43,9 +50,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
                 } else {
                     sendResponse({ word_list: [] });
                 }
-            } else {
-                sendResponse({}); // Always respond to avoid leaving the channel open
+                return;
             }
+
+            if (msg.from === 'background' && msg.subject === 'settings_updated') {
+                scheduleScan();
+                sendResponse({ ack: true });
+                return;
+            }
+
+            sendResponse({}); // Always respond to avoid leaving the channel open
         } catch (e) {
             console.error("Error in onMessage:", e);
             sendResponse({ word_list: [] });

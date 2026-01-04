@@ -100,10 +100,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
         refreshAllowedSitePatterns();
     }
 
+    // Notify active tab to rescan without reinjecting
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tab = tabs[0];
-        if (tab && tab.url) {
-            maybeInjectContentScripts(tab.id, tab.url);
+        if (!tab || !tab.id) return;
+        try {
+            chrome.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
+        } catch (e) {
+            // ignore send errors; content may not be injected
         }
     });
 });
