@@ -7,6 +7,8 @@ const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/c
 const CONTENT_STYLE_FILES = ['src/css/index.css'];
 let compiledAllowedSites = [];
 const lastFoundByTab = new Map(); // tabId -> boolean
+const BADGE_ACTIVE_COLOR = '#4caf50';
+const BADGE_INACTIVE_COLOR = '#9e9e9e';
 
 /**
  * Handle extension installation/update
@@ -45,11 +47,9 @@ async function handleMessage(request, sender) {
     if (hasValidPayload) {
 
         // Set badge text
-        if (sender.tab) {
-            chrome.action.setBadgeText({
-                text: request.keyword_count > 0 ? String(request.keyword_count) : "0",
-                tabId: sender.tab.id
-            });
+        if (sender.tab?.id) {
+            const text = request.keyword_count > 0 ? String(request.keyword_count) : "0";
+            setBadge(sender.tab.id, text, BADGE_ACTIVE_COLOR);
         }
 
         const tabId = sender?.tab?.id;
@@ -113,6 +113,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const tab = tabs[0];
         if (!tab || !tab.id) return;
+        updateBadgeForTab(tab.id, tab.url);
         try {
             chrome.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
         } catch (_e) {
@@ -134,9 +135,11 @@ async function maybeInjectContentScripts(tabId, url) {
             : isUrlAllowed(url, allowedSites);
 
         if (!isAllowed) {
+            setBadge(tabId, 'OFF', BADGE_INACTIVE_COLOR);
             return;
         }
 
+        setBadge(tabId, '0', BADGE_ACTIVE_COLOR);
         await injectStyles(tabId);
         await injectScripts(tabId);
     } catch (e) {
@@ -173,6 +176,37 @@ async function refreshAllowedSitePatterns() {
     } catch (e) {
         console.warn("Failed to refresh allowed site patterns:", e);
         compiledAllowedSites = [];
+    }
+}
+
+async function updateBadgeForTab(tabId, url) {
+    try {
+        const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
+        if (settings.wordspotting_extension_on === false) {
+            setBadge(tabId, 'OFF', BADGE_INACTIVE_COLOR);
+            return;
+        }
+
+        const allowedSites = settings.wordspotting_website_list || [];
+        const isAllowed = compiledAllowedSites.length > 0
+            ? isUrlAllowedCompiled(url, compiledAllowedSites)
+            : isUrlAllowed(url, allowedSites);
+
+        if (!isAllowed) {
+            setBadge(tabId, 'OFF', BADGE_INACTIVE_COLOR);
+            return;
+        }
+
+        setBadge(tabId, '0', BADGE_ACTIVE_COLOR);
+    } catch (e) {
+        console.warn('Unable to update badge status:', e);
+    }
+}
+
+function setBadge(tabId, text, color) {
+    chrome.action.setBadgeText({ tabId, text });
+    if (color) {
+        chrome.action.setBadgeBackgroundColor({ tabId, color });
     }
 }
 
