@@ -9,6 +9,7 @@ let compiledAllowedSites = [];
 const lastFoundByTab = new Map(); // tabId -> boolean
 const BADGE_ACTIVE_COLOR = '#4caf50';
 const BADGE_INACTIVE_COLOR = '#9e9e9e';
+const BADGE_INACTIVE_TEXT = '-';
 
 /**
  * Handle extension installation/update
@@ -135,7 +136,7 @@ async function maybeInjectContentScripts(tabId, url) {
             : isUrlAllowed(url, allowedSites);
 
         if (!isAllowed) {
-            setBadge(tabId, 'OFF', BADGE_INACTIVE_COLOR);
+            setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
             return;
         }
 
@@ -183,7 +184,7 @@ async function updateBadgeForTab(tabId, url) {
     try {
         const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
         if (settings.wordspotting_extension_on === false) {
-            setBadge(tabId, 'OFF', BADGE_INACTIVE_COLOR);
+            setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
             return;
         }
 
@@ -193,7 +194,7 @@ async function updateBadgeForTab(tabId, url) {
             : isUrlAllowed(url, allowedSites);
 
         if (!isAllowed) {
-            setBadge(tabId, 'OFF', BADGE_INACTIVE_COLOR);
+            setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
             return;
         }
 
