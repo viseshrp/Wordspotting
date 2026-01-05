@@ -55,6 +55,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             }
 
             if (msg.from === 'background' && msg.subject === 'settings_updated') {
+                lastScanSignature = null; // force a fresh scan on settings change
                 scheduleScan();
                 sendResponse({ ack: true });
                 return;
