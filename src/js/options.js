@@ -41,6 +41,33 @@ if (typeof document !== 'undefined') {
             });
         });
 
+        const highlightSwitch = document.getElementById("highlight_switch");
+        highlightSwitch.addEventListener("change", function () {
+            const status = this.checked;
+            saveToStorage({"wordspotting_highlight_enabled": status}).then(() => {
+                showAlert(`Highlighting turned ${status ? "ON" : "OFF"}`, "Settings Saved", true);
+            });
+        });
+
+        const highlightColorPicker = document.getElementById("highlight_color");
+        const highlightColorHex = document.getElementById("highlight_color_hex");
+
+        const handleColorChange = (value, source) => {
+            const normalized = normalizeHexColor(value);
+            if (!normalized) {
+                shakeInput(source);
+                return;
+            }
+            highlightColorPicker.value = normalized;
+            highlightColorHex.value = normalized;
+            saveToStorage({"wordspotting_highlight_color": normalized}).then(() => {
+                showAlert(`Highlight color set to ${normalized}`, "Settings Saved", true);
+            });
+        };
+
+        highlightColorPicker.addEventListener("input", (e) => handleColorChange(e.target.value, highlightColorPicker));
+        highlightColorHex.addEventListener("change", (e) => handleColorChange(e.target.value, highlightColorHex));
+
         // Theme select
         const themeSelect = document.getElementById("theme_select");
         themeSelect.addEventListener("change", () => {
@@ -168,6 +195,7 @@ function updateViews() {
     updateNotifSwitchDisplay();
     updateExtSwitchDisplay();
     updateBLWordListDisplay();
+    updateHighlightDisplay();
     updateThemeDisplay();
 }
 
@@ -228,6 +256,17 @@ function updateExtSwitchDisplay() {
     getFromStorage("wordspotting_extension_on").then((items) => {
         const status = items.wordspotting_extension_on;
         document.getElementById("extension_switch").checked = (status !== false);
+    });
+}
+
+function updateHighlightDisplay() {
+    getFromStorage(["wordspotting_highlight_enabled", "wordspotting_highlight_color"]).then((items) => {
+        const enabled = items.wordspotting_highlight_enabled !== false;
+        const color = normalizeHexColor(items.wordspotting_highlight_color) || '#ffb3b3';
+
+        document.getElementById("highlight_switch").checked = enabled;
+        document.getElementById("highlight_color").value = color;
+        document.getElementById("highlight_color_hex").value = color;
     });
 }
 
@@ -295,11 +334,22 @@ function mergeUnique(existing, additions) {
     return Array.from(new Set([...(existing || []), ...(additions || [])]));
 }
 
+function normalizeHexColor(value) {
+    if (!value || typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    const match = /^#([0-9a-fA-F]{6})$/.exec(trimmed);
+    if (match) {
+        return `#${match[1].toLowerCase()}`;
+    }
+    return null;
+}
+
 /* istanbul ignore next */
 if (typeof module !== 'undefined') {
     module.exports = {
         partitionSitePatterns,
         partitionKeywordPatterns,
-        mergeUnique
+        mergeUnique,
+        normalizeHexColor
     };
 }

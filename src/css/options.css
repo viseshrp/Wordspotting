@@ -136,6 +136,27 @@ input[type="text"]:focus-visible {
   border-color: var(--primary-color);
 }
 
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+input[type="color"] {
+  width: 46px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--card-bg);
+  cursor: pointer;
+}
+
+#highlight_color_hex {
+  width: 120px;
+  font-family: monospace;
+}
+
 button {
   font-family: inherit;
 }
