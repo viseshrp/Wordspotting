@@ -4,7 +4,7 @@
  */
 
 const SETTINGS_VERSION_KEY = 'wordspotting_settings_version';
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 1;
 
 const DEFAULT_SETTINGS = {
     wordspotting_notifications_on: true,
@@ -12,8 +12,6 @@ const DEFAULT_SETTINGS = {
     wordspotting_website_list: [],
     wordspotting_word_list: [],
     wordspotting_theme: 'system', // system | light | dark
-    wordspotting_highlight_enabled: true,
-    wordspotting_highlight_color: '#ffb3b3', // light red
     is_first_start: false
 };
 

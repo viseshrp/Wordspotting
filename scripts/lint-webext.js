@@ -32,23 +32,15 @@ async function main() {
 
   if (allowed.length) {
     console.log('Ignoring MV3-specific Chrome fields flagged by web-ext:');
-    for (const err of allowed) {
-      console.log(`- [${err.code}] ${err.message}`);
-    }
+    allowed.forEach((err) => console.log(`- [${err.code}] ${err.message}`));
   }
 
-  for (const warn of warnings) {
-    console.warn(`[warning] ${warn.message || warn.code}`);
-  }
-  for (const note of notices) {
-    console.log(`[notice] ${note.message || note.code}`);
-  }
+  warnings.forEach((warn) => console.warn(`[warning] ${warn.message || warn.code}`));
+  notices.forEach((note) => console.log(`[notice] ${note.message || note.code}`));
 
   if (fatal.length) {
     console.error(`web-ext lint failed with ${fatal.length} error(s):`);
-    for (const err of fatal) {
-      console.error(`- [${err.code}] ${err.message}`);
-    }
+    fatal.forEach((err) => console.error(`- [${err.code}] ${err.message}`));
     process.exit(1);
   }
 

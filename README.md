@@ -6,7 +6,6 @@
 
 - **Keyword Scanning**: Automatically scans webpages for your configured keywords.
 - **Site Allowlist**: Only runs on websites you explicitly allow (e.g., `example.com`, `news.example`).
-- **Inline Highlights**: Highlight found keywords on the page with a configurable color (light red by default).
 - **Notifications**: Get a system notification and a browser badge count when keywords are found.
 - **SPA Support**: Works with single page applications and dynamic content.
 - **Regex Support**: Advanced users can use regular expressions for matching (e.g., `error|fail`).

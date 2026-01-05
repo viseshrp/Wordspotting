@@ -47,7 +47,7 @@ async function handleMessage(request, sender) {
         // Set badge text
         if (sender.tab) {
             chrome.action.setBadgeText({
-                text: request.keyword_count > 0 ? String(request.keyword_count) : "0",
+                text: request.keyword_count > 0 ? String(request.keyword_count) : "",
                 tabId: sender.tab.id
             });
         }
@@ -103,12 +103,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Re-evaluate active tab when allowed sites or on/off switch changes.
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
-    const settingsChanged = changes.wordspotting_website_list ||
-        changes.wordspotting_extension_on ||
-        changes.wordspotting_highlight_enabled ||
-        changes.wordspotting_highlight_color;
-
-    if (!settingsChanged) return;
+    if (!changes.wordspotting_website_list && !changes.wordspotting_extension_on) return;
 
     if (changes.wordspotting_website_list) {
         refreshAllowedSitePatterns();
