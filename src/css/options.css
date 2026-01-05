@@ -199,9 +199,8 @@ button:focus-visible {
 }
 
 .chip:hover {
-  background: #ffebee;
+  background: var(--chip-hover);
   border-color: var(--danger-color);
-  color: var(--text-color);
 }
 
 .chip:focus-visible {
