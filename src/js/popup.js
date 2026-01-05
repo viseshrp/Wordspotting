@@ -2,6 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // UI References
     const keywordContainer = document.getElementById("keyword_container");
+    const addSiteBtn = document.getElementById("add_current_site");
+    const siteScopeRadios = document.querySelectorAll('input[name="site_scope"]');
+    const sitePreview = document.getElementById("site_preview");
 
     // Theme
     getFromStorage("wordspotting_theme").then((items) => {
@@ -39,14 +42,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
                            // Set badge text (sync with what we see)
                             const count = response.word_list ? response.word_list.length : 0;
-                            chrome.action.setBadgeText({
+                           chrome.action.setBadgeText({
                                 text: count > 0 ? count.toString() : "0",
                                 tabId: currTab.id
                            });
                        }
                     });
             });
+            updateSitePreview(currTab.url);
         }
+    });
+
+    addSiteBtn.addEventListener('click', () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+            const tab = tabs[0];
+            if (!tab || !tab.url) return;
+
+            const scope = getSelectedScope();
+            const pattern = buildPatternForTab(tab.url, scope);
+
+            try {
+                const items = await getFromStorage("wordspotting_website_list");
+                const existing = Array.isArray(items.wordspotting_website_list) ? items.wordspotting_website_list : [];
+                const merged = mergeUnique(existing, [pattern]);
+                await saveToStorage({ wordspotting_website_list: merged });
+                showAlert(`Added "${pattern}" to allowlist`, "Saved", true);
+            } catch (e) {
+                console.error("Failed to add site to allowlist", e);
+                showAlert("Could not save site.", "Error", false);
+            }
+        });
+    });
+
+    siteScopeRadios.forEach((radio) => {
+        radio.addEventListener('change', () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                const tab = tabs[0];
+                if (tab?.url) {
+                    updateSitePreview(tab.url);
+                }
+            });
+        });
     });
 
     // Options Button
@@ -97,11 +133,46 @@ document.addEventListener('DOMContentLoaded', () => {
             const items = await getFromStorage("wordspotting_website_list");
             const allowedSites = items.wordspotting_website_list || [];
             const allowed = isUrlAllowed(tab.url, allowedSites);
+            updateSitePreview(tab.url);
             return { allowed, hasPermission: true };
         } catch (e) {
             console.error("Activation check failed:", e);
             return { allowed: false, hasPermission: false };
         }
+    }
+
+    function getSelectedScope() {
+        const selected = Array.from(siteScopeRadios).find((r) => r.checked);
+        return selected ? selected.value : 'root';
+    }
+
+    function buildPatternForTab(urlString, scope) {
+        const url = new URL(urlString);
+        const host = url.hostname;
+        if (!host) throw new Error("Invalid URL");
+        if (scope === 'full') {
+            return url.href.split('#')[0];
+        }
+        if (scope === 'subdomain') {
+            return host;
+        }
+        const parts = host.split('.').filter(Boolean);
+        if (parts.length <= 2) return host;
+        return parts.slice(-2).join('.');
+    }
+
+    function updateSitePreview(urlString) {
+        try {
+            const scope = getSelectedScope();
+            const pattern = buildPatternForTab(urlString, scope);
+            sitePreview.textContent = `Will add: ${pattern}`;
+        } catch (_e) {
+            sitePreview.textContent = '';
+        }
+    }
+
+    function mergeUnique(existing, additions) {
+        return Array.from(new Set([...(existing || []), ...(additions || [])]));
     }
 
 });

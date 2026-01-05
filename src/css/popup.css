@@ -85,6 +85,61 @@ main {
   padding: 16px;
 }
 
+.add-site-section {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  background: rgba(0,0,0,0.02);
+}
+
+.add-site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.add-site-section h2 {
+  margin: 0;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--secondary-text);
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.radio-group label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-color);
+}
+
+.btn-primary {
+  display: inline-block;
+  padding: 8px 12px;
+  background: var(--primary-color);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
 .results-section h2 {
   font-size: 13px;
   text-transform: uppercase;

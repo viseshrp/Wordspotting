@@ -20,6 +20,28 @@
     </header>
 
     <main>
+        <div class="add-site-section">
+            <div class="add-site-header">
+                <h2>Add this site to allowlist</h2>
+                <div id="site_preview" class="muted"></div>
+            </div>
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="site_scope" value="root" checked>
+                    Root domain (example.com)
+                </label>
+                <label>
+                    <input type="radio" name="site_scope" value="subdomain">
+                    This subdomain (sub.example.com)
+                </label>
+                <label>
+                    <input type="radio" name="site_scope" value="full">
+                    Full URL (exact match)
+                </label>
+            </div>
+            <button id="add_current_site" class="btn-primary">Add current site</button>
+        </div>
+
         <div class="results-section" id="results_wrapper">
             <h2>Found Keywords</h2>
             <div id="keyword_container">
