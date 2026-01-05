@@ -4,3 +4,4 @@ coverage/
 npm-debug.log
 node_modules/
 node-bin/
+dist/

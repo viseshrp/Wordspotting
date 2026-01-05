@@ -1,24 +1,10 @@
 #!/bin/bash
 
-# Build script for Wordspotting
+set -euo pipefail
 
-echo "Building Wordspotting Extension..."
+cd "$(dirname "$0")"
 
-# Remove old zip
-rm -f wordspotting.zip
-
-# Create zip, excluding dev files
-zip -r wordspotting.zip . \
-    -x "*.git*" \
-    -x "tests/*" \
-    -x "verification/*" \
-    -x ".github/*" \
-    -x "node_modules/*" \
-    -x "coverage/*" \
-    -x ".gitignore" \
-    -x "build.sh" \
-    -x "test.sh" \
-    -x "perf_test.js" \
-    -x "*.DS_Store"
-
-echo "Build complete: wordspotting.zip"
+echo "Building Wordspotting extension..."
+npm run build
+VERSION=$(node -p "require('./package.json').version")
+echo "Build complete: dist/wordspotting-${VERSION}.zip"

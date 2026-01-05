@@ -64,14 +64,14 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build Zip
-        run: |
-          chmod +x build.sh
-          ./build.sh
+        run: npm run build
       - name: Enforce size budget
         run: |
+          VERSION=$(node -p "require('./package.json').version")
+          ZIP="dist/wordspotting-${VERSION}.zip"
           max_kb=1024
-          size_kb=$(du -k wordspotting.zip | cut -f1)
-          echo "Package size: ${size_kb} KB (limit ${max_kb} KB)"
+          size_kb=$(du -k "$ZIP" | cut -f1)
+          echo "Package size: ${size_kb} KB (limit ${max_kb} KB) at ${ZIP}"
           if [ "$size_kb" -gt "$max_kb" ]; then
             echo "Package exceeds size budget."
             exit 1
@@ -80,7 +80,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wordspotting-extension
-          path: wordspotting.zip
+          path: dist/wordspotting-*.zip
 
   release:
     name: Release
@@ -96,5 +96,5 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: wordspotting.zip
+          files: dist/wordspotting-*.zip
           draft: true
