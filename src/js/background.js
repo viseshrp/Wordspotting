@@ -1,7 +1,11 @@
 // background.js - Service Worker
 
-importScripts('./utils.js');
-importScripts('./settings.js');
+try {
+    importScripts(chrome.runtime.getURL('src/js/utils.js'));
+    importScripts(chrome.runtime.getURL('src/js/settings.js'));
+} catch (e) {
+    console.error('Failed to load background dependencies', e);
+}
 
 const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/content.js'];
 const CONTENT_STYLE_FILES = ['src/css/index.css'];
