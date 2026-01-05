@@ -1,5 +1,8 @@
 (() => {
 const isCommonJs = typeof module !== 'undefined' && module.exports;
+const scannerModule = isCommonJs ? require('./core/scanner') : globalThis;
+const scanTextForKeywords = scannerModule.scanTextForKeywords;
+const hashString = scannerModule.hashString;
 // Prevent duplicate injection in the same frame (skip for CommonJS/tests so exports are available)
 if (!isCommonJs && globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
     return;
@@ -71,64 +74,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 /**
- * optimizedGetWordList - Scans text using a single combined Regex with Named Capture Groups.
- * @param {string[]} keyword_list
- * @param {string} [bodyText] Optional pre-fetched body text to avoid extra reads
- * @returns {string[]} List of found keywords
+ * Wrapper around core scanner to keep existing interface.
  */
 function getWordList(keyword_list, bodyText) {
-    // Filter out empty or invalid strings first
-    const validKeywords = keyword_list.filter(k => k && k.trim().length > 0);
-    if (validKeywords.length === 0) return [];
-
     const textToScan = typeof bodyText === 'string' ? bodyText : (document.body ? document.body.innerText : "");
-    const foundKeywords = new Set();
-
-    // Build Combined Regex with Named Groups: (?<k0>...)|(?<k1>...)
-    const patterns = [];
-    const patternMap = []; // index -> original keyword
-
-    validKeywords.forEach((word, index) => {
-        try {
-            // Validate regex
-            new RegExp(word);
-            // Escape the index just in case, though it's an integer
-            patterns.push(`(?<k${index}>${word})`);
-            patternMap[index] = word;
-        } catch (_e) {
-            console.warn("Skipping invalid regex:", word);
-        }
-    });
-
-    if (patterns.length === 0) return [];
-
-    const combinedPattern = patterns.join('|');
-    // We cannot optimize further easily because we need to know WHICH one matched.
-    const regex = new RegExp(combinedPattern, 'ig');
-
-    let match;
-    match = regex.exec(textToScan);
-    while (match !== null) {
-        if (match.groups) {
-            for (const key in match.groups) {
-                if (match.groups[key] !== undefined) {
-                    // key is "k0", "k1", etc.
-                    const index = parseInt(key.substring(1), 10);
-                    if (patternMap[index]) {
-                        foundKeywords.add(patternMap[index]);
-                    }
-                }
-            }
-        }
-
-        if (foundKeywords.size === validKeywords.length) {
-            return Array.from(foundKeywords);
-        }
-
-        match = regex.exec(textToScan);
-    }
-
-    return Array.from(foundKeywords);
+    return scanTextForKeywords(keyword_list, textToScan);
 }
 
 async function proceedWithSiteListCheck() {
@@ -242,15 +192,6 @@ async function getBodyTextSnapshot(signal) {
     const text = document.body ? document.body.innerText || '' : '';
     lastSnapshot = { text, timestamp: now };
     return text;
-}
-
-function hashString(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash.toString();
 }
 
 function sendKeywordCount(count) {

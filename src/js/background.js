@@ -3,11 +3,12 @@
 try {
     importScripts(chrome.runtime.getURL('src/js/utils.js'));
     importScripts(chrome.runtime.getURL('src/js/settings.js'));
+    importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
 } catch (e) {
     console.error('Failed to load background dependencies', e);
 }
 
-const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/content.js'];
+const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/core/scanner.js', 'src/js/content.js'];
 const CONTENT_STYLE_FILES = ['src/css/index.css'];
 let compiledAllowedSites = [];
 const lastFoundByTab = new Map(); // tabId -> boolean
@@ -56,7 +57,7 @@ async function handleMessage(request, sender) {
         const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
 
         if (settings.wordspotting_extension_on === false) {
-            if (tabId) setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+            if (tabId) setInactiveBadge(tabId);
             return { ack: "disabled" };
         }
 
@@ -68,15 +69,14 @@ async function handleMessage(request, sender) {
             : true;
 
         if (!isAllowed) {
-            if (tabId) setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+            if (tabId) setInactiveBadge(tabId);
             return { ack: "not_allowed" };
         }
 
         // Set badge text
         if (tabId) {
-            const text = request.keyword_count > 0 ? String(request.keyword_count) : "0";
             lastCountByTab.set(tabId, request.keyword_count);
-            setBadge(tabId, text, BADGE_ACTIVE_COLOR);
+            setCountBadge(tabId, request.keyword_count);
         }
 
         if (tabId !== null) {
@@ -155,7 +155,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
         if (changes.wordspotting_extension_on?.newValue === true) {
             maybeInjectContentScripts(tab.id, tab.url);
         } else if (changes.wordspotting_extension_on?.newValue === false) {
-            setBadge(tab.id, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+            setInactiveBadge(tab.id);
         }
         try {
             chrome.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
@@ -178,11 +178,11 @@ async function maybeInjectContentScripts(tabId, url) {
             : isUrlAllowed(url, allowedSites);
 
         if (!isAllowed) {
-            setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+            setInactiveBadge(tabId);
             return;
         }
 
-        setBadge(tabId, '0', BADGE_ACTIVE_COLOR);
+        setCountBadge(tabId, 0);
         await injectStyles(tabId);
         await injectScripts(tabId);
     } catch (e) {
@@ -226,7 +226,7 @@ async function updateBadgeForTab(tabId, url) {
     try {
         const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
         if (settings.wordspotting_extension_on === false) {
-            setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+            setInactiveBadge(tabId);
             return;
         }
 
@@ -236,13 +236,12 @@ async function updateBadgeForTab(tabId, url) {
             : isUrlAllowed(url, allowedSites);
 
         if (!isAllowed) {
-            setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+            setInactiveBadge(tabId);
             return;
         }
 
         const count = lastCountByTab.get(tabId) ?? 0;
-        const text = count > 0 ? String(count) : '0';
-        setBadge(tabId, text, BADGE_ACTIVE_COLOR);
+        setCountBadge(tabId, count);
     } catch (e) {
         console.warn('Unable to update badge status:', e);
     }
@@ -253,6 +252,15 @@ function setBadge(tabId, text, color) {
     if (color) {
         chrome.action.setBadgeBackgroundColor({ tabId, color });
     }
+}
+
+function setInactiveBadge(tabId) {
+    setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+}
+
+function setCountBadge(tabId, count) {
+    const text = count > 0 ? String(count) : '0';
+    setBadge(tabId, text, BADGE_ACTIVE_COLOR);
 }
 
 async function isContentAlreadyInjected(tabId) {
