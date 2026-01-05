@@ -123,6 +123,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 });
 
+// Update badge when user switches tabs.
+chrome.tabs.onActivated.addListener((activeInfo) => {
+    chrome.tabs.get(activeInfo.tabId, (tab) => {
+        if (chrome.runtime.lastError || !tab) return;
+        updateBadgeForTab(tab.id, tab.url);
+    });
+});
+
 // Re-evaluate active tab when allowed sites or on/off switch changes.
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
@@ -137,6 +145,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
         const tab = tabs[0];
         if (!tab || !tab.id) return;
         updateBadgeForTab(tab.id, tab.url);
+        if (changes.wordspotting_extension_on?.newValue === true) {
+            maybeInjectContentScripts(tab.id, tab.url);
+        } else if (changes.wordspotting_extension_on?.newValue === false) {
+            setBadge(tab.id, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+        }
         try {
             chrome.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
         } catch (_e) {
