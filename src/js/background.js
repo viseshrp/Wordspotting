@@ -50,14 +50,32 @@ async function handleMessage(request, sender) {
         typeof request.keyword_count === 'number';
 
     if (hasValidPayload) {
+        const tabId = sender?.tab?.id;
+        const tabUrl = sender?.tab?.url;
+        const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
 
-        // Set badge text
-        if (sender.tab?.id) {
-            const text = request.keyword_count > 0 ? String(request.keyword_count) : "0";
-            setBadge(sender.tab.id, text, BADGE_ACTIVE_COLOR);
+        if (settings.wordspotting_extension_on === false) {
+            if (tabId) setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+            return { ack: "disabled" };
         }
 
-        const tabId = sender?.tab?.id;
+        const allowedSites = settings.wordspotting_website_list || [];
+        const isAllowed = tabUrl
+            ? (compiledAllowedSites.length > 0
+                ? isUrlAllowedCompiled(tabUrl, compiledAllowedSites)
+                : isUrlAllowed(tabUrl, allowedSites))
+            : true;
+
+        if (!isAllowed) {
+            if (tabId) setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
+            return { ack: "not_allowed" };
+        }
+
+        // Set badge text
+        if (tabId) {
+            const text = request.keyword_count > 0 ? String(request.keyword_count) : "0";
+            setBadge(tabId, text, BADGE_ACTIVE_COLOR);
+        }
 
         if (tabId !== null) {
             const prevFound = lastFoundByTab.get(tabId) ?? false;
