@@ -192,33 +192,23 @@ async function performScan(signal) {
         const items = await getFromStorage("wordspotting_word_list");
         const keyword_list = items.wordspotting_word_list;
 
-        if (isValidObj(keyword_list) && keyword_list.length > 0) {
-            const bodyText = await getBodyTextSnapshot(signal);
-            if (signal?.aborted) return;
-
-            const signature = `${bodyText.length}:${hashString(bodyText)}`;
-            if (signature === lastScanSignature) {
-                return;
-            }
-
-            lastScanSignature = signature;
-
-            const occurring_word_list = getWordList(keyword_list, bodyText);
-
-            logit("Firing message from content script...");
-            try {
-                chrome.runtime.sendMessage({
-                    wordfound: occurring_word_list.length > 0,
-                    keyword_count: occurring_word_list.length
-                }, () => {
-                    // Best-effort; ignore any errors (navigation, worker sleep, etc.)
-                    void chrome.runtime.lastError;
-                });
-            } catch (err) {
-                // Context gone; ignore.
-                void err;
-            }
+        if (!isValidObj(keyword_list) || keyword_list.length === 0) {
+            sendKeywordCount(0);
+            return;
         }
+
+        const bodyText = await getBodyTextSnapshot(signal);
+        if (signal?.aborted) return;
+
+        const signature = `${bodyText.length}:${hashString(bodyText)}`;
+        if (signature === lastScanSignature) {
+            return;
+        }
+
+        lastScanSignature = signature;
+
+        const occurring_word_list = getWordList(keyword_list, bodyText);
+        sendKeywordCount(occurring_word_list.length);
     } catch (e) {
         console.error("Error in talkToBackgroundScript:", e);
     }
@@ -262,12 +252,28 @@ function hashString(str) {
     return hash.toString();
 }
 
+function sendKeywordCount(count) {
+    try {
+        chrome.runtime.sendMessage({
+            wordfound: count > 0,
+            keyword_count: count
+        }, () => {
+            // Best-effort; ignore any errors (navigation, worker sleep, etc.)
+            void chrome.runtime.lastError;
+        });
+    } catch (err) {
+        // Context gone; ignore.
+        void err;
+    }
+}
+
 if (typeof module !== 'undefined') {
     module.exports = {
         getWordList,
         debounce,
         getBodyTextSnapshot,
         hashString,
+        sendKeywordCount,
         performScan,
         scheduleScan,
         deferUntilPageIdle,

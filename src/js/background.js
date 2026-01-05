@@ -47,7 +47,7 @@ async function handleMessage(request, sender) {
         // Set badge text
         if (sender.tab) {
             chrome.action.setBadgeText({
-                text: request.keyword_count > 0 ? String(request.keyword_count) : "",
+                text: request.keyword_count > 0 ? String(request.keyword_count) : "0",
                 tabId: sender.tab.id
             });
         }
