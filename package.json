@@ -4,6 +4,8 @@
   "description": "Get notified when a word is found in a web page.",
   "scripts": {
     "build": "node scripts/build.js",
+    "lint:webext": "node scripts/lint-webext.js",
+    "version": "node scripts/sync-manifest-version.js && git add manifest.json",
     "test": "jest --coverage",
     "lint": "eslint .",
     "biome": "biome lint .",
@@ -18,7 +20,8 @@
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^30.2.0",
     "playwright-chromium": "^1.42.0",
-    "prettier": "^3.1.0"
+    "prettier": "^3.1.0",
+    "web-ext": "^8.4.0"
   },
   "keywords": [
     "chrome-extension",

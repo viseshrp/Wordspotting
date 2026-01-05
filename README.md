@@ -38,6 +38,14 @@
 npm test
 ```
 
+### Linting
+
+```bash
+npm run lint        # ESLint
+npm run biome       # Biome
+npm run lint:webext # WebExtension manifest/content validation (web-ext)
+```
+
 ### Smoke Tests
 
 ```bash
@@ -59,6 +67,7 @@ npm run build    # outputs dist/wordspotting-<version>.zip
 - `npm test -- --runInBand`
 - `npm run smoke:e2e` (requires `npx playwright install chromium`)
 - `npm run build` to produce `dist/wordspotting-<version>.zip`, then upload that zip to the Chrome Web Store.
+- `npm version <x.y.z>` to bump versions and keep `manifest.json` in sync with tags and package metadata.
 
 ## License
 
