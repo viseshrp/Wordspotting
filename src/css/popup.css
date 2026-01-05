@@ -85,64 +85,6 @@ main {
   padding: 16px;
 }
 
-.status-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.status-label {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-/* Toggle Switch */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 40px;
-  height: 20px;
-}
-
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: .4s;
-  border-radius: 34px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 16px;
-  width: 16px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: var(--primary-color);
-}
-
-input:checked + .slider:before {
-  transform: translateX(20px);
-}
-
 .results-section h2 {
   font-size: 13px;
   text-transform: uppercase;
@@ -177,11 +119,6 @@ input:checked + .slider:before {
   font-style: italic;
   font-size: 13px;
   padding: 10px 0;
-}
-
-.disabled-overlay {
-  opacity: 0.5;
-  pointer-events: none;
 }
 
 .ws-toast {

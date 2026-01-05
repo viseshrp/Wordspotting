@@ -1,9 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // UI References
-    const extSwitch = document.getElementById("extension_switch");
     const keywordContainer = document.getElementById("keyword_container");
-    const resultsWrapper = document.getElementById("results_wrapper");
 
     // Theme
     getFromStorage("wordspotting_theme").then((items) => {
@@ -11,44 +9,17 @@ document.addEventListener('DOMContentLoaded', () => {
         applyTheme(theme);
     });
 
-    // Initialize Switch State
-    getFromStorage("wordspotting_extension_on").then((items) => {
-        const status = items.wordspotting_extension_on;
-        extSwitch.checked = (status !== false);
-        toggleResultsOpacity(status !== false);
-    });
-
-    // Handle Switch Change
-    extSwitch.addEventListener("change", function () {
-        const isChecked = this.checked;
-        saveToStorage({"wordspotting_extension_on": isChecked}).then(() => {
-            toggleResultsOpacity(isChecked);
-            // Optionally reload current tab to reflect changes immediately?
-            // chrome.tabs.reload();
-        });
-    });
-
-    function toggleResultsOpacity(enabled) {
-        if (enabled) {
-            resultsWrapper.classList.remove("disabled-overlay");
-        } else {
-            resultsWrapper.classList.add("disabled-overlay");
-        }
-    }
-
     // Connect to Content Script
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         var currTab = tabs[0];
         if (currTab) {
             checkActivation(currTab).then((activation) => {
                 if (!activation.allowed) {
-                    toggleResultsOpacity(false);
                     renderEmpty("This site is not in your allowed list.");
                     return;
                 }
 
                 if (!activation.hasPermission) {
-                    toggleResultsOpacity(false);
                     renderEmpty("Permission not granted for this site.");
                     return;
                 }
