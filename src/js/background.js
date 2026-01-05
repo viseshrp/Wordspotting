@@ -11,6 +11,7 @@ const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/c
 const CONTENT_STYLE_FILES = ['src/css/index.css'];
 let compiledAllowedSites = [];
 const lastFoundByTab = new Map(); // tabId -> boolean
+const lastCountByTab = new Map(); // tabId -> number
 const BADGE_ACTIVE_COLOR = '#4caf50';
 const BADGE_INACTIVE_COLOR = '#9e9e9e';
 const BADGE_INACTIVE_TEXT = '-';
@@ -74,6 +75,7 @@ async function handleMessage(request, sender) {
         // Set badge text
         if (tabId) {
             const text = request.keyword_count > 0 ? String(request.keyword_count) : "0";
+            lastCountByTab.set(tabId, request.keyword_count);
             setBadge(tabId, text, BADGE_ACTIVE_COLOR);
         }
 
@@ -129,6 +131,11 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
         if (chrome.runtime.lastError || !tab) return;
         updateBadgeForTab(tab.id, tab.url);
     });
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+    lastFoundByTab.delete(tabId);
+    lastCountByTab.delete(tabId);
 });
 
 // Re-evaluate active tab when allowed sites or on/off switch changes.
@@ -233,7 +240,9 @@ async function updateBadgeForTab(tabId, url) {
             return;
         }
 
-        setBadge(tabId, '0', BADGE_ACTIVE_COLOR);
+        const count = lastCountByTab.get(tabId) ?? 0;
+        const text = count > 0 ? String(count) : '0';
+        setBadge(tabId, text, BADGE_ACTIVE_COLOR);
     } catch (e) {
         console.warn('Unable to update badge status:', e);
     }
