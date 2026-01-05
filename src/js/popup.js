@@ -67,9 +67,9 @@ document.addEventListener('DOMContentLoaded', () => {
                            renderKeywords(response.word_list);
 
                            // Set badge text (sync with what we see)
-                           const count = response.word_list ? response.word_list.length : 0;
-                           chrome.action.setBadgeText({
-                                text: count > 0 ? count.toString() : "",
+                            const count = response.word_list ? response.word_list.length : 0;
+                            chrome.action.setBadgeText({
+                                text: count > 0 ? count.toString() : "0",
                                 tabId: currTab.id
                            });
                        }
