@@ -3,13 +3,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // UI References
     const keywordContainer = document.getElementById("keyword_container");
     const addSiteBtn = document.getElementById("add_current_site");
-    const siteScopeRadios = document.querySelectorAll('input[name="site_scope"]');
-    const sitePreview = document.getElementById("site_preview");
+    const addSiteSection = document.getElementById("add_site_section");
+    const siteScopeSelect = document.getElementById("site_scope_select");
+    const refreshOnAddToggle = document.getElementById("refresh_on_add");
+    const scopeOptions = [
+        { value: 'root', label: 'Root domain' },
+        { value: 'subdomain', label: 'This subdomain' },
+        { value: 'full', label: 'Full URL (exact match)' }
+    ];
+    const refreshPrefKey = "wordspotting_refresh_on_add";
 
     // Theme
     getFromStorage("wordspotting_theme").then((items) => {
         const theme = items.wordspotting_theme || 'system';
         applyTheme(theme);
+    });
+    getFromStorage(refreshPrefKey).then((items) => {
+        if (refreshOnAddToggle) {
+            refreshOnAddToggle.checked = items[refreshPrefKey] !== false;
+        }
     });
 
     // Connect to Content Script
@@ -18,11 +30,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currTab) {
             checkActivation(currTab).then((activation) => {
                 if (!activation.allowed) {
+                    setAddSiteVisibility(true);
                     renderEmpty("This site is not in your allowed list.");
                     return;
                 }
+                setAddSiteVisibility(false);
 
                 if (!activation.hasPermission) {
+                    setAddSiteVisibility(true);
                     renderEmpty("Permission not granted for this site.");
                     return;
                 }
@@ -53,7 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    addSiteBtn.addEventListener('click', () => {
+    if (addSiteBtn) {
+        addSiteBtn.addEventListener('click', () => {
         chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
             const tab = tabs[0];
             if (!tab || !tab.url) return;
@@ -67,23 +83,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 const merged = mergeUnique(existing, [pattern]);
                 await saveToStorage({ wordspotting_website_list: merged });
                 showAlert(`Added "${pattern}" to allowlist`, "Saved", true);
+                if (refreshOnAddToggle?.checked) {
+                    chrome.tabs.reload(tab.id);
+                }
             } catch (e) {
                 console.error("Failed to add site to allowlist", e);
                 showAlert("Could not save site.", "Error", false);
             }
         });
-    });
-
-    siteScopeRadios.forEach((radio) => {
-        radio.addEventListener('change', () => {
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                const tab = tabs[0];
-                if (tab?.url) {
-                    updateSitePreview(tab.url);
-                }
-            });
         });
-    });
+    }
+
+    if (refreshOnAddToggle) {
+        refreshOnAddToggle.addEventListener('change', () => {
+            saveToStorage({ [refreshPrefKey]: refreshOnAddToggle.checked })
+                .catch((e) => console.error("Failed to save refresh setting", e));
+        });
+    }
+
+    if (siteScopeSelect) {
+        siteScopeSelect.addEventListener('change', () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const tab = tabs[0];
+            if (tab?.url) {
+                updateSitePreview(tab.url);
+            }
+        });
+        });
+    }
 
     // Options Button
     document.getElementById("options_btn").addEventListener("click", () => {
@@ -142,37 +169,80 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getSelectedScope() {
-        const selected = Array.from(siteScopeRadios).find((r) => r.checked);
-        return selected ? selected.value : 'root';
+        return siteScopeSelect?.value || 'root';
     }
 
     function buildPatternForTab(urlString, scope) {
-        const url = new URL(urlString);
-        const host = url.hostname;
-        if (!host) throw new Error("Invalid URL");
-        if (scope === 'full') {
-            return url.href.split('#')[0];
+        const patterns = buildPatternsForTab(urlString);
+        const pattern = patterns[scope];
+        if (!pattern) {
+            throw new Error("Invalid URL");
         }
-        if (scope === 'subdomain') {
-            return host;
-        }
-        const parts = host.split('.').filter(Boolean);
-        if (parts.length <= 2) return host;
-        return parts.slice(-2).join('.');
+        return pattern;
     }
 
     function updateSitePreview(urlString) {
         try {
-            const scope = getSelectedScope();
-            const pattern = buildPatternForTab(urlString, scope);
-            sitePreview.textContent = `Will add: ${pattern}`;
+            updateScopeOptions(urlString);
         } catch (_e) {
-            sitePreview.textContent = '';
         }
+    }
+
+    function buildPatternsForTab(urlString) {
+        const url = new URL(urlString);
+        const host = url.hostname;
+        if (!host) throw new Error("Invalid URL");
+        const full = url.href.split('#')[0];
+        const subdomain = `*${host}*`;
+        const parts = host.split('.').filter(Boolean);
+        const rootHost = parts.length <= 2 ? host : parts.slice(-2).join('.');
+        const root = `*${rootHost}*`;
+        return { root, subdomain, full };
+    }
+
+    function updateScopeOptions(urlString) {
+        if (!siteScopeSelect) return;
+        const selectedValue = siteScopeSelect.value || 'root';
+        const uniquePatterns = new Set();
+        const optionsToRender = [];
+        const patterns = buildPatternsForTab(urlString);
+
+        scopeOptions.forEach((scopeOption) => {
+            const pattern = patterns[scopeOption.value] || '';
+            if (!pattern || uniquePatterns.has(pattern)) {
+                return;
+            }
+            uniquePatterns.add(pattern);
+            optionsToRender.push({
+                value: scopeOption.value,
+                text: `${scopeOption.label} (${pattern})`
+            });
+        });
+
+        siteScopeSelect.innerHTML = '';
+        optionsToRender.forEach((optionData) => {
+            const option = document.createElement('option');
+            option.value = optionData.value;
+            option.textContent = optionData.text;
+            siteScopeSelect.appendChild(option);
+        });
+
+        const hasSelected = optionsToRender.some((option) => option.value === selectedValue);
+        if (hasSelected) {
+            siteScopeSelect.value = selectedValue;
+            return;
+        }
+        const rootOption = optionsToRender.find((option) => option.value === 'root');
+        siteScopeSelect.value = rootOption ? rootOption.value : (optionsToRender[0]?.value || 'root');
     }
 
     function mergeUnique(existing, additions) {
         return Array.from(new Set([...(existing || []), ...(additions || [])]));
+    }
+
+    function setAddSiteVisibility(isVisible) {
+        if (!addSiteSection) return;
+        addSiteSection.style.display = isVisible ? '' : 'none';
     }
 
 });

@@ -20,26 +20,22 @@
     </header>
 
     <main>
-        <div class="add-site-section">
+        <div id="add_site_section" class="add-site-section">
             <div class="add-site-header">
                 <h2>Add this site to allowlist</h2>
-                <div id="site_preview" class="muted"></div>
             </div>
-            <div class="radio-group">
-                <label>
-                    <input type="radio" name="site_scope" value="root" checked>
-                    Root domain (example.com)
-                </label>
-                <label>
-                    <input type="radio" name="site_scope" value="subdomain">
-                    This subdomain (sub.example.com)
-                </label>
-                <label>
-                    <input type="radio" name="site_scope" value="full">
-                    Full URL (exact match)
-                </label>
+            <div class="scope-select">
+                <select id="site_scope_select" name="site_scope">
+                    <option value="root" selected>Root domain</option>
+                    <option value="subdomain">This subdomain</option>
+                    <option value="full">Full URL (exact match)</option>
+                </select>
             </div>
-            <button id="add_current_site" class="btn-primary">Add current site</button>
+            <label class="refresh-toggle">
+                <input type="checkbox" id="refresh_on_add">
+                Refresh tab after adding
+            </label>
+            <button id="add_current_site" class="btn-primary">Add</button>
         </div>
 
         <div class="results-section" id="results_wrapper">

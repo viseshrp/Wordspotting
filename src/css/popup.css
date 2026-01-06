@@ -109,19 +109,47 @@ main {
   color: var(--secondary-text);
 }
 
-.radio-group {
+.scope-select {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: 10px;
-  font-size: 13px;
 }
 
-.radio-group label {
+.refresh-toggle {
   display: flex;
-  gap: 6px;
   align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--secondary-text);
+  margin-bottom: 10px;
+}
+
+.refresh-toggle input {
+  accent-color: var(--primary-color);
+}
+
+.scope-select label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--secondary-text);
+}
+
+.scope-select select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-color);
   color: var(--text-color);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.scope-select select:focus {
+  outline: 2px solid rgba(0, 150, 136, 0.25);
+  outline-offset: 1px;
 }
 
 .btn-primary {
@@ -174,6 +202,11 @@ main {
   font-style: italic;
   font-size: 13px;
   padding: 10px 0;
+}
+
+.muted {
+  color: var(--secondary-text);
+  font-size: 12px;
 }
 
 .ws-toast {
