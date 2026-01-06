@@ -83,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const merged = mergeUnique(existing, [pattern]);
                 await saveToStorage({ wordspotting_website_list: merged });
                 showAlert(`Added "${pattern}" to allowlist`, "Saved", true);
+                setAddSiteVisibility(false);
                 if (refreshOnAddToggle?.checked) {
                     chrome.tabs.reload(tab.id);
                 }
