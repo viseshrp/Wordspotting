@@ -157,11 +157,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
         } else if (changes.wordspotting_extension_on?.newValue === false) {
             setInactiveBadge(tab.id);
         }
-        try {
-            chrome.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
-        } catch (_e) {
-            // ignore send errors; content may not be injected
-        }
+        chrome.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' }, () => {
+            // Ignore missing receivers (content may not be injected).
+            void chrome.runtime.lastError;
+        });
     });
 });
 
