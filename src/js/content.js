@@ -242,7 +242,9 @@ function cleanupWorker() {
         scanWorker.terminate();
         scanWorker = null;
     }
-    workerRequests.forEach((pending) => pending.reject(new Error('Worker terminated')));
+    workerRequests.forEach((pending) => {
+        pending.reject(new Error('Worker terminated'));
+    });
     workerRequests.clear();
 }
 

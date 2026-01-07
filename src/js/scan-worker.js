@@ -1,3 +1,4 @@
+/* global normalizeKeywords, buildCombinedRegex */
 importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
 
 const DEFAULT_CHUNK_SIZE = 150000;
@@ -5,7 +6,7 @@ const DEFAULT_OVERLAP = 200;
 
 function scanTextInChunks(keywordList, text, chunkSize, overlap) {
     const validKeywords = normalizeKeywords(keywordList);
-    if (validKeywords.length == 0) return [];
+    if (validKeywords.length === 0) return [];
 
     const combined = buildCombinedRegex(validKeywords);
     if (!combined) return [];
@@ -41,7 +42,7 @@ function scanTextInChunks(keywordList, text, chunkSize, overlap) {
             match = regex.exec(chunk);
         }
 
-        if (end == text.length) break;
+        if (end === text.length) break;
         index = Math.max(0, end - overlapSize);
     }
 
