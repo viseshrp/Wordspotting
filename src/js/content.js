@@ -3,10 +3,27 @@ const isCommonJs = typeof module !== 'undefined' && module.exports;
 const scannerModule = isCommonJs ? require('./core/scanner') : globalThis;
 const scanTextForKeywords = scannerModule.scanTextForKeywords;
 const hashString = scannerModule.hashString;
+const constants = isCommonJs ? require('./constants') : globalThis.WORDSPOTTING_CONSTANTS;
+const {
+    BODY_TEXT_CACHE_WINDOW_MS,
+    MUTATION_SCAN_DEBOUNCE_MS,
+    REQUEST_IDLE_TIMEOUT_MS,
+    SCAN_CHUNK_OVERLAP_DEFAULT,
+    SCAN_CHUNK_OVERLAP_LARGE,
+    SCAN_CHUNK_OVERLAP_MAX,
+    SCAN_CHUNK_OVERLAP_MEDIUM,
+    SCAN_CHUNK_OVERLAP_XL,
+    SCAN_CHUNK_SIZE_DEFAULT,
+    SCAN_CHUNK_SIZE_LARGE,
+    SCAN_CHUNK_SIZE_MEDIUM,
+    SCAN_CHUNK_SIZE_XL,
+    SCAN_CHUNK_THRESHOLD_LARGE,
+    SCAN_CHUNK_THRESHOLD_MEDIUM,
+    SCAN_CHUNK_THRESHOLD_XL,
+    SCAN_FALLBACK_DELAY_MS
+} = constants;
 
 let scanWorker = null;
-const DEFAULT_CHUNK_SIZE = 150000;
-const DEFAULT_CHUNK_OVERLAP = 200;
 let scanRequestId = 0;
 const workerRequests = new Map();
 let workerFailed = false;
@@ -128,9 +145,9 @@ function scheduleScan() {
     const run = () => performScan(currentScanController.signal);
 
     if ('requestIdleCallback' in window) {
-        idleHandle = requestIdleCallback(run, { timeout: 2000 });
+        idleHandle = requestIdleCallback(run, { timeout: REQUEST_IDLE_TIMEOUT_MS });
     } else {
-        idleHandle = setTimeout(run, 300);
+        idleHandle = setTimeout(run, SCAN_FALLBACK_DELAY_MS);
     }
 }
 
@@ -195,7 +212,7 @@ function debounce(func, wait) {
 // Throttled body text snapshot to avoid hammering innerText on chatty pages.
 async function getBodyTextSnapshot(signal) {
     const now = Date.now();
-    const cacheWindow = 500; // ms
+    const cacheWindow = BODY_TEXT_CACHE_WINDOW_MS; // ms
     if (now - lastSnapshot.timestamp < cacheWindow) {
         return lastSnapshot.text;
     }
@@ -269,24 +286,24 @@ function scanWithWorker(keywordList, text) {
 
 function getChunkingConfig(text, keywordList) {
     const length = typeof text === 'string' ? text.length : 0;
-    let chunkSize = DEFAULT_CHUNK_SIZE;
-    let overlap = DEFAULT_CHUNK_OVERLAP;
+    let chunkSize = SCAN_CHUNK_SIZE_DEFAULT;
+    let overlap = SCAN_CHUNK_OVERLAP_DEFAULT;
 
-    if (length > 800000) {
-        chunkSize = 300000;
-        overlap = 400;
-    } else if (length > 300000) {
-        chunkSize = 200000;
-        overlap = 300;
-    } else if (length > 120000) {
-        chunkSize = 160000;
-        overlap = 240;
+    if (length > SCAN_CHUNK_THRESHOLD_XL) {
+        chunkSize = SCAN_CHUNK_SIZE_XL;
+        overlap = SCAN_CHUNK_OVERLAP_XL;
+    } else if (length > SCAN_CHUNK_THRESHOLD_LARGE) {
+        chunkSize = SCAN_CHUNK_SIZE_LARGE;
+        overlap = SCAN_CHUNK_OVERLAP_LARGE;
+    } else if (length > SCAN_CHUNK_THRESHOLD_MEDIUM) {
+        chunkSize = SCAN_CHUNK_SIZE_MEDIUM;
+        overlap = SCAN_CHUNK_OVERLAP_MEDIUM;
     }
 
     const longestKeyword = Array.isArray(keywordList)
         ? keywordList.reduce((max, k) => (typeof k === 'string' && k.length > max ? k.length : max), 0)
         : 0;
-    overlap = Math.max(overlap, Math.min(longestKeyword, 800));
+    overlap = Math.max(overlap, Math.min(longestKeyword, SCAN_CHUNK_OVERLAP_MAX));
 
     return { chunkSize, overlap };
 }
@@ -328,7 +345,7 @@ function setupObserver() {
     // Debounce the scan to avoid performance hit on frequent updates
     observerDebounce = debounce(() => {
         scheduleScan();
-    }, 500); // Scan at most twice per second on changes
+    }, MUTATION_SCAN_DEBOUNCE_MS); // Scan at most twice per second on changes
 
     observer = new MutationObserver(observerDebounce);
 

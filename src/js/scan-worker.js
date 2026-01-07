@@ -1,11 +1,14 @@
+importScripts(chrome.runtime.getURL('src/js/constants.js'));
 importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
 
-const DEFAULT_CHUNK_SIZE = 150000;
-const DEFAULT_OVERLAP = 200;
+const {
+    SCAN_CHUNK_OVERLAP_DEFAULT,
+    SCAN_CHUNK_SIZE_DEFAULT
+} = globalThis.WORDSPOTTING_CONSTANTS;
 
 function scanTextInChunks(keywordList, text, chunkSize, overlap) {
     const validKeywords = normalizeKeywords(keywordList);
-    if (validKeywords.length == 0) return [];
+    if (validKeywords.length === 0) return [];
 
     const combined = buildCombinedRegex(validKeywords);
     if (!combined) return [];
@@ -41,7 +44,7 @@ function scanTextInChunks(keywordList, text, chunkSize, overlap) {
             match = regex.exec(chunk);
         }
 
-        if (end == text.length) break;
+        if (end === text.length) break;
         index = Math.max(0, end - overlapSize);
     }
 
@@ -55,8 +58,8 @@ self.addEventListener('message', (event) => {
 
     try {
         const text = typeof data.text === 'string' ? data.text : '';
-        const chunkSize = Number.isFinite(data.chunkSize) ? data.chunkSize : DEFAULT_CHUNK_SIZE;
-        const overlap = Number.isFinite(data.overlap) ? data.overlap : DEFAULT_OVERLAP;
+        const chunkSize = Number.isFinite(data.chunkSize) ? data.chunkSize : SCAN_CHUNK_SIZE_DEFAULT;
+        const overlap = Number.isFinite(data.overlap) ? data.overlap : SCAN_CHUNK_OVERLAP_DEFAULT;
         const words = scanTextInChunks(data.keywords, text, chunkSize, overlap);
         self.postMessage({ type: 'scan_result', id, words });
     } catch (e) {

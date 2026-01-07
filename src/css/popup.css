@@ -1,50 +1,67 @@
 :root {
-  --primary-color: #009688;
-  --primary-hover: #00796b;
-  --bg-color: #ffffff;
-  --text-color: #333333;
-  --secondary-text: #666666;
-  --border-color: #eeeeee;
-  --chip-bg: #e0f2f1;
-  --chip-text: #00695c;
-  --danger-color: #f44336;
+  --primary-color: #2962ff;
+  --primary-hover: #1e54d4;
+  --primary-ghost: rgba(41, 98, 255, 0.12);
+  --accent-color: #ff6f3d;
+  --accent-soft: #ffe1d6;
+  --bg-color: #f6f8fc;
+  --bg-gradient: radial-gradient(120% 120% at 0% 0%, #eef2ff 0%, #f6f8fc 45%, #ffffff 100%);
+  --surface-color: #ffffff;
+  --text-color: #1f2933;
+  --secondary-text: #5f6b7a;
+  --border-color: #e3e7ef;
+  --chip-bg: #e8f0ff;
+  --chip-text: #1d4ed8;
+  --danger-color: #d32f2f;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.08);
+  --shadow-md: 0 8px 20px rgba(16, 24, 40, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-color: #202124;
-    --text-color: #e8eaed;
-    --secondary-text: #9aa0a6;
-    --border-color: #3c4043;
-    --chip-bg: #2d3135;
-    --chip-text: #80cbc4;
+    --bg-color: #0f1218;
+    --bg-gradient: radial-gradient(120% 120% at 0% 0%, #182038 0%, #0f1218 45%, #0b0e14 100%);
+    --surface-color: #151a24;
+    --text-color: #e6eaf2;
+    --secondary-text: #9aa4b2;
+    --border-color: #2a3343;
+    --chip-bg: #22304a;
+    --chip-text: #8ab4ff;
+    --primary-ghost: rgba(122, 162, 255, 0.18);
   }
 }
 
 :root[data-theme="light"] {
-  --bg-color: #ffffff;
-  --text-color: #333333;
-  --secondary-text: #666666;
-  --border-color: #eeeeee;
-  --chip-bg: #e0f2f1;
-  --chip-text: #00695c;
+  --bg-color: #f6f8fc;
+  --bg-gradient: radial-gradient(120% 120% at 0% 0%, #eef2ff 0%, #f6f8fc 45%, #ffffff 100%);
+  --surface-color: #ffffff;
+  --text-color: #1f2933;
+  --secondary-text: #5f6b7a;
+  --border-color: #e3e7ef;
+  --chip-bg: #e8f0ff;
+  --chip-text: #1d4ed8;
+  --primary-ghost: rgba(41, 98, 255, 0.12);
 }
 
 :root[data-theme="dark"] {
-  --bg-color: #202124;
-  --text-color: #e8eaed;
-  --secondary-text: #9aa0a6;
-  --border-color: #3c4043;
-  --chip-bg: #2d3135;
-  --chip-text: #80cbc4;
+  --bg-color: #0f1218;
+  --bg-gradient: radial-gradient(120% 120% at 0% 0%, #182038 0%, #0f1218 45%, #0b0e14 100%);
+  --surface-color: #151a24;
+  --text-color: #e6eaf2;
+  --secondary-text: #9aa4b2;
+  --border-color: #2a3343;
+  --chip-bg: #22304a;
+  --chip-text: #8ab4ff;
+  --primary-ghost: rgba(122, 162, 255, 0.18);
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
   margin: 0;
   padding: 0;
   width: 300px;
   background-color: var(--bg-color);
+  background-image: var(--bg-gradient);
   color: var(--text-color);
 }
 
@@ -53,7 +70,9 @@ header {
   justify-content: space-between;
   align-items: center;
   padding: 16px;
+  background-color: var(--surface-color);
   border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
 h1 {
@@ -64,20 +83,21 @@ h1 {
 }
 
 .icon-btn {
-  background: none;
-  border: none;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   border-radius: 50%;
   color: var(--secondary-text);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  box-shadow: var(--shadow-sm);
 }
 
 .icon-btn:hover {
-  background-color: rgba(0,0,0,0.05);
+  background-color: var(--primary-ghost);
   color: var(--primary-color);
 }
 
@@ -87,10 +107,11 @@ main {
 
 .add-site-section {
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 12px;
   margin-bottom: 16px;
-  background: rgba(0,0,0,0.02);
+  background: var(--surface-color);
+  box-shadow: var(--shadow-sm);
 }
 
 .add-site-header {
@@ -103,9 +124,9 @@ main {
 
 .add-site-section h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.7px;
   color: var(--secondary-text);
 }
 
@@ -122,7 +143,7 @@ main {
   gap: 8px;
   font-size: 12px;
   color: var(--secondary-text);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .refresh-toggle input {
@@ -138,42 +159,59 @@ main {
 
 .scope-select select {
   width: 100%;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 10px 36px 10px 12px;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
-  background-color: var(--bg-color);
+  background-color: var(--surface-color);
   color: var(--text-color);
   font-size: 13px;
   font-weight: 500;
+  box-shadow: var(--shadow-sm);
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--secondary-text) 50%),
+    linear-gradient(135deg, var(--secondary-text) 50%, transparent 50%);
+  background-position: calc(100% - 18px) calc(1em + 2px), calc(100% - 13px) calc(1em + 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
 }
 
 .scope-select select:focus {
-  outline: 2px solid rgba(0, 150, 136, 0.25);
+  outline: 2px solid var(--primary-ghost);
   outline-offset: 1px;
 }
 
 .btn-primary {
-  display: inline-block;
-  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 14px;
   background: var(--primary-color);
   color: #fff;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
   font-size: 13px;
+  letter-spacing: 0.3px;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.2s;
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.18);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
 }
 
 .results-section h2 {
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
   color: var(--secondary-text);
   margin: 0 0 10px 0;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.7px;
 }
 
 #keyword_container {
@@ -188,11 +226,11 @@ main {
   align-items: center;
   padding: 4px 12px;
   height: 24px;
-  font-size: 13px;
+  font-size: 12px;
   border-radius: 16px;
   background-color: var(--chip-bg);
   color: var(--chip-text);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .empty-state {
@@ -214,11 +252,11 @@ main {
   bottom: 16px;
   right: 16px;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   color: white;
   font-weight: 600;
   z-index: 10000;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: var(--shadow-md);
   opacity: 0.95;
 }
 

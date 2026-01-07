@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Connect to Content Script
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
         var currTab = tabs[0];
-        if (currTab) {
+        if (currTab && currTab.url) {
             checkActivation(currTab).then((activation) => {
                 if (!activation.allowed) {
                     setAddSiteVisibility(true);
@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                renderEmpty("Scanning...");
                 chrome.tabs.sendMessage(
                     currTab.id,
                     {from: 'popup', subject: 'word_list_request'},
@@ -65,7 +66,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
             });
             updateSitePreview(currTab.url);
+            return;
         }
+        renderEmpty("Not active on this page.");
     });
 
     if (addSiteBtn) {
@@ -102,6 +105,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 .catch((e) => console.error("Failed to save refresh setting", e));
         });
     }
+
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area !== 'sync' || !changes.wordspotting_theme) return;
+        const theme = changes.wordspotting_theme.newValue || 'system';
+        applyTheme(theme);
+    });
 
     if (siteScopeSelect) {
         siteScopeSelect.addEventListener('change', () => {
