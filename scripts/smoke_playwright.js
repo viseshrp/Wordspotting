@@ -54,6 +54,13 @@ async function main() {
 
   // Trigger badge and notification via a real tab + injected content script
   const { badgeText, notificationCount } = await serviceWorker.evaluate(async () => {
+    // Ensure the site is allowlisted and extension is on for the test tab.
+    await saveToStorage({
+      wordspotting_website_list: ['*example.com*'],
+      wordspotting_extension_on: true
+    });
+    await refreshAllowedSitePatterns();
+
     const tab = await chrome.tabs.create({ url: 'https://example.com', active: true });
 
     await chrome.scripting.executeScript({
