@@ -1,3 +1,4 @@
+/* global normalizeKeywords, buildCombinedRegex */
 importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
 
 const DEFAULT_CHUNK_SIZE = 150000;
