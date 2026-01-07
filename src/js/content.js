@@ -5,6 +5,8 @@ const scanTextForKeywords = scannerModule.scanTextForKeywords;
 const hashString = scannerModule.hashString;
 
 let scanWorker = null;
+const DEFAULT_CHUNK_SIZE = 150000;
+const DEFAULT_CHUNK_OVERLAP = 200;
 let scanRequestId = 0;
 const workerRequests = new Map();
 let workerFailed = false;
@@ -251,15 +253,42 @@ function scanWithWorker(keywordList, text) {
             resolve(scanTextForKeywords(keywordList, text));
             return;
         }
+        const { chunkSize, overlap } = getChunkingConfig(text, keywordList);
         const id = ++scanRequestId;
         workerRequests.set(id, { resolve, reject });
         worker.postMessage({
             type: 'scan',
             id,
             keywords: keywordList,
-            text
+            text,
+            chunkSize,
+            overlap
         });
     });
+}
+
+function getChunkingConfig(text, keywordList) {
+    const length = typeof text === 'string' ? text.length : 0;
+    let chunkSize = DEFAULT_CHUNK_SIZE;
+    let overlap = DEFAULT_CHUNK_OVERLAP;
+
+    if (length > 800000) {
+        chunkSize = 300000;
+        overlap = 400;
+    } else if (length > 300000) {
+        chunkSize = 200000;
+        overlap = 300;
+    } else if (length > 120000) {
+        chunkSize = 160000;
+        overlap = 240;
+    }
+
+    const longestKeyword = Array.isArray(keywordList)
+        ? keywordList.reduce((max, k) => (typeof k === 'string' && k.length > max ? k.length : max), 0)
+        : 0;
+    overlap = Math.max(overlap, Math.min(longestKeyword, 800));
+
+    return { chunkSize, overlap };
 }
 
 function sendKeywordCount(count) {
