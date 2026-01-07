@@ -67,9 +67,10 @@ async function main() {
 
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: () => {
-        chrome.runtime.sendMessage({ wordfound: true, keyword_count: 3 });
-      }
+      func: () => new Promise((resolve) => {
+        chrome.runtime.sendMessage({ wordfound: true, keyword_count: 3 }, () => resolve(true));
+        setTimeout(resolve, 300);
+      })
     });
 
     // Allow the message to propagate and badge to update.
