@@ -1,7 +1,6 @@
 // background.js - Service Worker
 
 try {
-    importScripts(chrome.runtime.getURL('src/js/constants.js'));
     importScripts(chrome.runtime.getURL('src/js/utils.js'));
     importScripts(chrome.runtime.getURL('src/js/settings.js'));
     importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
@@ -9,13 +8,7 @@ try {
     console.error('Failed to load background dependencies', e);
 }
 
-const CONTENT_SCRIPT_FILES = [
-    'src/js/constants.js',
-    'src/js/utils.js',
-    'src/js/settings.js',
-    'src/js/core/scanner.js',
-    'src/js/content.js'
-];
+const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/core/scanner.js', 'src/js/content.js'];
 const CONTENT_STYLE_FILES = ['src/css/index.css'];
 let compiledAllowedSites = [];
 const lastFoundByTab = new Map(); // tabId -> boolean

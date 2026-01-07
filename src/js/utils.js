@@ -6,14 +6,6 @@
  * Storage area - use sync for cross-device persistence.
  */
 const storageArea = chrome.storage.sync;
-const constants = (typeof module !== 'undefined' && module.exports)
-    ? require('./constants')
-    : globalThis.WORDSPOTTING_CONSTANTS;
-const {
-    TOAST_FADE_CSS,
-    TOAST_FADE_MS,
-    TOAST_VISIBLE_MS
-} = constants;
 
 /**
  * Save object to chrome.storage.sync
@@ -57,9 +49,9 @@ function showAlert(message, title, isSuccess) {
         document.body.appendChild(toast);
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transition = `opacity ${TOAST_FADE_CSS}`;
-            setTimeout(() => toast.remove(), TOAST_FADE_MS);
-        }, TOAST_VISIBLE_MS);
+            toast.style.transition = 'opacity 0.5s';
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
     } /* istanbul ignore else */ else {
         /* istanbul ignore next */
         logit(`Alert: ${title} - ${message}`);

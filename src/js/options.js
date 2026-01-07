@@ -1,8 +1,3 @@
-const constants = (typeof module !== 'undefined' && module.exports)
-    ? require('./constants')
-    : globalThis.WORDSPOTTING_CONSTANTS;
-const { INPUT_SHAKE_RESET_MS } = constants;
-
 if (typeof document !== 'undefined') {
     document.addEventListener('DOMContentLoaded', () => {
         updateViews();
@@ -240,7 +235,7 @@ function shakeInput(input) {
     input.style.borderColor = "var(--danger-color)";
     setTimeout(() => {
         input.style.borderColor = "var(--border-color)";
-    }, INPUT_SHAKE_RESET_MS);
+    }, 500);
 }
 
 function updateThemeDisplay() {

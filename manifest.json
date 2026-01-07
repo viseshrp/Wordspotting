@@ -41,7 +41,6 @@
       "resources": [
         "src/assets/*.png",
         "src/css/*.css",
-        "src/js/constants.js",
         "src/js/scan-worker.js",
         "src/js/core/scanner.js"
       ],
