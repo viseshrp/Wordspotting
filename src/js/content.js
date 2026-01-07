@@ -3,6 +3,11 @@ const isCommonJs = typeof module !== 'undefined' && module.exports;
 const scannerModule = isCommonJs ? require('./core/scanner') : globalThis;
 const scanTextForKeywords = scannerModule.scanTextForKeywords;
 const hashString = scannerModule.hashString;
+
+let scanWorker = null;
+let scanRequestId = 0;
+const workerRequests = new Map();
+let workerFailed = false;
 // Prevent duplicate injection in the same frame (skip for CommonJS/tests so exports are available)
 if (!isCommonJs && globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
     return;
@@ -158,7 +163,13 @@ async function performScan(signal) {
 
         lastScanSignature = signature;
 
-        const occurring_word_list = getWordList(keyword_list, bodyText);
+        let occurring_word_list = [];
+        try {
+            occurring_word_list = await scanWithWorker(keyword_list, bodyText);
+        } catch (e) {
+            console.warn("Worker scan failed, falling back", e);
+            occurring_word_list = getWordList(keyword_list, bodyText);
+        }
         sendKeywordCount(occurring_word_list.length);
     } catch (e) {
         console.error("Error in talkToBackgroundScript:", e);
@@ -192,6 +203,63 @@ async function getBodyTextSnapshot(signal) {
     const text = document.body ? document.body.innerText || '' : '';
     lastSnapshot = { text, timestamp: now };
     return text;
+}
+
+function getScanWorker() {
+    if (workerFailed) return null;
+    if (scanWorker) return scanWorker;
+    try {
+        scanWorker = new Worker(chrome.runtime.getURL('src/js/scan-worker.js'));
+        scanWorker.addEventListener('message', handleWorkerMessage);
+        scanWorker.addEventListener('error', () => {
+            workerFailed = true;
+            cleanupWorker();
+        });
+        return scanWorker;
+    } catch (_e) {
+        workerFailed = true;
+        return null;
+    }
+}
+
+function handleWorkerMessage(event) {
+    const data = event.data || {};
+    if (typeof data.id !== 'number') return;
+    const pending = workerRequests.get(data.id);
+    if (!pending) return;
+    workerRequests.delete(data.id);
+    if (data.type === 'scan_result') {
+        pending.resolve(Array.isArray(data.words) ? data.words : []);
+    } else if (data.type === 'scan_error') {
+        pending.reject(new Error(data.error || 'Worker scan failed'));
+    }
+}
+
+function cleanupWorker() {
+    if (scanWorker) {
+        scanWorker.terminate();
+        scanWorker = null;
+    }
+    workerRequests.forEach((pending) => pending.reject(new Error('Worker terminated')));
+    workerRequests.clear();
+}
+
+function scanWithWorker(keywordList, text) {
+    return new Promise((resolve, reject) => {
+        const worker = getScanWorker();
+        if (!worker) {
+            resolve(scanTextForKeywords(keywordList, text));
+            return;
+        }
+        const id = ++scanRequestId;
+        workerRequests.set(id, { resolve, reject });
+        worker.postMessage({
+            type: 'scan',
+            id,
+            keywords: keywordList,
+            text
+        });
+    });
 }
 
 function sendKeywordCount(count) {
@@ -254,6 +322,7 @@ function setupObserver() {
     window.addEventListener('pagehide', () => {
         if (observer) observer.disconnect();
         cancelScheduledScan();
+        cleanupWorker();
         if (observerDebounce?.cancel) {
             observerDebounce.cancel();
         }

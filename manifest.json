@@ -38,8 +38,15 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/assets/*.png", "src/css/*.css"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "src/assets/*.png",
+        "src/css/*.css",
+        "src/js/scan-worker.js",
+        "src/js/core/scanner.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
