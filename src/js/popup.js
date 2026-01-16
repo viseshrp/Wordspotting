@@ -186,7 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSitePreview(urlString) {
         try {
             updateScopeOptions(urlString);
-        } catch (_e) {
+        } catch (e) {
+            console.warn("Failed to update scope options", e);
         }
     }
 

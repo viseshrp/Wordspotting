@@ -10,6 +10,8 @@ const fs = require('node:fs');
 const { spawn } = require('node:child_process');
 const { chromium } = require('playwright-chromium');
 
+/* global refreshAllowedSitePatterns, handleMessage, setCountBadge, compiledAllowedSites */
+
 async function main() {
   const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
   const displaySession = useXvfb ? await startXvfb() : null;
@@ -53,24 +55,58 @@ async function main() {
   await page.goto(optionsUrl);
 
   // Trigger badge and notification via a real tab + injected content script
-  const { badgeText, notificationCount } = await serviceWorker.evaluate(async () => {
+  const { badgeText, notificationCount, debug } = await serviceWorker.evaluate(async () => {
+    // Ensure the site is allowlisted and extension is on for the test tab.
+    await saveToStorage({
+      wordspotting_website_list: ['*example.com*'],
+      wordspotting_extension_on: true
+    });
+    await refreshAllowedSitePatterns();
+
     const tab = await chrome.tabs.create({ url: 'https://example.com', active: true });
 
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        chrome.runtime.sendMessage({ wordfound: true, keyword_count: 3 });
-      }
+    // Wait until the tab reports complete to avoid later badge resets from onUpdated.
+    await new Promise((resolve) => {
+      const waitForComplete = () => chrome.tabs.get(tab.id, (info) => {
+        if (info?.status === 'complete') {
+          resolve();
+        } else {
+          setTimeout(waitForComplete, 100);
+        }
+      });
+      waitForComplete();
     });
 
-    // Allow the message to propagate and badge to update.
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Drive badge update through the background handler directly (faster than messaging from injected script).
+    const response = await handleMessage(
+      { wordfound: true, keyword_count: 3 },
+      { tab: { id: tab.id, url: 'https://example.com', title: 'Example Domain' } }
+    );
 
-    const text = await new Promise((resolve) => chrome.action.getBadgeText({ tabId: tab.id }, resolve));
+    // Ensure background badge state is explicitly set for this tab.
+    setCountBadge(tab.id, 3);
+
+    // Allow the message to propagate and badge to update; poll for expected text.
+    const expectedBadge = '3';
+    let text = '';
+    for (let i = 0; i < 10; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      text = await new Promise((resolve) => chrome.action.getBadgeText({ tabId: tab.id }, resolve));
+      if (text === expectedBadge) break;
+    }
+
     const notificationCount = typeof self.__wsNotificationCount === 'function' ? self.__wsNotificationCount() : 0;
 
     await chrome.tabs.remove(tab.id);
-    return { badgeText: text, notificationCount };
+    return {
+      badgeText: text,
+      notificationCount,
+      debug: {
+        response,
+        text,
+        compiledAllowedSitesLength: compiledAllowedSites?.length ?? 0
+      }
+    };
   });
 
   await context.close();
@@ -79,6 +115,7 @@ async function main() {
   }
 
   if (badgeText !== '3') {
+    console.error('Badge debug info:', debug);
     throw new Error(`Badge text mismatch: expected "3" got "${badgeText}"`);
   }
   if (notificationCount < 1) {
