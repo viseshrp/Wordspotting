@@ -1,8 +1,12 @@
-(() => {
-const isCommonJs = typeof module !== 'undefined' && module.exports;
-const scannerModule = isCommonJs ? require('./core/scanner') : globalThis;
-const scanTextForKeywords = scannerModule.scanTextForKeywords;
-const hashString = scannerModule.hashString;
+import "../css/index.css";
+import {
+    getFromStorage,
+    logit,
+    isValidObj,
+    isUrlAllowedCompiled,
+    compileSitePatterns
+} from "./utils.js";
+import { scanTextForKeywords, hashString } from "./core/scanner.js";
 
 let scanWorker = null;
 const DEFAULT_CHUNK_SIZE = 150000;
@@ -10,11 +14,14 @@ const DEFAULT_CHUNK_OVERLAP = 200;
 let scanRequestId = 0;
 const workerRequests = new Map();
 let workerFailed = false;
-// Prevent duplicate injection in the same frame (skip for CommonJS/tests so exports are available)
-if (!isCommonJs && globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
-    return;
+
+// Prevent duplicate injection in the same frame
+if (globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
+    // In a bundled world, this script should only be executed once.
+    // This is a safeguard.
+} else {
+    globalThis.__WORDSPOTTING_CONTENT_LOADED__ = true;
 }
-globalThis.__WORDSPOTTING_CONTENT_LOADED__ = true;
 
 // content.js - Content Script
 
@@ -23,7 +30,7 @@ let idleHandle = null;
 let currentScanController = null;
 let observer = null;
 let observerDebounce = null;
-let lastSnapshot = { text: '', timestamp: 0 };
+let lastSnapshot = { text: "", timestamp: 0 };
 
 // Main execution (ignored during tests)
 /* istanbul ignore next */
@@ -46,7 +53,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
             const items = await getFromStorage("wordspotting_extension_on");
             const extensionOn = items.wordspotting_extension_on;
 
-            if (msg.from === 'popup' && msg.subject === 'word_list_request') {
+            if (msg.from === "popup" && msg.subject === "word_list_request") {
                 if (!extensionOn) {
                     sendResponse({ word_list: [], disabled: true });
                     return;
@@ -64,7 +71,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
                 return;
             }
 
-            if (msg.from === 'background' && msg.subject === 'settings_updated') {
+            if (msg.from === "background" && msg.subject === "settings_updated") {
                 lastScanSignature = null; // force a fresh scan on settings change
                 scheduleScan();
                 sendResponse({ ack: true });
@@ -84,7 +91,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
  * Wrapper around core scanner to keep existing interface.
  */
 function getWordList(keyword_list, bodyText) {
-    const textToScan = typeof bodyText === 'string' ? bodyText : (document.body ? document.body.innerText : "");
+    const textToScan =
+        typeof bodyText === "string" ? bodyText : document.body ? document.body.innerText : "";
     return scanTextForKeywords(keyword_list, textToScan);
 }
 
@@ -109,7 +117,7 @@ async function proceedWithSiteListCheck() {
 }
 
 function cancelScheduledScan() {
-    if (idleHandle && 'cancelIdleCallback' in window) {
+    if (idleHandle && "cancelIdleCallback" in window) {
         window.cancelIdleCallback(idleHandle);
     } else if (idleHandle) {
         clearTimeout(idleHandle);
@@ -127,7 +135,7 @@ function scheduleScan() {
     currentScanController = new AbortController();
     const run = () => performScan(currentScanController.signal);
 
-    if ('requestIdleCallback' in window) {
+    if ("requestIdleCallback" in window) {
         idleHandle = requestIdleCallback(run, { timeout: 2000 });
     } else {
         idleHandle = setTimeout(run, 300);
@@ -135,10 +143,10 @@ function scheduleScan() {
 }
 
 function deferUntilPageIdle() {
-    if (document.readyState === 'complete') {
+    if (document.readyState === "complete") {
         scheduleScan();
     } else {
-        window.addEventListener('load', () => scheduleScan(), { once: true });
+        window.addEventListener("load", () => scheduleScan(), { once: true });
     }
 }
 
@@ -200,9 +208,9 @@ async function getBodyTextSnapshot(signal) {
         return lastSnapshot.text;
     }
 
-    if (signal?.aborted) return '';
+    if (signal?.aborted) return "";
 
-    const text = document.body ? document.body.innerText || '' : '';
+    const text = document.body ? document.body.innerText || "" : "";
     lastSnapshot = { text, timestamp: now };
     return text;
 }
@@ -211,9 +219,9 @@ function getScanWorker() {
     if (workerFailed) return null;
     if (scanWorker) return scanWorker;
     try {
-        scanWorker = new Worker(chrome.runtime.getURL('src/js/scan-worker.js'));
-        scanWorker.addEventListener('message', handleWorkerMessage);
-        scanWorker.addEventListener('error', () => {
+        scanWorker = new Worker(chrome.runtime.getURL("js/scan-worker.js"));
+        scanWorker.addEventListener("message", handleWorkerMessage);
+        scanWorker.addEventListener("error", () => {
             workerFailed = true;
             cleanupWorker();
         });
@@ -226,14 +234,14 @@ function getScanWorker() {
 
 function handleWorkerMessage(event) {
     const data = event.data || {};
-    if (typeof data.id !== 'number') return;
+    if (typeof data.id !== "number") return;
     const pending = workerRequests.get(data.id);
     if (!pending) return;
     workerRequests.delete(data.id);
-    if (data.type === 'scan_result') {
+    if (data.type === "scan_result") {
         pending.resolve(Array.isArray(data.words) ? data.words : []);
-    } else if (data.type === 'scan_error') {
-        pending.reject(new Error(data.error || 'Worker scan failed'));
+    } else if (data.type === "scan_error") {
+        pending.reject(new Error(data.error || "Worker scan failed"));
     }
 }
 
@@ -243,7 +251,7 @@ function cleanupWorker() {
         scanWorker = null;
     }
     workerRequests.forEach((pending) => {
-        pending.reject(new Error('Worker terminated'));
+        pending.reject(new Error("Worker terminated"));
     });
     workerRequests.clear();
 }
@@ -259,7 +267,7 @@ function scanWithWorker(keywordList, text) {
         const id = ++scanRequestId;
         workerRequests.set(id, { resolve, reject });
         worker.postMessage({
-            type: 'scan',
+            type: "scan",
             id,
             keywords: keywordList,
             text,
@@ -270,7 +278,7 @@ function scanWithWorker(keywordList, text) {
 }
 
 function getChunkingConfig(text, keywordList) {
-    const length = typeof text === 'string' ? text.length : 0;
+    const length = typeof text === "string" ? text.length : 0;
     let chunkSize = DEFAULT_CHUNK_SIZE;
     let overlap = DEFAULT_CHUNK_OVERLAP;
 
@@ -286,7 +294,10 @@ function getChunkingConfig(text, keywordList) {
     }
 
     const longestKeyword = Array.isArray(keywordList)
-        ? keywordList.reduce((max, k) => (typeof k === 'string' && k.length > max ? k.length : max), 0)
+        ? keywordList.reduce(
+              (max, k) => (typeof k === "string" && k.length > max ? k.length : max),
+              0
+          )
         : 0;
     overlap = Math.max(overlap, Math.min(longestKeyword, 800));
 
@@ -295,69 +306,18 @@ function getChunkingConfig(text, keywordList) {
 
 function sendKeywordCount(count) {
     try {
-        chrome.runtime.sendMessage({
-            wordfound: count > 0,
-            keyword_count: count
-        }, () => {
-            // Best-effort; ignore any errors (navigation, worker sleep, etc.)
-            void chrome.runtime.lastError;
-        });
+        chrome.runtime.sendMessage(
+            {
+                wordfound: count > 0,
+                keyword_count: count
+            },
+            () => {
+                // Best-effort; ignore any errors (navigation, worker sleep, etc.)
+                void chrome.runtime.lastError;
+            }
+        );
     } catch (err) {
         // Context gone; ignore.
         void err;
     }
 }
-
-if (typeof module !== 'undefined') {
-    module.exports = {
-        getWordList,
-        debounce,
-        getBodyTextSnapshot,
-        hashString,
-        sendKeywordCount,
-        performScan,
-        scheduleScan,
-        deferUntilPageIdle,
-        proceedWithSiteListCheck
-    };
-}
-
-function setupObserver() {
-    // Observer config
-    const config = { childList: true, subtree: true, characterData: true };
-
-    // Create an observer instance linked to the callback function
-    // Debounce the scan to avoid performance hit on frequent updates
-    observerDebounce = debounce(() => {
-        scheduleScan();
-    }, 500); // Scan at most twice per second on changes
-
-    observer = new MutationObserver(observerDebounce);
-
-    // Start observing the target node for configured mutations
-    observer.observe(document.body, config);
-
-    // Pause scans when tab is hidden; resume when visible.
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            if (observer) observer.disconnect();
-            cancelScheduledScan();
-        } else {
-            if (document.body) {
-                observer.observe(document.body, config);
-            }
-            scheduleScan();
-        }
-    });
-
-    window.addEventListener('pagehide', () => {
-        if (observer) observer.disconnect();
-        cancelScheduledScan();
-        cleanupWorker();
-        if (observerDebounce?.cancel) {
-            observerDebounce.cancel();
-        }
-    });
-}
-
-})();

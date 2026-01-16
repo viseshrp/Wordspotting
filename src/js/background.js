@@ -1,21 +1,22 @@
 // background.js - Service Worker
+import {
+    logit,
+    isUrlAllowed,
+    isUrlAllowedCompiled,
+    compileSitePatterns,
+    getFromStorage
+} from "./utils.js";
+import { ensureSettingsInitialized } from "./settings.js";
+import "./core/scanner.js"; // Assuming scanner functions are globally available or attached to window
 
-try {
-    importScripts(chrome.runtime.getURL('src/js/utils.js'));
-    importScripts(chrome.runtime.getURL('src/js/settings.js'));
-    importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
-} catch (e) {
-    console.error('Failed to load background dependencies', e);
-}
-
-const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/core/scanner.js', 'src/js/content.js'];
-const CONTENT_STYLE_FILES = ['src/css/index.css'];
+const CONTENT_SCRIPT_FILES = ["js/content.js"];
+const CONTENT_STYLE_FILES = ["css/content.css"];
 let compiledAllowedSites = [];
 const lastFoundByTab = new Map(); // tabId -> boolean
 const lastCountByTab = new Map(); // tabId -> number
-const BADGE_ACTIVE_COLOR = '#4caf50';
-const BADGE_INACTIVE_COLOR = '#9e9e9e';
-const BADGE_INACTIVE_TEXT = '-';
+const BADGE_ACTIVE_COLOR = "#4caf50";
+const BADGE_INACTIVE_COLOR = "#9e9e9e";
+const BADGE_INACTIVE_TEXT = "-";
 
 /**
  * Handle extension installation/update
@@ -25,9 +26,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         await ensureSettingsInitialized();
         await refreshAllowedSitePatterns();
 
-        if (details.reason === 'install') {
+        if (details.reason === "install") {
             logit("First start initialization complete.");
-            chrome.tabs.create({url: "src/pages/options.html"});
+            chrome.tabs.create({ url: "pages/options.html" });
         }
     } catch (e) {
         console.error("Error during initialization:", e);
@@ -38,7 +39,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
  * Handle messages from content scripts
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-
     // Return true ensures we can send response asynchronously if needed
     // But since we are likely doing async work, we should wrap logic.
 
@@ -47,14 +47,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function handleMessage(request, sender) {
-    const hasValidPayload = request &&
-        typeof request.wordfound === 'boolean' &&
-        typeof request.keyword_count === 'number';
+    const hasValidPayload =
+        request &&
+        typeof request.wordfound === "boolean" &&
+        typeof request.keyword_count === "number";
 
     if (hasValidPayload) {
         const tabId = sender?.tab?.id;
         const tabUrl = sender?.tab?.url;
-        const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
+        const settings = await getFromStorage([
+            "wordspotting_extension_on",
+            "wordspotting_website_list"
+        ]);
 
         if (settings.wordspotting_extension_on === false) {
             if (tabId) setInactiveBadge(tabId);
@@ -63,9 +67,9 @@ async function handleMessage(request, sender) {
 
         const allowedSites = settings.wordspotting_website_list || [];
         const isAllowed = tabUrl
-            ? (compiledAllowedSites.length > 0
+            ? compiledAllowedSites.length > 0
                 ? isUrlAllowedCompiled(tabUrl, compiledAllowedSites)
-                : isUrlAllowed(tabUrl, allowedSites))
+                : isUrlAllowed(tabUrl, allowedSites)
             : true;
 
         if (!isAllowed) {
@@ -89,9 +93,9 @@ async function handleMessage(request, sender) {
                 if (items.wordspotting_notifications_on) {
                     logit("Firing notification!");
                     showNotification(
-                        "src/assets/ws48.png",
-                        'basic',
-                        'Keyword found!',
+                        "assets/ws48.png",
+                        "basic",
+                        "Keyword found!",
                         sender.tab ? sender.tab.title : "Page",
                         1
                     );
@@ -106,7 +110,7 @@ async function handleMessage(request, sender) {
 }
 
 function showNotification(iconUrl, type, title, message, priority) {
-    const icon = chrome.runtime.getURL(iconUrl);
+    const icon = iconUrl; // No longer need chrome.runtime.getURL
     var opt = {
         iconUrl: icon,
         type: type,
@@ -115,12 +119,12 @@ function showNotification(iconUrl, type, title, message, priority) {
         priority: priority
     };
 
-    chrome.notifications.create('', opt);
+    chrome.notifications.create("", opt);
 }
 
 // Dynamically inject content scripts on allowed sites only.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.url) {
+    if (changeInfo.status === "complete" && tab.url) {
         maybeInjectContentScripts(tabId, tab.url);
     }
 });
@@ -140,7 +144,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 // Re-evaluate active tab when allowed sites or on/off switch changes.
 chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'sync') return;
+    if (area !== "sync") return;
     if (!changes.wordspotting_website_list && !changes.wordspotting_extension_on) return;
 
     if (changes.wordspotting_website_list) {
@@ -157,7 +161,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
         } else if (changes.wordspotting_extension_on?.newValue === false) {
             setInactiveBadge(tab.id);
         }
-        chrome.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' }, () => {
+        chrome.tabs.sendMessage(tab.id, { from: "background", subject: "settings_updated" }, () => {
             // Ignore missing receivers (content may not be injected).
             void chrome.runtime.lastError;
         });
@@ -166,15 +170,19 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 async function maybeInjectContentScripts(tabId, url) {
     try {
-        const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
+        const settings = await getFromStorage([
+            "wordspotting_extension_on",
+            "wordspotting_website_list"
+        ]);
         if (settings.wordspotting_extension_on === false) {
             return;
         }
 
         const allowedSites = settings.wordspotting_website_list || [];
-        const isAllowed = compiledAllowedSites.length > 0
-            ? isUrlAllowedCompiled(url, compiledAllowedSites)
-            : isUrlAllowed(url, allowedSites);
+        const isAllowed =
+            compiledAllowedSites.length > 0
+                ? isUrlAllowedCompiled(url, compiledAllowedSites)
+                : isUrlAllowed(url, allowedSites);
 
         if (!isAllowed) {
             setInactiveBadge(tabId);
@@ -223,16 +231,20 @@ async function refreshAllowedSitePatterns() {
 
 async function updateBadgeForTab(tabId, url) {
     try {
-        const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
+        const settings = await getFromStorage([
+            "wordspotting_extension_on",
+            "wordspotting_website_list"
+        ]);
         if (settings.wordspotting_extension_on === false) {
             setInactiveBadge(tabId);
             return;
         }
 
         const allowedSites = settings.wordspotting_website_list || [];
-        const isAllowed = compiledAllowedSites.length > 0
-            ? isUrlAllowedCompiled(url, compiledAllowedSites)
-            : isUrlAllowed(url, allowedSites);
+        const isAllowed =
+            compiledAllowedSites.length > 0
+                ? isUrlAllowedCompiled(url, compiledAllowedSites)
+                : isUrlAllowed(url, allowedSites);
 
         if (!isAllowed) {
             setInactiveBadge(tabId);
@@ -242,7 +254,7 @@ async function updateBadgeForTab(tabId, url) {
         const count = lastCountByTab.get(tabId) ?? 0;
         setCountBadge(tabId, count);
     } catch (e) {
-        console.warn('Unable to update badge status:', e);
+        console.warn("Unable to update badge status:", e);
     }
 }
 
@@ -258,7 +270,7 @@ function setInactiveBadge(tabId) {
 }
 
 function setCountBadge(tabId, count) {
-    const text = count > 0 ? String(count) : '0';
+    const text = count > 0 ? String(count) : "0";
     setBadge(tabId, text, BADGE_ACTIVE_COLOR);
 }
 
@@ -266,7 +278,7 @@ async function isContentAlreadyInjected(tabId) {
     try {
         const [result] = await chrome.scripting.executeScript({
             target: { tabId },
-            func: () => Boolean(globalThis.__WORDSPOTTING_CONTENT_LOADED__),
+            func: () => Boolean(globalThis.__WORDSPOTTING_CONTENT_LOADED__)
         });
         return Boolean(result?.result);
     } catch (_e) {

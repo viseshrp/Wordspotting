@@ -1,64 +1,76 @@
-if (typeof document !== 'undefined') {
-    document.addEventListener('DOMContentLoaded', () => {
-        updateViews();
+import "../css/options.css";
+import {
+    getFromStorage,
+    saveToStorage,
+    isValidObj,
+    showAlert,
+    buildSiteRegex,
+    applyTheme
+} from "./utils.js";
 
-        // --- Event Listeners ---
+document.addEventListener("DOMContentLoaded", () => {
+    updateViews();
 
-        // Sites
-        const siteInput = document.getElementById("website_input");
-        const siteBtn = document.getElementById("add_sites");
-        const siteClearBtn = document.getElementById("clear_sites");
+    // --- Event Listeners ---
 
-        siteBtn.addEventListener("click", () => addSite(siteInput));
-        siteInput.addEventListener("keypress", (e) => {
-            if (e.key === 'Enter') addSite(siteInput);
-        });
-        siteClearBtn.addEventListener("click", () => clearList("wordspotting_website_list", updateWebListDisplay));
+    // Sites
+    const siteInput = document.getElementById("website_input");
+    const siteBtn = document.getElementById("add_sites");
+    const siteClearBtn = document.getElementById("clear_sites");
 
-        // Keywords
-        const wordInput = document.getElementById("bl_word_input");
-        const wordBtn = document.getElementById("add_bl_word");
-        const wordClearBtn = document.getElementById("clear_keywords");
+    siteBtn.addEventListener("click", () => addSite(siteInput));
+    siteInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") addSite(siteInput);
+    });
+    siteClearBtn.addEventListener("click", () =>
+        clearList("wordspotting_website_list", updateWebListDisplay)
+    );
 
-        wordBtn.addEventListener("click", () => addWord(wordInput));
-        wordInput.addEventListener("keypress", (e) => {
-            if (e.key === 'Enter') addWord(wordInput);
-        });
-        wordClearBtn.addEventListener("click", () => clearList("wordspotting_word_list", updateBLWordListDisplay));
+    // Keywords
+    const wordInput = document.getElementById("bl_word_input");
+    const wordBtn = document.getElementById("add_bl_word");
+    const wordClearBtn = document.getElementById("clear_keywords");
 
-        // Switches
-        document.getElementById("notifications_switch").addEventListener("change", function () {
-            const status = this.checked;
-            saveToStorage({"wordspotting_notifications_on": status}).then(() => {
-                showAlert(`Notifications turned ${status ? "ON" : "OFF"}`, "Settings Saved", true);
-            });
-        });
+    wordBtn.addEventListener("click", () => addWord(wordInput));
+    wordInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") addWord(wordInput);
+    });
+    wordClearBtn.addEventListener("click", () =>
+        clearList("wordspotting_word_list", updateBLWordListDisplay)
+    );
 
-        document.getElementById("extension_switch").addEventListener("change", function () {
-            const status = this.checked;
-            saveToStorage({"wordspotting_extension_on": status}).then(() => {
-                showAlert(`Extension turned ${status ? "ON" : "OFF"}`, "Settings Saved", true);
-            });
-        });
-
-        // Theme select
-        const themeSelect = document.getElementById("theme_select");
-        themeSelect.addEventListener("change", () => {
-            const value = themeSelect.value;
-            applyTheme(value);
-            saveToStorage({"wordspotting_theme": value});
-        });
-
-        // Delegate click for removing items
-        document.body.addEventListener('click', (e) => {
-            if (e.target?.classList.contains('chip')) {
-                const type = e.target.dataset.type; // 'site' or 'word'
-                const index = parseInt(e.target.dataset.index, 10);
-                removeIndex(type, index);
-            }
+    // Switches
+    document.getElementById("notifications_switch").addEventListener("change", function () {
+        const status = this.checked;
+        saveToStorage({ wordspotting_notifications_on: status }).then(() => {
+            showAlert(`Notifications turned ${status ? "ON" : "OFF"}`, "Settings Saved", true);
         });
     });
-}
+
+    document.getElementById("extension_switch").addEventListener("change", function () {
+        const status = this.checked;
+        saveToStorage({ wordspotting_extension_on: status }).then(() => {
+            showAlert(`Extension turned ${status ? "ON" : "OFF"}`, "Settings Saved", true);
+        });
+    });
+
+    // Theme select
+    const themeSelect = document.getElementById("theme_select");
+    themeSelect.addEventListener("change", () => {
+        const value = themeSelect.value;
+        applyTheme(value);
+        saveToStorage({ wordspotting_theme: value });
+    });
+
+    // Delegate click for removing items
+    document.body.addEventListener("click", (e) => {
+        if (e.target?.classList.contains("chip")) {
+            const type = e.target.dataset.type; // 'site' or 'word'
+            const index = parseInt(e.target.dataset.index, 10);
+            removeIndex(type, index);
+        }
+    });
+});
 
 // --- Logic ---
 
@@ -70,7 +82,10 @@ function addSite(input) {
     }
 
     // Split and Clean
-    const list = rawValue.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+    const list = rawValue
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 
     if (list.length === 0) {
         shakeInput(input);
@@ -88,15 +103,20 @@ function addSite(input) {
         return;
     }
 
-    getFromStorage("wordspotting_website_list").then((items) => {
-        const stored = Array.isArray(items.wordspotting_website_list) ? items.wordspotting_website_list : [];
-        const merged = mergeUnique(stored, valid);
-        return saveToStorage({"wordspotting_website_list": merged});
-    }).then(() => {
-        input.value = "";
-        updateWebListDisplay();
-        showAlert("Website(s) added.", "Success", true);
-    }).catch(console.error);
+    getFromStorage("wordspotting_website_list")
+        .then((items) => {
+            const stored = Array.isArray(items.wordspotting_website_list)
+                ? items.wordspotting_website_list
+                : [];
+            const merged = mergeUnique(stored, valid);
+            return saveToStorage({ wordspotting_website_list: merged });
+        })
+        .then(() => {
+            input.value = "";
+            updateWebListDisplay();
+            showAlert("Website(s) added.", "Success", true);
+        })
+        .catch(console.error);
 }
 
 function addWord(input) {
@@ -107,7 +127,10 @@ function addWord(input) {
     }
 
     // Split and Clean
-    const list = rawValue.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+    const list = rawValue
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 
     if (list.length === 0) {
         shakeInput(input);
@@ -125,38 +148,45 @@ function addWord(input) {
         return;
     }
 
-    getFromStorage("wordspotting_word_list").then((items) => {
-        const stored = Array.isArray(items.wordspotting_word_list) ? items.wordspotting_word_list : [];
-        const merged = mergeUnique(stored, valid);
-        return saveToStorage({"wordspotting_word_list": merged});
-    }).then(() => {
-        input.value = "";
-        updateBLWordListDisplay();
-        showAlert("Keyword(s) added.", "Success", true);
-    }).catch(console.error);
+    getFromStorage("wordspotting_word_list")
+        .then((items) => {
+            const stored = Array.isArray(items.wordspotting_word_list)
+                ? items.wordspotting_word_list
+                : [];
+            const merged = mergeUnique(stored, valid);
+            return saveToStorage({ wordspotting_word_list: merged });
+        })
+        .then(() => {
+            input.value = "";
+            updateBLWordListDisplay();
+            showAlert("Keyword(s) added.", "Success", true);
+        })
+        .catch(console.error);
 }
 
 function removeIndex(type, index) {
-    const key = (type === 'site') ? "wordspotting_website_list" : "wordspotting_word_list";
+    const key = type === "site" ? "wordspotting_website_list" : "wordspotting_word_list";
 
-    getFromStorage(key).then((items) => {
-        const stored = items[key];
-        if (isValidObj(stored)) {
-            stored.splice(index, 1);
-            return saveToStorage({[key]: stored});
-        }
-    }).then(() => {
-        if (type === 'site') {
-            updateWebListDisplay();
-        } else {
-            updateBLWordListDisplay();
-        }
-    });
+    getFromStorage(key)
+        .then((items) => {
+            const stored = items[key];
+            if (isValidObj(stored)) {
+                stored.splice(index, 1);
+                return saveToStorage({ [key]: stored });
+            }
+        })
+        .then(() => {
+            if (type === "site") {
+                updateWebListDisplay();
+            } else {
+                updateBLWordListDisplay();
+            }
+        });
 }
 
 function clearList(key, updateFn) {
     if (confirm("Are you sure you want to clear this list?")) {
-        saveToStorage({[key]: []}).then(() => {
+        saveToStorage({ [key]: [] }).then(() => {
             updateFn();
             showAlert("List cleared.", "Success", true);
         });
@@ -179,7 +209,7 @@ function updateWebListDisplay() {
 
         if (isValidObj(stored) && stored.length > 0) {
             stored.forEach((item, index) => {
-                const chip = createChip(item, index, 'site');
+                const chip = createChip(item, index, "site");
                 container.appendChild(chip);
             });
         } else {
@@ -196,7 +226,7 @@ function updateBLWordListDisplay() {
 
         if (isValidObj(stored) && stored.length > 0) {
             stored.forEach((item, index) => {
-                const chip = createChip(item, index, 'word');
+                const chip = createChip(item, index, "word");
                 container.appendChild(chip);
             });
         } else {
@@ -213,21 +243,21 @@ function createChip(text, index, type) {
     chip.dataset.index = index;
     chip.dataset.type = type;
     chip.title = "Click to remove";
-    chip.setAttribute('aria-label', `Remove ${text}`);
+    chip.setAttribute("aria-label", `Remove ${text}`);
     return chip;
 }
 
 function updateNotifSwitchDisplay() {
     getFromStorage("wordspotting_notifications_on").then((items) => {
         const status = items.wordspotting_notifications_on;
-        document.getElementById("notifications_switch").checked = (status !== false);
+        document.getElementById("notifications_switch").checked = status !== false;
     });
 }
 
 function updateExtSwitchDisplay() {
     getFromStorage("wordspotting_extension_on").then((items) => {
         const status = items.wordspotting_extension_on;
-        document.getElementById("extension_switch").checked = (status !== false);
+        document.getElementById("extension_switch").checked = status !== false;
     });
 }
 
@@ -240,22 +270,11 @@ function shakeInput(input) {
 
 function updateThemeDisplay() {
     getFromStorage("wordspotting_theme").then((items) => {
-        const theme = items.wordspotting_theme || 'system';
+        const theme = items.wordspotting_theme || "system";
         const select = document.getElementById("theme_select");
         select.value = theme;
         applyTheme(theme);
     });
-}
-
-function applyTheme(value) {
-    const root = document.documentElement;
-    if (value === 'light') {
-        root.setAttribute('data-theme', 'light');
-    } else if (value === 'dark') {
-        root.setAttribute('data-theme', 'dark');
-    } else {
-        root.removeAttribute('data-theme');
-    }
 }
 
 function partitionKeywordPatterns(list) {
@@ -293,13 +312,4 @@ function partitionSitePatterns(list, siteRegexBuilder = buildSiteRegex) {
 
 function mergeUnique(existing, additions) {
     return Array.from(new Set([...(existing || []), ...(additions || [])]));
-}
-
-/* istanbul ignore next */
-if (typeof module !== 'undefined') {
-    module.exports = {
-        partitionSitePatterns,
-        partitionKeywordPatterns,
-        mergeUnique
-    };
 }

@@ -1,6 +1,6 @@
 /*
-* Utils to abstract API calls and other frequent usages.
-* */
+ * Utils to abstract API calls and other frequent usages.
+ * */
 
 /**
  * Storage area - use sync for cross-device persistence.
@@ -12,7 +12,7 @@ const storageArea = chrome.storage.sync;
  * @param {Object} obj
  * @returns {Promise<void>}
  */
-function saveToStorage(obj) {
+export function saveToStorage(obj) {
     return new Promise((resolve, reject) => {
         storageArea.set(obj, () => {
             if (chrome.runtime.lastError) {
@@ -29,7 +29,7 @@ function saveToStorage(obj) {
  * @param {string|string[]|Object} keys
  * @returns {Promise<Object>}
  */
-function getFromStorage(keys) {
+export function getFromStorage(keys) {
     return new Promise((resolve, reject) => {
         storageArea.get(keys, (items) => {
             if (chrome.runtime.lastError) {
@@ -41,15 +41,15 @@ function getFromStorage(keys) {
     });
 }
 
-function showAlert(message, title, isSuccess) {
-    if (typeof document !== 'undefined') {
-        const toast = document.createElement('div');
-        toast.className = `ws-toast ${isSuccess ? 'success' : 'error'}`;
+export function showAlert(message, title, isSuccess) {
+    if (typeof document !== "undefined") {
+        const toast = document.createElement("div");
+        toast.className = `ws-toast ${isSuccess ? "success" : "error"}`;
         toast.textContent = (title ? `${title}: ` : "") + message;
         document.body.appendChild(toast);
         setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transition = 'opacity 0.5s';
+            toast.style.opacity = "0";
+            toast.style.transition = "opacity 0.5s";
             setTimeout(() => toast.remove(), 500);
         }, 3000);
     } /* istanbul ignore else */ else {
@@ -58,23 +58,23 @@ function showAlert(message, title, isSuccess) {
     }
 }
 
-function isValidObj(obj) {
-    return obj !== null && typeof obj !== 'undefined' && Object.keys(obj).length > 0;
+export function isValidObj(obj) {
+    return obj !== null && typeof obj !== "undefined" && Object.keys(obj).length > 0;
 }
 
-function trimAndClean(string) {
-    if (!string) return '';
-    return string.trim().replace(/\s+/g, '');
+export function trimAndClean(string) {
+    if (!string) return "";
+    return string.trim().replace(/\s+/g, "");
 }
 
-function logit(message) {
+export function logit(message) {
     var dt = new Date();
     var utcDate = dt.toUTCString();
 
     console.log(`[${utcDate}]\t${message}`);
 }
 
-function getRandomInt(maximum, minimum) {
+export function getRandomInt(maximum, minimum) {
     return Math.floor(Math.random() * (maximum - minimum + 1)) + minimum;
 }
 
@@ -83,21 +83,21 @@ function getRandomInt(maximum, minimum) {
  * @param {string} pattern
  * @returns {RegExp|null}
  */
-function buildSiteRegex(pattern) {
-    if (!pattern || typeof pattern !== 'string') return null;
+export function buildSiteRegex(pattern) {
+    if (!pattern || typeof pattern !== "string") return null;
     // Trim spaces to avoid accidental anchors
     const cleaned = pattern.trim();
     if (!cleaned) return null;
 
     // If the user explicitly included regex markers, respect as-is.
     try {
-        return new RegExp(cleaned, 'i');
+        return new RegExp(cleaned, "i");
     } catch (_e) {
         // If invalid regex, treat * as wildcard and escape the rest.
-        const escaped = cleaned.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const globbed = escaped.replace(/\\\*/g, '.*');
+        const escaped = cleaned.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const globbed = escaped.replace(/\\\*/g, ".*");
         try {
-            return new RegExp(globbed, 'i');
+            return new RegExp(globbed, "i");
         } catch (_err) {
             return null;
         }
@@ -110,7 +110,7 @@ function buildSiteRegex(pattern) {
  * @param {string[]} allowedSites
  * @returns {boolean}
  */
-function isUrlAllowed(url, allowedSites) {
+export function isUrlAllowed(url, allowedSites) {
     if (!url || !Array.isArray(allowedSites) || allowedSites.length === 0) {
         return false;
     }
@@ -126,7 +126,7 @@ function isUrlAllowed(url, allowedSites) {
  * @param {string[]} patterns
  * @returns {RegExp[]}
  */
-function compileSitePatterns(patterns) {
+export function compileSitePatterns(patterns) {
     if (!Array.isArray(patterns)) return [];
     return patterns.map((p) => buildSiteRegex(p)).filter(Boolean);
 }
@@ -137,7 +137,7 @@ function compileSitePatterns(patterns) {
  * @param {RegExp[]} compiled
  * @returns {boolean}
  */
-function isUrlAllowedCompiled(url, compiled) {
+export function isUrlAllowedCompiled(url, compiled) {
     if (!url || !Array.isArray(compiled) || compiled.length === 0) return false;
     // Ensure we test against the full href, but also fallback to hostname+path.
     const candidates = [url];
@@ -150,20 +150,14 @@ function isUrlAllowedCompiled(url, compiled) {
     return compiled.some((regex) => candidates.some((c) => regex.test(c)));
 }
 
-// Export for tests
-/* istanbul ignore next */
-if (typeof module !== 'undefined') {
-    module.exports = {
-        saveToStorage,
-        getFromStorage,
-        showAlert,
-        isValidObj,
-        trimAndClean,
-        logit,
-        getRandomInt,
-        buildSiteRegex,
-        isUrlAllowed,
-        compileSitePatterns,
-        isUrlAllowedCompiled
-    };
+export function applyTheme(value) {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (value === "light") {
+        root.setAttribute("data-theme", "light");
+    } else if (value === "dark") {
+        root.setAttribute("data-theme", "dark");
+    } else {
+        root.removeAttribute("data-theme");
+    }
 }

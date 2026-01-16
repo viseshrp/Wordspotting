@@ -1,32 +1,44 @@
 {
-  "name": "wordspotting",
-  "version": "1.0.0",
-  "description": "Get notified when a word is found in a web page.",
-  "scripts": {
-    "build": "node scripts/build.js",
-    "lint:webext": "node scripts/lint-webext.js",
-    "version": "node scripts/sync-manifest-version.js && git add manifest.json",
-    "test": "jest --coverage",
-    "lint": "eslint .",
-    "biome": "biome lint .",
-    "format": "prettier --write .",
-    "smoke": "node scripts/smoke_test.js",
-    "smoke:e2e": "node scripts/smoke_playwright.js"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.3.11",
-    "archiver": "^7.0.1",
-    "eslint": "^8.56.0",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^30.2.0",
-    "playwright-chromium": "^1.42.0",
-    "prettier": "^3.1.0",
-    "web-ext": "^8.4.0"
-  },
-  "keywords": [
-    "chrome-extension",
-    "keyword-spotter"
-  ],
-  "author": "Visesh Prasad",
-  "license": "MIT"
+    "name": "wordspotting",
+    "version": "1.0.0",
+    "description": "Get notified when a word is found in a web page.",
+    "scripts": {
+        "build": "webpack --mode=production",
+        "dev": "webpack --watch --mode=development",
+        "lint:webext": "node scripts/lint-webext.js",
+        "version": "node scripts/sync-manifest-version.js && git add manifest.json",
+        "test": "jest --coverage",
+        "lint": "eslint .",
+        "biome": "biome lint .",
+        "format": "prettier --write .",
+        "smoke": "node scripts/smoke_test.js",
+        "smoke:e2e": "node scripts/smoke_playwright.js",
+        "package": "node scripts/package.js",
+        "check-size": "node scripts/check-size.js"
+    },
+    "devDependencies": {
+        "@babel/core": "^7.28.6",
+        "@babel/preset-env": "^7.28.6",
+        "@biomejs/biome": "^2.3.11",
+        "archiver": "^7.0.1",
+        "babel-loader": "^10.0.0",
+        "copy-webpack-plugin": "^13.0.1",
+        "css-loader": "^7.1.2",
+        "eslint": "^8.56.0",
+        "html-webpack-plugin": "^5.6.6",
+        "jest": "^29.7.0",
+        "jest-environment-jsdom": "^30.2.0",
+        "mini-css-extract-plugin": "^2.10.0",
+        "playwright-chromium": "^1.42.0",
+        "prettier": "^3.1.0",
+        "web-ext": "^8.4.0",
+        "webpack": "^5.104.1",
+        "webpack-cli": "^6.0.1"
+    },
+    "keywords": [
+        "chrome-extension",
+        "keyword-spotter"
+    ],
+    "author": "Visesh Prasad",
+    "license": "MIT"
 }
