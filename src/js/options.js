@@ -5,7 +5,8 @@ import {
     isValidObj,
     showAlert,
     buildSiteRegex,
-    applyTheme
+    applyTheme,
+    mergeUnique
 } from "./utils.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -310,6 +311,4 @@ function partitionSitePatterns(list, siteRegexBuilder = buildSiteRegex) {
     return { valid, invalid };
 }
 
-function mergeUnique(existing, additions) {
-    return Array.from(new Set([...(existing || []), ...(additions || [])]));
-}
+export { partitionSitePatterns, partitionKeywordPatterns };

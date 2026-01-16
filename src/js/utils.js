@@ -85,20 +85,23 @@ export function getRandomInt(maximum, minimum) {
  */
 export function buildSiteRegex(pattern) {
     if (!pattern || typeof pattern !== "string") return null;
-    // Trim spaces to avoid accidental anchors
     const cleaned = pattern.trim();
     if (!cleaned) return null;
 
-    // If the user explicitly included regex markers, respect as-is.
     try {
+        // First, check if the pattern is already a valid regex.
+        new RegExp(cleaned);
         return new RegExp(cleaned, "i");
     } catch (_e) {
-        // If invalid regex, treat * as wildcard and escape the rest.
-        const escaped = cleaned.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const globbed = escaped.replace(/\\\*/g, ".*");
+        // If it's not a valid regex, treat it as a wildcard pattern.
+        // Escape all special regex characters except for '*'.
+        const escaped = cleaned.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+        // Then, convert the '*' into '.*'.
+        const globbed = escaped.replace(/\*/g, ".*");
         try {
             return new RegExp(globbed, "i");
         } catch (_err) {
+            // This should not happen if the logic is correct.
             return null;
         }
     }
@@ -160,4 +163,8 @@ export function applyTheme(value) {
     } else {
         root.removeAttribute("data-theme");
     }
+}
+
+export function mergeUnique(existing, additions) {
+    return Array.from(new Set([...(existing || []), ...(additions || [])]));
 }

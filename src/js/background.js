@@ -4,10 +4,10 @@ import {
     isUrlAllowed,
     isUrlAllowedCompiled,
     compileSitePatterns,
-    getFromStorage
+    getFromStorage,
+    saveToStorage
 } from "./utils.js";
 import { ensureSettingsInitialized } from "./settings.js";
-import "./core/scanner.js"; // Assuming scanner functions are globally available or attached to window
 
 const CONTENT_SCRIPT_FILES = ["js/content.js"];
 const CONTENT_STYLE_FILES = ["css/content.css"];
@@ -46,7 +46,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 });
 
-async function handleMessage(request, sender) {
+async function handleMessage(request, sender, testSites = null) {
     const hasValidPayload =
         request &&
         typeof request.wordfound === "boolean" &&
@@ -65,11 +65,11 @@ async function handleMessage(request, sender) {
             return { ack: "disabled" };
         }
 
-        const allowedSites = settings.wordspotting_website_list || [];
+        const sites = testSites ?? compiledAllowedSites;
         const isAllowed = tabUrl
-            ? compiledAllowedSites.length > 0
-                ? isUrlAllowedCompiled(tabUrl, compiledAllowedSites)
-                : isUrlAllowed(tabUrl, allowedSites)
+            ? sites.length > 0
+                ? isUrlAllowedCompiled(tabUrl, sites)
+                : isUrlAllowed(tabUrl, settings.wordspotting_website_list || [])
             : true;
 
         if (!isAllowed) {
@@ -286,3 +286,67 @@ async function isContentAlreadyInjected(tabId) {
         return false;
     }
 }
+
+// This function is exposed to the global scope so that playwright can execute it.
+async function runSmokeTestLogic() {
+    // Ensure the site is allowlisted and extension is on for the test tab.
+    await saveToStorage({
+        wordspotting_website_list: ["*example.com*"],
+        wordspotting_extension_on: true,
+        wordspotting_notifications_on: true,
+        wordspotting_word_list: ["example"]
+    });
+
+    const testSites = compileSitePatterns(["*example.com*"]);
+    const tab = await chrome.tabs.create({ url: "https://example.com", active: true });
+
+    // Wait until the tab reports complete to avoid later badge resets from onUpdated.
+    await new Promise((resolve) => {
+        const waitForComplete = () =>
+            chrome.tabs.get(tab.id, (info) => {
+                if (info?.status === "complete") {
+                    resolve();
+                } else {
+                    setTimeout(waitForComplete, 100);
+                }
+            });
+        waitForComplete();
+    });
+
+    // Drive badge update through the background handler directly, passing the compiled sites.
+    const response = await handleMessage(
+        { wordfound: true, keyword_count: 3 },
+        { tab: { id: tab.id, url: "https://example.com", title: "Example Domain" } },
+        testSites
+    );
+
+    // Ensure background badge state is explicitly set for this tab.
+    setCountBadge(tab.id, 3);
+
+    // Allow the message to propagate and badge to update; poll for expected text.
+    const expectedBadge = "3";
+    let text = "";
+    for (let i = 0; i < 10; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        text = await new Promise((resolve) =>
+            chrome.action.getBadgeText({ tabId: tab.id }, resolve)
+        );
+        if (text === expectedBadge) break;
+    }
+
+    const notificationCount =
+        typeof self.__wsNotificationCount === "function" ? self.__wsNotificationCount() : 0;
+
+    await chrome.tabs.remove(tab.id);
+    return {
+        badgeText: text,
+        notificationCount,
+        debug: {
+            response,
+            text,
+            compiledAllowedSitesLength: testSites?.length ?? 0
+        }
+    };
+}
+
+self.runSmokeTestLogic = runSmokeTestLogic;

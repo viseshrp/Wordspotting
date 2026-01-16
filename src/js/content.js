@@ -96,6 +96,44 @@ function getWordList(keyword_list, bodyText) {
     return scanTextForKeywords(keyword_list, textToScan);
 }
 
+function setupObserver() {
+    // Observer config
+    const config = { childList: true, subtree: true, characterData: true };
+
+    // Create an observer instance linked to the callback function
+    // Debounce the scan to avoid performance hit on frequent updates
+    observerDebounce = debounce(() => {
+        scheduleScan();
+    }, 500); // Scan at most twice per second on changes
+
+    observer = new MutationObserver(observerDebounce);
+
+    // Start observing the target node for configured mutations
+    observer.observe(document.body, config);
+
+    // Pause scans when tab is hidden; resume when visible.
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            if (observer) observer.disconnect();
+            cancelScheduledScan();
+        } else {
+            if (document.body) {
+                observer.observe(document.body, config);
+            }
+            scheduleScan();
+        }
+    });
+
+    window.addEventListener("pagehide", () => {
+        if (observer) observer.disconnect();
+        cancelScheduledScan();
+        cleanupWorker();
+        if (observerDebounce?.cancel) {
+            observerDebounce.cancel();
+        }
+    });
+}
+
 async function proceedWithSiteListCheck() {
     try {
         const items = await getFromStorage("wordspotting_website_list");
@@ -202,13 +240,13 @@ function debounce(func, wait) {
 
 // Throttled body text snapshot to avoid hammering innerText on chatty pages.
 async function getBodyTextSnapshot(signal) {
+    if (signal?.aborted) return "";
+
     const now = Date.now();
     const cacheWindow = 500; // ms
     if (now - lastSnapshot.timestamp < cacheWindow) {
         return lastSnapshot.text;
     }
-
-    if (signal?.aborted) return "";
 
     const text = document.body ? document.body.innerText || "" : "";
     lastSnapshot = { text, timestamp: now };
@@ -321,3 +359,15 @@ function sendKeywordCount(count) {
         void err;
     }
 }
+
+export {
+    getWordList,
+    debounce,
+    getBodyTextSnapshot,
+    hashString,
+    sendKeywordCount,
+    performScan,
+    scheduleScan,
+    deferUntilPageIdle,
+    proceedWithSiteListCheck
+};

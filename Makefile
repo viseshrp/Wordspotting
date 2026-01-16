@@ -28,8 +28,7 @@ lint:
 test:
 	npm test -- --runInBand
 
-# Run smoke tests (both simple and e2e)
-smoke:
+smoke: build
 	npx playwright install chromium
 	npm run smoke
 	npm run smoke:e2e

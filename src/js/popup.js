@@ -1,5 +1,12 @@
 import "../css/popup.css";
-import { getFromStorage, saveToStorage, applyTheme, isUrlAllowed, showAlert } from "./utils.js";
+import {
+    getFromStorage,
+    saveToStorage,
+    applyTheme,
+    isUrlAllowed,
+    showAlert,
+    mergeUnique
+} from "./utils.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     // UI References
@@ -149,18 +156,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function renderEmpty(msg) {
-        keywordContainer.innerHTML = `<div class="empty-state">${msg}</div>`;
-    }
-
-    function applyTheme(value) {
-        const root = document.documentElement;
-        if (value === "light") {
-            root.setAttribute("data-theme", "light");
-        } else if (value === "dark") {
-            root.setAttribute("data-theme", "dark");
-        } else {
-            root.removeAttribute("data-theme");
-        }
+        const emptyState = document.createElement("div");
+        emptyState.className = "empty-state";
+        emptyState.textContent = msg;
+        keywordContainer.innerHTML = ""; // Clear previous content
+        keywordContainer.appendChild(emptyState);
     }
 
     async function checkActivation(tab) {
@@ -243,10 +243,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const rootOption = optionsToRender.find((option) => option.value === "root");
         siteScopeSelect.value = rootOption ? rootOption.value : optionsToRender[0]?.value || "root";
-    }
-
-    function mergeUnique(existing, additions) {
-        return Array.from(new Set([...(existing || []), ...(additions || [])]));
     }
 
     function setAddSiteVisibility(isVisible) {

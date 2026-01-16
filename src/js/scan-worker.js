@@ -1,5 +1,5 @@
 /* global normalizeKeywords, buildCombinedRegex */
-importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
+importScripts(chrome.runtime.getURL("src/js/core/scanner.js"));
 
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_OVERLAP = 200;
@@ -49,18 +49,18 @@ function scanTextInChunks(keywordList, text, chunkSize, overlap) {
     return Array.from(foundKeywords);
 }
 
-self.addEventListener('message', (event) => {
+self.addEventListener("message", (event) => {
     const data = event.data || {};
-    if (data.type !== 'scan') return;
+    if (data.type !== "scan") return;
     const id = data.id;
 
     try {
-        const text = typeof data.text === 'string' ? data.text : '';
+        const text = typeof data.text === "string" ? data.text : "";
         const chunkSize = Number.isFinite(data.chunkSize) ? data.chunkSize : DEFAULT_CHUNK_SIZE;
         const overlap = Number.isFinite(data.overlap) ? data.overlap : DEFAULT_OVERLAP;
         const words = scanTextInChunks(data.keywords, text, chunkSize, overlap);
-        self.postMessage({ type: 'scan_result', id, words });
+        self.postMessage({ type: "scan_result", id, words });
     } catch (e) {
-        self.postMessage({ type: 'scan_error', id, error: e.message || 'scan_failed' });
+        self.postMessage({ type: "scan_error", id, error: e.message || "scan_failed" });
     }
 });

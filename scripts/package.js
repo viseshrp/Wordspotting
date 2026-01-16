@@ -1,13 +1,12 @@
 // scripts/package.js
-const fs = require('fs');
-const path = require('path');
-const archiver = require('archiver');
-const { version } = require('../package.json');
+const fs = require("node:fs");
+const path = require("node:path");
+const archiver = require("archiver");
+const { version } = require("../package.json");
 
-const distPath = path.resolve(__dirname, '../dist');
-const zipDir = path.resolve(__dirname, '../zip');
+const distPath = path.resolve(__dirname, "../dist");
+const zipDir = path.resolve(__dirname, "../zip");
 const zipPath = path.join(zipDir, `wordspotting-${version}.zip`);
-
 
 // Ensure zip directory exists
 if (!fs.existsSync(zipDir)) {
@@ -16,17 +15,17 @@ if (!fs.existsSync(zipDir)) {
 
 // Create a file to stream archive data to.
 const output = fs.createWriteStream(zipPath);
-const archive = archiver('zip', {
-  zlib: { level: 9 } // Sets the compression level.
+const archive = archiver("zip", {
+    zlib: { level: 9 } // Sets the compression level.
 });
 
-output.on('close', function() {
-  console.log(archive.pointer() + ' total bytes');
-  console.log(`Successfully created package at ${zipPath}`);
+output.on("close", () => {
+    console.log(`${archive.pointer()} total bytes`);
+    console.log(`Successfully created package at ${zipPath}`);
 });
 
-archive.on('error', function(err) {
-  throw err;
+archive.on("error", (err) => {
+    throw err;
 });
 
 // pipe archive data to the file

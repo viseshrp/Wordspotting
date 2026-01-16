@@ -1,9 +1,9 @@
 // scripts/check-size.js
-const fs = require('fs');
-const path = require('path');
-const { version } = require('../package.json');
+const fs = require("node:fs");
+const path = require("node:path");
+const { version } = require("../package.json");
 
-const zipDir = path.resolve(__dirname, '../zip');
+const zipDir = path.resolve(__dirname, "../zip");
 const zipPath = path.join(zipDir, `wordspotting-${version}.zip`);
 const max_kb = 1024;
 
