@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const { spawn } = require('node:child_process');
 const { chromium } = require('playwright-chromium');
 
-/* global refreshAllowedSitePatterns, handleMessage, setCountBadge */
+/* global refreshAllowedSitePatterns, handleMessage, setCountBadge, compiledAllowedSites */
 
 async function main() {
   const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
