@@ -1,4 +1,4 @@
-.PHONY: all install build bundle dev lint test smoke package format
+.PHONY: all install build bundle dev lint test smoke package format clean
 
 # Default target: install, lint, test, and build
 all: install lint test build
@@ -41,3 +41,7 @@ package: build
 # Format code using Prettier
 format:
 	npm run format
+
+# Remove build artifacts
+clean:
+	rm -rf dist coverage zip
