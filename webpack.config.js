@@ -24,15 +24,11 @@ function transformManifest(content) {
         }
     }
     if (manifest.action?.default_icon) {
-        if (typeof manifest.action.default_icon === "string") {
-            manifest.action.default_icon = manifest.action.default_icon.replace("src/", "");
-        } else {
-            for (const key of Object.keys(manifest.action.default_icon)) {
-                manifest.action.default_icon[key] = manifest.action.default_icon[key].replace(
-                    "src/",
-                    ""
-                );
-            }
+        for (const key of Object.keys(manifest.action.default_icon)) {
+            manifest.action.default_icon[key] = manifest.action.default_icon[key].replace(
+                "src/",
+                ""
+            );
         }
     }
 
