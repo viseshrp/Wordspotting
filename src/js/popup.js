@@ -1,5 +1,14 @@
-document.addEventListener('DOMContentLoaded', () => {
+import "../css/popup.css";
+import {
+    getFromStorage,
+    saveToStorage,
+    applyTheme,
+    isUrlAllowed,
+    showAlert,
+    mergeUnique
+} from "./utils.js";
 
+document.addEventListener("DOMContentLoaded", () => {
     // UI References
     const keywordContainer = document.getElementById("keyword_container");
     const addSiteBtn = document.getElementById("add_current_site");
@@ -7,15 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const siteScopeSelect = document.getElementById("site_scope_select");
     const refreshOnAddToggle = document.getElementById("refresh_on_add");
     const scopeOptions = [
-        { value: 'root', label: 'Root domain' },
-        { value: 'subdomain', label: 'This subdomain' },
-        { value: 'full', label: 'Full URL (exact match)' }
+        { value: "root", label: "Root domain" },
+        { value: "subdomain", label: "This subdomain" },
+        { value: "full", label: "Full URL (exact match)" }
     ];
     const refreshPrefKey = "wordspotting_refresh_on_add";
 
     // Theme
     getFromStorage("wordspotting_theme").then((items) => {
-        const theme = items.wordspotting_theme || 'system';
+        const theme = items.wordspotting_theme || "system";
         applyTheme(theme);
     });
     getFromStorage(refreshPrefKey).then((items) => {
@@ -25,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Connect to Content Script
-    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         var currTab = tabs[0];
         if (currTab) {
             checkActivation(currTab).then((activation) => {
@@ -44,73 +53,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 chrome.tabs.sendMessage(
                     currTab.id,
-                    {from: 'popup', subject: 'word_list_request'},
+                    { from: "popup", subject: "word_list_request" },
                     (response) => {
-                       if(chrome.runtime.lastError) {
-                           // Content script might not be injected yet
-                           renderEmpty("Not active on this page.");
-                           return;
-                       }
+                        if (chrome.runtime.lastError) {
+                            // Content script might not be injected yet
+                            renderEmpty("Not active on this page.");
+                            return;
+                        }
 
-                       if(response){
-                           renderKeywords(response.word_list);
+                        if (response) {
+                            renderKeywords(response.word_list);
 
-                           // Set badge text (sync with what we see)
+                            // Set badge text (sync with what we see)
                             const count = response.word_list ? response.word_list.length : 0;
-                           chrome.action.setBadgeText({
+                            chrome.action.setBadgeText({
                                 text: count > 0 ? count.toString() : "0",
                                 tabId: currTab.id
-                           });
-                       }
-                    });
+                            });
+                        }
+                    }
+                );
             });
             updateSitePreview(currTab.url);
         }
     });
 
     if (addSiteBtn) {
-        addSiteBtn.addEventListener('click', () => {
-        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-            const tab = tabs[0];
-            if (!tab || !tab.url) return;
+        addSiteBtn.addEventListener("click", () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+                const tab = tabs[0];
+                if (!tab || !tab.url) return;
 
-            const scope = getSelectedScope();
-            const pattern = buildPatternForTab(tab.url, scope);
+                const scope = getSelectedScope();
+                const pattern = buildPatternForTab(tab.url, scope);
 
-            try {
-                const items = await getFromStorage("wordspotting_website_list");
-                const existing = Array.isArray(items.wordspotting_website_list) ? items.wordspotting_website_list : [];
-                const merged = mergeUnique(existing, [pattern]);
-                await saveToStorage({ wordspotting_website_list: merged });
-                showAlert(`Added "${pattern}" to allowlist`, "Saved", true);
-                setAddSiteVisibility(false);
-                window.close();
-                if (refreshOnAddToggle?.checked) {
-                    chrome.tabs.reload(tab.id);
+                try {
+                    const items = await getFromStorage("wordspotting_website_list");
+                    const existing = Array.isArray(items.wordspotting_website_list)
+                        ? items.wordspotting_website_list
+                        : [];
+                    const merged = mergeUnique(existing, [pattern]);
+                    await saveToStorage({ wordspotting_website_list: merged });
+                    showAlert(`Added "${pattern}" to allowlist`, "Saved", true);
+                    setAddSiteVisibility(false);
+                    window.close();
+                    if (refreshOnAddToggle?.checked) {
+                        chrome.tabs.reload(tab.id);
+                    }
+                } catch (e) {
+                    console.error("Failed to add site to allowlist", e);
+                    showAlert("Could not save site.", "Error", false);
                 }
-            } catch (e) {
-                console.error("Failed to add site to allowlist", e);
-                showAlert("Could not save site.", "Error", false);
-            }
-        });
+            });
         });
     }
 
     if (refreshOnAddToggle) {
-        refreshOnAddToggle.addEventListener('change', () => {
-            saveToStorage({ [refreshPrefKey]: refreshOnAddToggle.checked })
-                .catch((e) => console.error("Failed to save refresh setting", e));
+        refreshOnAddToggle.addEventListener("change", () => {
+            saveToStorage({ [refreshPrefKey]: refreshOnAddToggle.checked }).catch((e) =>
+                console.error("Failed to save refresh setting", e)
+            );
         });
     }
 
     if (siteScopeSelect) {
-        siteScopeSelect.addEventListener('change', () => {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            const tab = tabs[0];
-            if (tab?.url) {
-                updateSitePreview(tab.url);
-            }
-        });
+        siteScopeSelect.addEventListener("change", () => {
+            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                const tab = tabs[0];
+                if (tab?.url) {
+                    updateSitePreview(tab.url);
+                }
+            });
         });
     }
 
@@ -119,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (chrome.runtime.openOptionsPage) {
             chrome.runtime.openOptionsPage();
         } else {
-            window.open(chrome.runtime.getURL('options.html'));
+            window.open(chrome.runtime.getURL("options.html"));
         }
     });
 
@@ -134,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Unique keywords
         const uniqueList = [...new Set(list)];
 
-        uniqueList.forEach(word => {
+        uniqueList.forEach((word) => {
             const chip = document.createElement("span");
             chip.className = "chip";
             chip.textContent = word;
@@ -143,18 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderEmpty(msg) {
-        keywordContainer.innerHTML = `<div class="empty-state">${msg}</div>`;
-    }
-
-    function applyTheme(value) {
-        const root = document.documentElement;
-        if (value === 'light') {
-            root.setAttribute('data-theme', 'light');
-        } else if (value === 'dark') {
-            root.setAttribute('data-theme', 'dark');
-        } else {
-            root.removeAttribute('data-theme');
-        }
+        const emptyState = document.createElement("div");
+        emptyState.className = "empty-state";
+        emptyState.textContent = msg;
+        keywordContainer.innerHTML = ""; // Clear previous content
+        keywordContainer.appendChild(emptyState);
     }
 
     async function checkActivation(tab) {
@@ -171,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getSelectedScope() {
-        return siteScopeSelect?.value || 'root';
+        return siteScopeSelect?.value || "root";
     }
 
     function buildPatternForTab(urlString, scope) {
@@ -195,23 +201,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = new URL(urlString);
         const host = url.hostname;
         if (!host) throw new Error("Invalid URL");
-        const full = url.href.split('#')[0];
+        const full = url.href.split("#")[0];
         const subdomain = `*${host}*`;
-        const parts = host.split('.').filter(Boolean);
-        const rootHost = parts.length <= 2 ? host : parts.slice(-2).join('.');
+        const parts = host.split(".").filter(Boolean);
+        const rootHost = parts.length <= 2 ? host : parts.slice(-2).join(".");
         const root = `*${rootHost}*`;
         return { root, subdomain, full };
     }
 
     function updateScopeOptions(urlString) {
         if (!siteScopeSelect) return;
-        const selectedValue = siteScopeSelect.value || 'root';
+        const selectedValue = siteScopeSelect.value || "root";
         const uniquePatterns = new Set();
         const optionsToRender = [];
         const patterns = buildPatternsForTab(urlString);
 
         scopeOptions.forEach((scopeOption) => {
-            const pattern = patterns[scopeOption.value] || '';
+            const pattern = patterns[scopeOption.value] || "";
             if (!pattern || uniquePatterns.has(pattern)) {
                 return;
             }
@@ -222,9 +228,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        siteScopeSelect.innerHTML = '';
+        siteScopeSelect.innerHTML = "";
         optionsToRender.forEach((optionData) => {
-            const option = document.createElement('option');
+            const option = document.createElement("option");
             option.value = optionData.value;
             option.textContent = optionData.text;
             siteScopeSelect.appendChild(option);
@@ -235,17 +241,12 @@ document.addEventListener('DOMContentLoaded', () => {
             siteScopeSelect.value = selectedValue;
             return;
         }
-        const rootOption = optionsToRender.find((option) => option.value === 'root');
-        siteScopeSelect.value = rootOption ? rootOption.value : (optionsToRender[0]?.value || 'root');
-    }
-
-    function mergeUnique(existing, additions) {
-        return Array.from(new Set([...(existing || []), ...(additions || [])]));
+        const rootOption = optionsToRender.find((option) => option.value === "root");
+        siteScopeSelect.value = rootOption ? rootOption.value : optionsToRender[0]?.value || "root";
     }
 
     function setAddSiteVisibility(isVisible) {
         if (!addSiteSection) return;
-        addSiteSection.style.display = isVisible ? '' : 'none';
+        addSiteSection.style.display = isVisible ? "" : "none";
     }
-
 });

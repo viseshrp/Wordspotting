@@ -1,0 +1,6 @@
+dist
+zip
+node_modules
+coverage
+.vscode
+.idea
