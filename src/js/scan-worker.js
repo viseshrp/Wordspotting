@@ -1,5 +1,4 @@
-/* global normalizeKeywords, buildCombinedRegex */
-importScripts(chrome.runtime.getURL("src/js/core/scanner.js"));
+import { normalizeKeywords, buildCombinedRegex } from "./core/scanner.js";
 
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_OVERLAP = 200;

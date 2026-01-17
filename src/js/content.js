@@ -257,7 +257,9 @@ function getScanWorker() {
     if (workerFailed) return null;
     if (scanWorker) return scanWorker;
     try {
-        scanWorker = new Worker(chrome.runtime.getURL("js/scan-worker.js"));
+        scanWorker = new Worker(chrome.runtime.getURL("js/scan-worker.js"), {
+            type: "module"
+        });
         scanWorker.addEventListener("message", handleWorkerMessage);
         scanWorker.addEventListener("error", () => {
             workerFailed = true;
