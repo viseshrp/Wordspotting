@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scopeOptions = [
         { value: 'root', label: 'Root domain' },
         { value: 'subdomain', label: 'This subdomain' },
-        { value: 'path', label: 'This path' },
+        { value: 'path', label: 'This path (wildcard)' },
         { value: 'full', label: 'Full URL (exact match)' }
     ];
     const refreshPrefKey = "wordspotting_refresh_on_add";
