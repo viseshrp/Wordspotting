@@ -83,4 +83,20 @@ describe('utils', () => {
   test('compileSitePatterns handles non-array', () => {
     expect(utils.compileSitePatterns(null)).toEqual([]);
   });
+
+  test('buildPatternsForTab generates correct patterns', () => {
+    const url = "https://www.linkedin.com/jobs/view/123";
+    const patterns = utils.buildPatternsForTab(url);
+    expect(patterns.root).toBe("*linkedin.com*");
+    expect(patterns.subdomain).toBe("*www.linkedin.com*");
+    expect(patterns.path).toBe("*www.linkedin.com/jobs/view/123*");
+    expect(patterns.full).toBe("https://www.linkedin.com/jobs/view/123");
+  });
+
+  test('buildPatternsForTab handles path with query', () => {
+    const url = "https://example.com/search?q=test";
+    const patterns = utils.buildPatternsForTab(url);
+    expect(patterns.path).toBe("*example.com/search*");
+    expect(patterns.full).toBe("https://example.com/search?q=test");
+  });
 });

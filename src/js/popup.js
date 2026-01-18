@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const scopeOptions = [
         { value: 'root', label: 'Root domain' },
         { value: 'subdomain', label: 'This subdomain' },
+        { value: 'path', label: 'This path' },
         { value: 'full', label: 'Full URL (exact match)' }
     ];
     const refreshPrefKey = "wordspotting_refresh_on_add";
@@ -189,18 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.warn("Failed to update scope options", e);
         }
-    }
-
-    function buildPatternsForTab(urlString) {
-        const url = new URL(urlString);
-        const host = url.hostname;
-        if (!host) throw new Error("Invalid URL");
-        const full = url.href.split('#')[0];
-        const subdomain = `*${host}*`;
-        const parts = host.split('.').filter(Boolean);
-        const rootHost = parts.length <= 2 ? host : parts.slice(-2).join('.');
-        const root = `*${rootHost}*`;
-        return { root, subdomain, full };
     }
 
     function updateScopeOptions(urlString) {
