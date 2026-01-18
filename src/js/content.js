@@ -3,6 +3,7 @@
 const isCommonJs = typeof module !== 'undefined' && module.exports;
 const scannerModule = isCommonJs ? require('./core/scanner') : globalThis;
 const scanTextForKeywords = scannerModule.scanTextForKeywords;
+const scanTextForMatches = scannerModule.scanTextForMatches;
 const hashString = scannerModule.hashString;
 
 let scanWorker = null;
@@ -218,10 +219,42 @@ async function performHighlightScan(keyword_list, color, signal) {
         return applyHighlights(results, textNodes, color);
 
     } catch (e) {
-        console.error("Highlight scan failed:", e);
-        // Fallback to standard scan if highlighting fails, but don't highlight
-        return performStandardScan(keyword_list, document.body.innerText);
+        console.warn("Highlight scan worker failed, falling back to main thread:", e.message || e);
+        try {
+            const textNodes = getTextNodes(document.body);
+            if (signal?.aborted) return 0;
+            const results = await performHighlightScanMainThread(keyword_list, textNodes, signal);
+            if (signal?.aborted) return 0;
+            return applyHighlights(results, textNodes, color);
+        } catch (e2) {
+             console.error("Highlight fallback failed:", e2);
+             return performStandardScan(keyword_list, document.body.innerText);
+        }
     }
+}
+
+async function performHighlightScanMainThread(keywordList, textNodes, signal) {
+    const results = {};
+    const chunkSize = 100; // Process 100 nodes at a time
+
+    for (let i = 0; i < textNodes.length; i += chunkSize) {
+        if (signal?.aborted) return {};
+
+        // Yield to main thread to keep UI responsive
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        const chunk = textNodes.slice(i, i + chunkSize);
+        chunk.forEach((node, offset) => {
+            const absoluteIndex = i + offset;
+            if (node.nodeValue) {
+                const matches = scanTextForMatches(keywordList, node.nodeValue);
+                if (matches.length > 0) {
+                    results[absoluteIndex] = matches;
+                }
+            }
+        });
+    }
+    return results;
 }
 
 function getTextNodes(root) {
