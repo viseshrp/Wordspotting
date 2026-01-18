@@ -337,14 +337,17 @@ function getScanWorker() {
     if (workerFailed) return null;
     if (scanWorker) return scanWorker;
     try {
-        scanWorker = new Worker(chrome.runtime.getURL('src/js/scan-worker.js'));
+        const workerUrl = chrome.runtime.getURL('src/js/scan-worker.js');
+        scanWorker = new Worker(workerUrl);
         scanWorker.addEventListener('message', handleWorkerMessage);
-        scanWorker.addEventListener('error', () => {
+        scanWorker.addEventListener('error', (e) => {
+            console.warn("Wordspotting worker error:", e);
             workerFailed = true;
             cleanupWorker();
         });
         return scanWorker;
-    } catch (_e) {
+    } catch (e) {
+        console.warn("Wordspotting worker creation failed:", e);
         workerFailed = true;
         return null;
     }
