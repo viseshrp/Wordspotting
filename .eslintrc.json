@@ -36,7 +36,8 @@
     "buildSiteRegex": "readonly",
     "isUrlAllowed": "readonly",
     "compileSitePatterns": "readonly",
-    "isUrlAllowedCompiled": "readonly"
+    "isUrlAllowedCompiled": "readonly",
+    "buildPatternsForTab": "readonly"
   },
   "overrides": [
     {
