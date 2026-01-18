@@ -105,25 +105,9 @@ describe('content helpers', () => {
         wordspotting_highlight_color: '#FFFF00'
     }));
 
-    // Mock Worker to respond
-    const postMessageMock = jest.fn();
-    const addEventListenerMock = jest.fn();
-    global.Worker = jest.fn(() => ({
-        postMessage: postMessageMock,
-        addEventListener: addEventListenerMock,
-        terminate: jest.fn()
-    }));
-
     // Re-require to pick up new Worker mock
     jest.resetModules();
     content = require('../src/js/content.js');
-
-    // Setup DOM for createTreeWalker mock or just mock getTextNodes?
-    // Since getTextNodes is internal but exported, we can test it directly or rely on document structure.
-    // JSDOM supports createTreeWalker.
-    // We need to make sure document.createTreeWalker returns something useful.
-    // But since we can't easily drive the Worker "message" event from the test without exposing the listener...
-    // We can rely on 'applyHighlights' being exported and test that directly with results.
 
     const results = { "0": [{ keyword: "keyword", index: 0, length: 7 }] };
     const textNode = document.createTextNode("keyword");

@@ -207,29 +207,14 @@ async function performHighlightScan(keyword_list, color, signal) {
         const textNodes = getTextNodes(document.body);
         if (signal?.aborted) return 0;
 
-        // Prepare chunks for worker
-        const chunks = textNodes.map((node, index) => ({
-            id: index,
-            text: node.nodeValue
-        }));
-
-        const results = await scanWithWorkerForHighlights(keyword_list, chunks);
+        // Use main thread directly for highlighting
+        const results = await performHighlightScanMainThread(keyword_list, textNodes, signal);
         if (signal?.aborted) return 0;
 
         return applyHighlights(results, textNodes, color);
-
     } catch (e) {
-        console.warn("Highlight scan worker failed, falling back to main thread:", e.message || e);
-        try {
-            const textNodes = getTextNodes(document.body);
-            if (signal?.aborted) return 0;
-            const results = await performHighlightScanMainThread(keyword_list, textNodes, signal);
-            if (signal?.aborted) return 0;
-            return applyHighlights(results, textNodes, color);
-        } catch (e2) {
-             console.error("Highlight fallback failed:", e2);
-             return performStandardScan(keyword_list, document.body.innerText);
-        }
+         console.error("Highlight scan failed:", e);
+         return performStandardScan(keyword_list, document.body.innerText);
     }
 }
 
@@ -412,8 +397,6 @@ function handleWorkerMessage(event) {
 
     if (data.type === 'scan_result') {
         pending.resolve(Array.isArray(data.words) ? data.words : []);
-    } else if (data.type === 'scan_highlights_result') {
-        pending.resolve(data.results || {});
     } else if (data.type === 'scan_error') {
         pending.reject(new Error(data.error || 'Worker scan failed'));
     }
@@ -450,22 +433,7 @@ async function scanWithWorker(keywordList, text) {
     });
 }
 
-async function scanWithWorkerForHighlights(keywordList, chunks) {
-    const worker = await getScanWorkerAsync();
-    if (!worker) {
-        throw new Error("Worker not available for highlighting");
-    }
-    return new Promise((resolve, reject) => {
-        const id = ++scanRequestId;
-        workerRequests.set(id, { resolve, reject });
-        worker.postMessage({
-            type: 'scan_for_highlights',
-            id,
-            keywords: keywordList,
-            chunks // array of {id, text}
-        });
-    });
-}
+// scanWithWorkerForHighlights removed
 
 function getChunkingConfig(text, keywordList) {
     const length = typeof text === 'string' ? text.length : 0;
