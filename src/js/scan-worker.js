@@ -1,4 +1,4 @@
-/* global normalizeKeywords, buildCombinedRegex */
+/* global normalizeKeywords, buildCombinedRegex, scanTextForMatches */
 importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
 
 const DEFAULT_CHUNK_SIZE = 150000;
@@ -49,17 +49,37 @@ function scanTextInChunks(keywordList, text, chunkSize, overlap) {
     return Array.from(foundKeywords);
 }
 
+function scanChunksForHighlights(keywordList, chunks) {
+    const results = {};
+    if (!chunks || !Array.isArray(chunks)) return results;
+
+    for (const chunk of chunks) {
+        if (chunk && typeof chunk.text === 'string' && typeof chunk.id !== 'undefined') {
+            const matches = scanTextForMatches(keywordList, chunk.text);
+            if (matches.length > 0) {
+                results[chunk.id] = matches;
+            }
+        }
+    }
+    return results;
+}
+
 self.addEventListener('message', (event) => {
     const data = event.data || {};
-    if (data.type !== 'scan') return;
     const id = data.id;
 
     try {
-        const text = typeof data.text === 'string' ? data.text : '';
-        const chunkSize = Number.isFinite(data.chunkSize) ? data.chunkSize : DEFAULT_CHUNK_SIZE;
-        const overlap = Number.isFinite(data.overlap) ? data.overlap : DEFAULT_OVERLAP;
-        const words = scanTextInChunks(data.keywords, text, chunkSize, overlap);
-        self.postMessage({ type: 'scan_result', id, words });
+        if (data.type === 'scan') {
+            const text = typeof data.text === 'string' ? data.text : '';
+            const chunkSize = Number.isFinite(data.chunkSize) ? data.chunkSize : DEFAULT_CHUNK_SIZE;
+            const overlap = Number.isFinite(data.overlap) ? data.overlap : DEFAULT_OVERLAP;
+            const words = scanTextInChunks(data.keywords, text, chunkSize, overlap);
+            self.postMessage({ type: 'scan_result', id, words });
+        } else if (data.type === 'scan_for_highlights') {
+            const chunks = Array.isArray(data.chunks) ? data.chunks : [];
+            const results = scanChunksForHighlights(data.keywords, chunks);
+            self.postMessage({ type: 'scan_highlights_result', id, results });
+        }
     } catch (e) {
         self.postMessage({ type: 'scan_error', id, error: e.message || 'scan_failed' });
     }

@@ -99,4 +99,12 @@ describe('utils', () => {
     expect(patterns.path).toBe("*example.com/search*");
     expect(patterns.full).toBe("https://example.com/search?q=test");
   });
+
+  test('scanTextForMatches finds all occurrences', () => {
+    const scanner = require('../src/js/core/scanner.js');
+    const matches = scanner.scanTextForMatches(['foo'], 'foo bar foo');
+    expect(matches).toHaveLength(2);
+    expect(matches[0]).toEqual({ keyword: 'foo', index: 0, length: 3 });
+    expect(matches[1]).toEqual({ keyword: 'foo', index: 8, length: 3 });
+  });
 });

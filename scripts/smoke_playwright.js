@@ -16,7 +16,7 @@ async function main() {
   // const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
   // const displaySession = useXvfb ? await startXvfb() : null;
   const displaySession = null;
-  const headless = true; // Use headless=new mode for extensions in newer Chromium
+  const _headless = true; // Use headless=new mode for extensions in newer Chromium
   const extensionPath = path.resolve(__dirname, '..');
   if (!fs.existsSync(path.join(extensionPath, 'manifest.json'))) {
     throw new Error('manifest.json not found; run from repo root');
@@ -148,7 +148,7 @@ async function waitForServiceWorker(context, timeout = 15000) {
   throw new Error(`Service worker not registered within ${timeout}ms`);
 }
 
-function startXvfb() {
+function _startXvfb() {
   return new Promise((resolve, reject) => {
     const display = ':99';
     const xvfb = spawn('Xvfb', [display, '-screen', '0', '1280x720x24', '-nolisten', 'tcp'], {

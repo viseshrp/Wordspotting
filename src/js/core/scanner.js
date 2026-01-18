@@ -61,6 +61,39 @@ function scanTextForKeywords(keywordList, textToScan) {
     return Array.from(foundKeywords);
 }
 
+function scanTextForMatches(keywordList, textToScan) {
+    const validKeywords = normalizeKeywords(keywordList);
+    if (validKeywords.length === 0) return [];
+
+    const text = typeof textToScan === 'string' ? textToScan : '';
+    const matches = [];
+    const combined = buildCombinedRegex(validKeywords);
+    if (!combined) return [];
+
+    const { regex, patternMap } = combined;
+    let match = regex.exec(text);
+
+    while (match !== null) {
+        if (match.groups) {
+            for (const key in match.groups) {
+                if (match.groups[key] !== undefined) {
+                    const index = parseInt(key.substring(1), 10);
+                    if (patternMap[index]) {
+                        matches.push({
+                            keyword: patternMap[index],
+                            index: match.index,
+                            length: match[0].length
+                        });
+                    }
+                }
+            }
+        }
+        match = regex.exec(text);
+    }
+
+    return matches;
+}
+
 function hashString(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -76,6 +109,7 @@ if (typeof module !== 'undefined') {
         normalizeKeywords,
         buildCombinedRegex,
         scanTextForKeywords,
+        scanTextForMatches,
         hashString
     };
 }

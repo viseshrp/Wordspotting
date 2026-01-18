@@ -141,7 +141,10 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // Re-evaluate active tab when allowed sites or on/off switch changes.
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
-    if (!changes.wordspotting_website_list && !changes.wordspotting_extension_on) return;
+    if (!changes.wordspotting_website_list &&
+        !changes.wordspotting_extension_on &&
+        !changes.wordspotting_highlight_on &&
+        !changes.wordspotting_highlight_color) return;
 
     if (changes.wordspotting_website_list) {
         refreshAllowedSitePatterns();

@@ -1,3 +1,4 @@
+/* global Highlight */
 (() => {
 const isCommonJs = typeof module !== 'undefined' && module.exports;
 const scannerModule = isCommonJs ? require('./core/scanner') : globalThis;
@@ -10,6 +11,7 @@ const DEFAULT_CHUNK_OVERLAP = 200;
 let scanRequestId = 0;
 const workerRequests = new Map();
 let workerFailed = false;
+
 // Prevent duplicate injection in the same frame (skip for CommonJS/tests so exports are available)
 if (!isCommonJs && globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
     return;
@@ -147,36 +149,160 @@ async function performScan(signal) {
         if (signal?.aborted) return;
         if (!chrome.runtime || !chrome.runtime.id) return;
 
-        const items = await getFromStorage("wordspotting_word_list");
+        const items = await getFromStorage(["wordspotting_word_list", "wordspotting_highlight_on", "wordspotting_highlight_color"]);
         const keyword_list = items.wordspotting_word_list;
+        const highlightOn = items.wordspotting_highlight_on === true;
+        const highlightColor = items.wordspotting_highlight_color || '#FFFF00';
 
         if (!isValidObj(keyword_list) || keyword_list.length === 0) {
             sendKeywordCount(0);
+            if (highlightOn) clearHighlights();
             return;
         }
 
+        // Check if content changed significantly
+        // We use innerText hash as a cheap proxy for "did the page content change?"
+        // This is shared between both highlight and non-highlight modes.
         const bodyText = await getBodyTextSnapshot(signal);
         if (signal?.aborted) return;
 
-        const signature = `${bodyText.length}:${hashString(bodyText)}`;
+        // Include highlight setting in signature to force re-scan if user toggles switch
+        const signature = `${highlightOn}:${bodyText.length}:${hashString(bodyText)}`;
         if (signature === lastScanSignature) {
             return;
         }
 
         lastScanSignature = signature;
 
-        let occurring_word_list = [];
-        try {
-            occurring_word_list = await scanWithWorker(keyword_list, bodyText);
-        } catch (e) {
-            console.warn("Worker scan failed, falling back", e);
-            occurring_word_list = getWordList(keyword_list, bodyText);
+        let foundCount = 0;
+
+        if (highlightOn) {
+            foundCount = await performHighlightScan(keyword_list, highlightColor, signal);
+        } else {
+            clearHighlights();
+            foundCount = await performStandardScan(keyword_list, bodyText);
         }
-        sendKeywordCount(occurring_word_list.length);
+
+        sendKeywordCount(foundCount);
+
     } catch (e) {
-        console.error("Error in talkToBackgroundScript:", e);
+        console.error("Error in performScan:", e);
     }
 }
+
+async function performStandardScan(keyword_list, bodyText) {
+    let occurring_word_list = [];
+    try {
+        occurring_word_list = await scanWithWorker(keyword_list, bodyText);
+    } catch (e) {
+        console.warn("Worker scan failed, falling back", e);
+        occurring_word_list = getWordList(keyword_list, bodyText);
+    }
+    return occurring_word_list.length;
+}
+
+async function performHighlightScan(keyword_list, color, signal) {
+    try {
+        const textNodes = getTextNodes(document.body);
+        if (signal?.aborted) return 0;
+
+        // Prepare chunks for worker
+        const chunks = textNodes.map((node, index) => ({
+            id: index,
+            text: node.nodeValue
+        }));
+
+        const results = await scanWithWorkerForHighlights(keyword_list, chunks);
+        if (signal?.aborted) return 0;
+
+        return applyHighlights(results, textNodes, color);
+
+    } catch (e) {
+        console.error("Highlight scan failed:", e);
+        // Fallback to standard scan if highlighting fails, but don't highlight
+        return performStandardScan(keyword_list, document.body.innerText);
+    }
+}
+
+function getTextNodes(root) {
+    const nodes = [];
+    if (!root) return nodes;
+
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: (node) => {
+            // Filter out empty or whitespace-only nodes to save processing
+            if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+            // Filter out script/style/etc
+            if (node.parentNode && ['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT'].includes(node.parentNode.tagName)) return NodeFilter.FILTER_REJECT;
+            // Filter invisible? (expensive, maybe skip for now)
+            return NodeFilter.FILTER_ACCEPT;
+        }
+    });
+
+    let node = walker.nextNode();
+    while (node) {
+        nodes.push(node);
+        node = walker.nextNode();
+    }
+    return nodes;
+}
+
+function applyHighlights(results, textNodes, color) {
+    if (!('highlights' in CSS)) return 0;
+
+    const ranges = [];
+    const foundKeywords = new Set();
+
+    for (const [idStr, matches] of Object.entries(results)) {
+        const id = parseInt(idStr, 10);
+        const node = textNodes[id];
+        if (!node) continue;
+
+        for (const match of matches) {
+            try {
+                const range = new Range();
+                range.setStart(node, match.index);
+                range.setEnd(node, match.index + match.length);
+                ranges.push(range);
+                foundKeywords.add(match.keyword);
+            } catch (_e) {
+                // Ignore range errors (e.g. node changed)
+            }
+        }
+    }
+
+    const highlight = new Highlight(...ranges);
+    CSS.highlights.set('wordspotting-match', highlight);
+
+    // Apply styles dynamically (or ensure CSS is present)
+    // We can't set styles directly on Highlight object, we need a CSS rule.
+    // However, we can't easily inject a stylesheet that references the custom highlight name dynamically if we want user configured color.
+    // Actually we can: ::highlight(wordspotting-match)
+    updateHighlightStyle(color);
+
+    return foundKeywords.size;
+}
+
+function clearHighlights() {
+    if ('highlights' in CSS) {
+        CSS.highlights.delete('wordspotting-match');
+    }
+}
+
+let highlightStyleElement = null;
+function updateHighlightStyle(color) {
+    if (!highlightStyleElement) {
+        highlightStyleElement = document.createElement('style');
+        document.head.appendChild(highlightStyleElement);
+    }
+    highlightStyleElement.textContent = `
+        ::highlight(wordspotting-match) {
+            background-color: ${color};
+            color: black;
+        }
+    `;
+}
+
 
 // Debounce function to limit how often we scan
 function debounce(func, wait) {
@@ -230,8 +356,11 @@ function handleWorkerMessage(event) {
     const pending = workerRequests.get(data.id);
     if (!pending) return;
     workerRequests.delete(data.id);
+
     if (data.type === 'scan_result') {
         pending.resolve(Array.isArray(data.words) ? data.words : []);
+    } else if (data.type === 'scan_highlights_result') {
+        pending.resolve(data.results || {});
     } else if (data.type === 'scan_error') {
         pending.reject(new Error(data.error || 'Worker scan failed'));
     }
@@ -265,6 +394,24 @@ function scanWithWorker(keywordList, text) {
             text,
             chunkSize,
             overlap
+        });
+    });
+}
+
+function scanWithWorkerForHighlights(keywordList, chunks) {
+    return new Promise((resolve, reject) => {
+        const worker = getScanWorker();
+        if (!worker) {
+            reject(new Error("Worker not available for highlighting"));
+            return;
+        }
+        const id = ++scanRequestId;
+        workerRequests.set(id, { resolve, reject });
+        worker.postMessage({
+            type: 'scan_for_highlights',
+            id,
+            keywords: keywordList,
+            chunks // array of {id, text}
         });
     });
 }
@@ -318,7 +465,9 @@ if (typeof module !== 'undefined') {
         performScan,
         scheduleScan,
         deferUntilPageIdle,
-        proceedWithSiteListCheck
+        proceedWithSiteListCheck,
+        getTextNodes, // exported for testing
+        applyHighlights // exported for testing
     };
 }
 
