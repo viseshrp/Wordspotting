@@ -347,7 +347,7 @@ function getScanWorker() {
         });
         return scanWorker;
     } catch (e) {
-        console.warn("Wordspotting worker creation failed:", e);
+        console.warn("Wordspotting worker creation failed:", e.name, e.message);
         workerFailed = true;
         return null;
     }
