@@ -150,6 +150,25 @@ function isUrlAllowedCompiled(url, compiled) {
     return compiled.some((regex) => candidates.some((c) => regex.test(c)));
 }
 
+/**
+ * Build allowlist patterns (root, subdomain, path, full) from a URL.
+ * @param {string} urlString
+ * @returns {{root: string, subdomain: string, path: string, full: string}}
+ */
+function buildPatternsForTab(urlString) {
+    const url = new URL(urlString);
+    const host = url.hostname;
+    if (!host) throw new Error("Invalid URL");
+    const full = url.href.split('#')[0];
+    const subdomain = `*${host}*`;
+    const parts = host.split('.').filter(Boolean);
+    const rootHost = parts.length <= 2 ? host : parts.slice(-2).join('.');
+    const root = `*${rootHost}*`;
+    const path = `*${host}${url.pathname}*`;
+
+    return { root, subdomain, path, full };
+}
+
 // Export for tests
 /* istanbul ignore next */
 if (typeof module !== 'undefined') {
@@ -164,6 +183,7 @@ if (typeof module !== 'undefined') {
         buildSiteRegex,
         isUrlAllowed,
         compileSitePatterns,
-        isUrlAllowedCompiled
+        isUrlAllowedCompiled,
+        buildPatternsForTab
     };
 }

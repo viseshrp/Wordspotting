@@ -13,24 +13,21 @@ const { chromium } = require('playwright-chromium');
 /* global refreshAllowedSitePatterns, handleMessage, setCountBadge, compiledAllowedSites */
 
 async function main() {
-  const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
-  const displaySession = useXvfb ? await startXvfb() : null;
-  const headless = false; // Extensions require headful; Xvfb handles CI.
+  // const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
+  // const displaySession = useXvfb ? await startXvfb() : null;
+  const displaySession = null;
+  const headless = true; // Use headless=new mode for extensions in newer Chromium
   const extensionPath = path.resolve(__dirname, '..');
   if (!fs.existsSync(path.join(extensionPath, 'manifest.json'))) {
     throw new Error('manifest.json not found; run from repo root');
   }
 
   const context = await chromium.launchPersistentContext('', {
-    headless,
-    env: {
-      ...process.env,
-      ...(displaySession ? { DISPLAY: displaySession.display } : {})
-    },
+    headless: false, // Must be false for extensions usually, but we are using headless=new arg
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
-      ...(headless ? ['--headless=new'] : [])
+      '--headless=new'
     ]
   });
 
@@ -76,6 +73,9 @@ async function main() {
       });
       waitForComplete();
     });
+
+    // Give some time for background `onUpdated` -> `maybeInjectContentScripts` to run and reset badge to 0.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     // Drive badge update through the background handler directly (faster than messaging from injected script).
     const response = await handleMessage(
