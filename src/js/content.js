@@ -333,24 +333,41 @@ async function getBodyTextSnapshot(signal) {
     return text;
 }
 
-function getScanWorker() {
+async function getScanWorkerAsync() {
     if (workerFailed) return null;
     if (scanWorker) return scanWorker;
+
+    const workerUrl = chrome.runtime.getURL('src/js/scan-worker.js');
     try {
-        const workerUrl = chrome.runtime.getURL('src/js/scan-worker.js');
+        // Direct instantiation
         scanWorker = new Worker(workerUrl);
-        scanWorker.addEventListener('message', handleWorkerMessage);
-        scanWorker.addEventListener('error', (e) => {
-            console.warn("Wordspotting worker error:", e);
-            workerFailed = true;
-            cleanupWorker();
-        });
+        setupWorkerListeners(scanWorker);
         return scanWorker;
     } catch (e) {
-        console.warn("Wordspotting worker creation failed:", e.name, e.message);
-        workerFailed = true;
-        return null;
+        // Fallback: Blob URL to bypass cross-origin check if permitted
+        try {
+            const response = await fetch(workerUrl);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            scanWorker = new Worker(blobUrl);
+            setupWorkerListeners(scanWorker);
+            // Clean up blob URL eventually? worker needs it.
+            return scanWorker;
+        } catch (e2) {
+            console.warn("Wordspotting worker creation failed (both methods):", e.message, e2.message);
+            workerFailed = true;
+            return null;
+        }
     }
+}
+
+function setupWorkerListeners(worker) {
+    worker.addEventListener('message', handleWorkerMessage);
+    worker.addEventListener('error', (e) => {
+        console.warn("Wordspotting worker error:", e);
+        workerFailed = true;
+        cleanupWorker();
+    });
 }
 
 function handleWorkerMessage(event) {
@@ -380,13 +397,12 @@ function cleanupWorker() {
     workerRequests.clear();
 }
 
-function scanWithWorker(keywordList, text) {
+async function scanWithWorker(keywordList, text) {
+    const worker = await getScanWorkerAsync();
+    if (!worker) {
+        return scanTextForKeywords(keywordList, text);
+    }
     return new Promise((resolve, reject) => {
-        const worker = getScanWorker();
-        if (!worker) {
-            resolve(scanTextForKeywords(keywordList, text));
-            return;
-        }
         const { chunkSize, overlap } = getChunkingConfig(text, keywordList);
         const id = ++scanRequestId;
         workerRequests.set(id, { resolve, reject });
@@ -401,13 +417,12 @@ function scanWithWorker(keywordList, text) {
     });
 }
 
-function scanWithWorkerForHighlights(keywordList, chunks) {
+async function scanWithWorkerForHighlights(keywordList, chunks) {
+    const worker = await getScanWorkerAsync();
+    if (!worker) {
+        throw new Error("Worker not available for highlighting");
+    }
     return new Promise((resolve, reject) => {
-        const worker = getScanWorker();
-        if (!worker) {
-            reject(new Error("Worker not available for highlighting"));
-            return;
-        }
         const id = ++scanRequestId;
         workerRequests.set(id, { resolve, reject });
         worker.postMessage({
