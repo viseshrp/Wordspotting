@@ -3,7 +3,6 @@
 const isCommonJs = typeof module !== 'undefined' && module.exports;
 const scannerModule = isCommonJs ? require('./core/scanner') : globalThis;
 const scanTextForKeywords = scannerModule.scanTextForKeywords;
-const scanTextForMatches = scannerModule.scanTextForMatches;
 const hashString = scannerModule.hashString;
 
 let scanWorker = null;
@@ -207,39 +206,39 @@ async function performHighlightScan(keyword_list, color, signal) {
         const textNodes = getTextNodes(document.body);
         if (signal?.aborted) return 0;
 
-        // Use main thread directly for highlighting
-        const results = await performHighlightScanMainThread(keyword_list, textNodes, signal);
+        // Prepare chunks for worker
+        const chunks = textNodes.map((node, index) => ({
+            id: index,
+            text: node.nodeValue
+        }));
+
+        const results = await scanWithWorkerForHighlights(keyword_list, chunks);
         if (signal?.aborted) return 0;
 
         return applyHighlights(results, textNodes, color);
+
     } catch (e) {
-         console.error("Highlight scan failed:", e);
-         return performStandardScan(keyword_list, document.body.innerText);
+        console.error("Highlight scan failed:", e);
+        // Fallback to standard scan if highlighting fails, but don't highlight
+        return performStandardScan(keyword_list, document.body.innerText);
     }
 }
 
-async function performHighlightScanMainThread(keywordList, textNodes, signal) {
-    const results = {};
-    const chunkSize = 100; // Process 100 nodes at a time
-
-    for (let i = 0; i < textNodes.length; i += chunkSize) {
-        if (signal?.aborted) return {};
-
-        // Yield to main thread to keep UI responsive
-        await new Promise(resolve => setTimeout(resolve, 0));
-
-        const chunk = textNodes.slice(i, i + chunkSize);
-        chunk.forEach((node, offset) => {
-            const absoluteIndex = i + offset;
-            if (node.nodeValue) {
-                const matches = scanTextForMatches(keywordList, node.nodeValue);
-                if (matches.length > 0) {
-                    results[absoluteIndex] = matches;
-                }
-            }
-        });
+function scanWithWorkerForHighlights(keywordList, chunks) {
+    const worker = getScanWorker();
+    if (!worker) {
+        return Promise.reject(new Error("Worker not available for highlighting"));
     }
-    return results;
+    return new Promise((resolve, reject) => {
+        const id = ++scanRequestId;
+        workerRequests.set(id, { resolve, reject });
+        worker.postMessage({
+            type: 'scan_for_highlights',
+            id,
+            keywords: keywordList,
+            chunks // array of {id, text}
+        });
+    });
 }
 
 function getTextNodes(root) {
@@ -351,31 +350,17 @@ async function getBodyTextSnapshot(signal) {
     return text;
 }
 
-async function getScanWorkerAsync() {
+function getScanWorker() {
     if (workerFailed) return null;
     if (scanWorker) return scanWorker;
-
-    const workerUrl = chrome.runtime.getURL('src/js/scan-worker.js');
     try {
-        // Direct instantiation
-        scanWorker = new Worker(workerUrl);
+        scanWorker = new Worker(chrome.runtime.getURL('src/js/scan-worker.js'));
         setupWorkerListeners(scanWorker);
         return scanWorker;
     } catch (e) {
-        // Fallback: Blob URL to bypass cross-origin check if permitted
-        try {
-            const response = await fetch(workerUrl);
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-            scanWorker = new Worker(blobUrl);
-            setupWorkerListeners(scanWorker);
-            // Clean up blob URL eventually? worker needs it.
-            return scanWorker;
-        } catch (e2) {
-            console.warn("Wordspotting worker creation failed (both methods):", e.message, e2.message);
-            workerFailed = true;
-            return null;
-        }
+        console.warn("Wordspotting worker creation failed:", e.name, e.message);
+        workerFailed = true;
+        return null;
     }
 }
 
@@ -397,6 +382,8 @@ function handleWorkerMessage(event) {
 
     if (data.type === 'scan_result') {
         pending.resolve(Array.isArray(data.words) ? data.words : []);
+    } else if (data.type === 'scan_highlights_result') {
+        pending.resolve(data.results || {});
     } else if (data.type === 'scan_error') {
         pending.reject(new Error(data.error || 'Worker scan failed'));
     }
@@ -413,10 +400,10 @@ function cleanupWorker() {
     workerRequests.clear();
 }
 
-async function scanWithWorker(keywordList, text) {
-    const worker = await getScanWorkerAsync();
+function scanWithWorker(keywordList, text) {
+    const worker = getScanWorker();
     if (!worker) {
-        return scanTextForKeywords(keywordList, text);
+        return Promise.resolve(scanTextForKeywords(keywordList, text));
     }
     return new Promise((resolve, reject) => {
         const { chunkSize, overlap } = getChunkingConfig(text, keywordList);
