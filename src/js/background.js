@@ -169,17 +169,30 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 async function maybeInjectContentScripts(tabId, url) {
     try {
+        const originPattern = originPatternForUrl(url);
+        if (!originPattern) {
+            setInactiveBadge(tabId);
+            return;
+        }
+
         const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
         if (settings.wordspotting_extension_on === false) {
             return;
         }
 
         const allowedSites = settings.wordspotting_website_list || [];
-        const isAllowed = compiledAllowedSites.length > 0
-            ? isUrlAllowedCompiled(url, compiledAllowedSites)
-            : isUrlAllowed(url, allowedSites);
+        const isAllowed = isUrlAllowedByMatchPatterns(url, allowedSites) ||
+            (compiledAllowedSites.length > 0
+                ? isUrlAllowedCompiled(url, compiledAllowedSites)
+                : isUrlAllowed(url, allowedSites));
 
         if (!isAllowed) {
+            setInactiveBadge(tabId);
+            return;
+        }
+
+        const hasPermission = await chrome.permissions.contains({ origins: [originPattern] });
+        if (!hasPermission) {
             setInactiveBadge(tabId);
             return;
         }
@@ -226,6 +239,12 @@ async function refreshAllowedSitePatterns() {
 
 async function updateBadgeForTab(tabId, url) {
     try {
+        const originPattern = originPatternForUrl(url);
+        if (!originPattern) {
+            setInactiveBadge(tabId);
+            return;
+        }
+
         const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
         if (settings.wordspotting_extension_on === false) {
             setInactiveBadge(tabId);
@@ -233,11 +252,18 @@ async function updateBadgeForTab(tabId, url) {
         }
 
         const allowedSites = settings.wordspotting_website_list || [];
-        const isAllowed = compiledAllowedSites.length > 0
-            ? isUrlAllowedCompiled(url, compiledAllowedSites)
-            : isUrlAllowed(url, allowedSites);
+        const isAllowed = isUrlAllowedByMatchPatterns(url, allowedSites) ||
+            (compiledAllowedSites.length > 0
+                ? isUrlAllowedCompiled(url, compiledAllowedSites)
+                : isUrlAllowed(url, allowedSites));
 
         if (!isAllowed) {
+            setInactiveBadge(tabId);
+            return;
+        }
+
+        const hasPermission = await chrome.permissions.contains({ origins: [originPattern] });
+        if (!hasPermission) {
             setInactiveBadge(tabId);
             return;
         }

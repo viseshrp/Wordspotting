@@ -169,6 +169,163 @@ function buildPatternsForTab(urlString) {
     return { root, subdomain, path, full };
 }
 
+// --- Chrome match pattern helpers (for optional host permissions) ---
+
+/**
+ * Validate a Chrome match pattern like "*://*.example.com/*".
+ * This is intentionally strict (only supports patterns that Chrome permissions accept).
+ * @param {string} pattern
+ * @returns {boolean}
+ */
+function isValidMatchPattern(pattern) {
+    if (!pattern || typeof pattern !== 'string') return false;
+    const p = pattern.trim();
+    // scheme://host/path
+    const m = /^([*]|http|https):\/\/([^/]+)(\/.*)$/.exec(p);
+    if (!m) return false;
+    const scheme = m[1];
+    const host = m[2];
+    const path = m[3];
+    if (!path.startsWith('/')) return false;
+
+    // Host can be *, *.example.com, or example.com
+    if (host === '*') return true;
+    if (host.startsWith('*.')) {
+        const base = host.substring(2);
+        return base.length > 0 && !base.includes('*') && /^[A-Za-z0-9.-]+$/.test(base);
+    }
+    return !host.includes('*') && /^[A-Za-z0-9.-]+$/.test(host);
+}
+
+function escapeRegex(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Convert a Chrome match pattern to a RegExp for testing a URL.
+ * @param {string} pattern
+ * @returns {RegExp|null}
+ */
+function matchPatternToRegExp(pattern) {
+    if (!isValidMatchPattern(pattern)) return null;
+    const p = pattern.trim();
+    const m = /^([*]|http|https):\/\/([^/]+)(\/.*)$/.exec(p);
+    if (!m) return null;
+    const scheme = m[1];
+    const host = m[2];
+    const path = m[3];
+
+    const schemeRe = scheme === '*' ? '(http|https)' : escapeRegex(scheme);
+
+    let hostRe;
+    if (host === '*') {
+        hostRe = '[^/]*';
+    } else if (host.startsWith('*.')) {
+        const base = escapeRegex(host.substring(2));
+        // Chrome treats *.example.com as matching example.com and subdomains.
+        hostRe = `(?:[^/]*\\.)?${base}`;
+    } else {
+        hostRe = escapeRegex(host);
+    }
+
+    const pathRe = escapeRegex(path).replace(/\\\*/g, '.*');
+    return new RegExp(`^${schemeRe}:\\/\\/${hostRe}${pathRe}$`, 'i');
+}
+
+/**
+ * Check URL against a list of Chrome match patterns.
+ * @param {string} url
+ * @param {string[]} patterns
+ * @returns {boolean}
+ */
+function isUrlAllowedByMatchPatterns(url, patterns) {
+    if (!url || !Array.isArray(patterns) || patterns.length === 0) return false;
+    return patterns.some((p) => {
+        const re = matchPatternToRegExp(p);
+        return re ? re.test(url) : false;
+    });
+}
+
+/**
+ * Normalize user input to one or more Chrome match patterns.
+ * Accepts:
+ * - match patterns ("*://*.example.com/*")
+ * - full URLs ("https://example.com/foo")
+ * - hostnames/domains ("example.com" or "www.example.com")
+ * @param {string} input
+ * @returns {string[]} match patterns
+ */
+function normalizeToMatchPatterns(input) {
+    if (!input || typeof input !== 'string') return [];
+    const raw = input.trim();
+    if (!raw) return [];
+
+    // Already a match pattern
+    if (raw.includes('://') && raw.includes('/*') && isValidMatchPattern(raw)) {
+        return [raw];
+    }
+
+    // Full URL
+    try {
+        const u = new URL(raw);
+        if (u.protocol === 'http:' || u.protocol === 'https:') {
+            return [`${u.protocol.replace(':', '')}://${u.hostname}/*`];
+        }
+    } catch (_e) {
+        // Not a URL
+    }
+
+    // Hostname/domain
+    const host = raw.replace(/^\.+/, '').replace(/\s+/g, '');
+    if (!/^[A-Za-z0-9.-]+$/.test(host) || !host.includes('.')) {
+        return [];
+    }
+
+    // If user entered a bare domain (no scheme), default to both http/https via *://
+    // If they entered a subdomain, keep it exact; if they entered a root domain, include subdomains.
+    const parts = host.split('.').filter(Boolean);
+    const isLikelyRoot = parts.length <= 2;
+    const hostPattern = isLikelyRoot ? `*.${host}` : host;
+    return [`*://${hostPattern}/*`];
+}
+
+/**
+ * Build match patterns for a tab URL, for different scopes.
+ * Note: "full" cannot exactly match query/fragment via match patterns.
+ * @param {string} urlString
+ * @returns {{root: string, subdomain: string, path: string, full: string}}
+ */
+function buildMatchPatternsForTab(urlString) {
+    const url = new URL(urlString);
+    const host = url.hostname;
+    if (!host) throw new Error('Invalid URL');
+    const parts = host.split('.').filter(Boolean);
+    const rootHost = parts.length <= 2 ? host : parts.slice(-2).join('.');
+
+    const root = `*://*.${rootHost}/*`;
+    const subdomain = `*://${host}/*`;
+    const path = `*://${host}${url.pathname}*`;
+    const full = `*://${host}${url.pathname}*`;
+
+    return { root, subdomain, path, full };
+}
+
+/**
+ * Convert a concrete URL to a specific origin pattern for permissions.contains.
+ * @param {string} urlString
+ * @returns {string|null}
+ */
+function originPatternForUrl(urlString) {
+    try {
+        const u = new URL(urlString);
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+        const scheme = u.protocol.replace(':', '');
+        return `${scheme}://${u.hostname}/*`;
+    } catch (_e) {
+        return null;
+    }
+}
+
 // Export for tests
 /* istanbul ignore next */
 if (typeof module !== 'undefined') {
@@ -184,6 +341,12 @@ if (typeof module !== 'undefined') {
         isUrlAllowed,
         compileSitePatterns,
         isUrlAllowedCompiled,
-        buildPatternsForTab
+        buildPatternsForTab,
+        isValidMatchPattern,
+        matchPatternToRegExp,
+        isUrlAllowedByMatchPatterns,
+        normalizeToMatchPatterns,
+        buildMatchPatternsForTab,
+        originPatternForUrl
     };
 }
