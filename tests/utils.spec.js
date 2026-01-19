@@ -99,6 +99,51 @@ describe('utils', () => {
     expect(patterns.path).toBe("*example.com/search*");
     expect(patterns.full).toBe("https://example.com/search?q=test");
   });
+
+  test('match pattern validation and matching', () => {
+    expect(utils.isValidMatchPattern('*://*.example.com/*')).toBe(true);
+    expect(utils.isValidMatchPattern('https://example.com/*')).toBe(true);
+    expect(utils.isValidMatchPattern('ftp://example.com/*')).toBe(false);
+    expect(utils.isValidMatchPattern('*://example.com')).toBe(false);
+
+    const re = utils.matchPatternToRegExp('*://*.example.com/*');
+    expect(re).toBeInstanceOf(RegExp);
+    expect(re.test('https://example.com/')).toBe(true);
+    expect(re.test('http://sub.example.com/path?q=1')).toBe(true);
+    expect(re.test('https://notexample.com/')).toBe(false);
+
+    const httpsOnly = utils.matchPatternToRegExp('https://example.com/*');
+    expect(httpsOnly.test('https://example.com/a')).toBe(true);
+    expect(httpsOnly.test('http://example.com/a')).toBe(false);
+
+    expect(utils.isUrlAllowedByMatchPatterns('https://x.example.com/hi', ['https://*.example.com/*'])).toBe(true);
+    expect(utils.isUrlAllowedByMatchPatterns('https://x.com/', ['https://*.example.com/*'])).toBe(false);
+  });
+
+  test('normalizeToMatchPatterns accepts patterns, URLs, and hostnames', () => {
+    expect(utils.normalizeToMatchPatterns('*://*.example.com/*')).toEqual(['http://*.example.com/*', 'https://*.example.com/*']);
+    expect(utils.normalizeToMatchPatterns('https://example.com/foo')).toEqual(['https://example.com/*']);
+    expect(utils.normalizeToMatchPatterns('example.com')).toEqual(['http://*.example.com/*', 'https://*.example.com/*']);
+    expect(utils.normalizeToMatchPatterns('www.example.com')).toEqual(['http://www.example.com/*', 'https://www.example.com/*']);
+    expect(utils.normalizeToMatchPatterns('notaurl')).toEqual([]);
+  });
+
+  test('buildMatchPatternsForTab and originPatternForUrl', () => {
+    const patterns = utils.buildMatchPatternsForTab('https://www.linkedin.com/jobs/view/123?x=1');
+    expect(patterns.subdomain).toBe('https://www.linkedin.com/*');
+    expect(patterns.path).toBe('https://www.linkedin.com/jobs/view/123*');
+
+    expect(utils.originPatternForUrl('https://example.com/a?b=1')).toBe('https://example.com/*');
+    expect(utils.originPatternForUrl('chrome://extensions')).toBeNull();
+  });
+
+  test('regex allowlist functions accept match-pattern strings too', () => {
+    const compiled = utils.compileSitePatterns(['https://*.example.com/*']);
+    expect(Array.isArray(compiled)).toBe(true);
+    // Exercise non-URL branch (URL parse throws)
+    expect(utils.isUrlAllowedCompiled('not a url', compiled)).toBe(false);
+  });
+
   test('scanTextForMatches finds all occurrences', () => {
     const scanner = require('../src/js/core/scanner.js');
     const matches = scanner.scanTextForMatches(['foo'], 'foo bar foo');
