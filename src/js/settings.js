@@ -9,6 +9,8 @@ const SETTINGS_VERSION = 1;
 const DEFAULT_SETTINGS = {
     wordspotting_notifications_on: true,
     wordspotting_extension_on: true,
+    wordspotting_highlight_on: false,
+    wordspotting_highlight_color: '#FFFF00',
     wordspotting_website_list: [],
     wordspotting_word_list: [],
     wordspotting_theme: 'system', // system | light | dark

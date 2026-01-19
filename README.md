@@ -7,6 +7,7 @@
 - **Keyword Scanning**: Automatically scans webpages for your configured keywords.
 - **Site Allowlist**: Only runs on websites you explicitly allow (e.g., `example.com`, `news.example`).
 - **Notifications**: Get a system notification and a browser badge count when keywords are found.
+- **Highlighting**: Visually highlight found keywords on the page (requires Chrome 105+).
 - **SPA Support**: Works with single page applications and dynamic content.
 - **Regex Support**: Advanced users can use regular expressions for matching (e.g., `error|fail`).
 - **Privacy First**: All data is stored locally on your device. No data is sent to external servers.
@@ -24,7 +25,8 @@
 1. Click the extension icon and select **Options**.
 2. **Add Websites**: Enter the domains you want to scan (e.g., `example.com`, `*.docs.example`).
 3. **Add Keywords**: Enter the words or phrases you are looking for (e.g., `error`, `TODO`, `promo`).
-4. Navigate to an allowed site. If a keyword is found, the extension icon will show a badge count, and you will receive a notification.
+4. **Highlighting**: Toggle "Highlight Matches" in the settings to see keywords highlighted on the page. You can also customize the highlight color.
+5. Navigate to an allowed site. If a keyword is found, the extension icon will show a badge count, and you will receive a notification.
 
 ## Permissions & Development
 

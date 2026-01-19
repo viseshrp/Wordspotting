@@ -27,6 +27,8 @@ describe('settings defaults', () => {
       wordspotting_extension_on: true,
       wordspotting_website_list: [],
       wordspotting_word_list: [],
+      wordspotting_highlight_on: false,
+      wordspotting_highlight_color: '#FFFF00',
       wordspotting_theme: 'system',
       is_first_start: false,
       wordspotting_settings_version: 1

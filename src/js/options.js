@@ -41,6 +41,26 @@ if (typeof document !== 'undefined') {
             });
         });
 
+        // Highlight Switch
+        const highlightSwitch = document.getElementById("highlight_switch");
+        const colorRow = document.getElementById("highlight_color_row");
+        highlightSwitch.addEventListener("change", function () {
+            const status = this.checked;
+            colorRow.style.display = status ? "flex" : "none";
+            saveToStorage({"wordspotting_highlight_on": status}).then(() => {
+                showAlert(`Highlighting turned ${status ? "ON" : "OFF"}`, "Settings Saved", true);
+            });
+        });
+
+        // Highlight Color
+        const colorInput = document.getElementById("highlight_color_input");
+        colorInput.addEventListener("change", function () {
+            const color = this.value;
+            saveToStorage({"wordspotting_highlight_color": color}).then(() => {
+                // No alert needed for every color change, maybe just save silently
+            });
+        });
+
         // Theme select
         const themeSelect = document.getElementById("theme_select");
         themeSelect.addEventListener("change", () => {
@@ -167,6 +187,7 @@ function updateViews() {
     updateWebListDisplay();
     updateNotifSwitchDisplay();
     updateExtSwitchDisplay();
+    updateHighlightSettingsDisplay();
     updateBLWordListDisplay();
     updateThemeDisplay();
 }
@@ -228,6 +249,17 @@ function updateExtSwitchDisplay() {
     getFromStorage("wordspotting_extension_on").then((items) => {
         const status = items.wordspotting_extension_on;
         document.getElementById("extension_switch").checked = (status !== false);
+    });
+}
+
+function updateHighlightSettingsDisplay() {
+    getFromStorage(["wordspotting_highlight_on", "wordspotting_highlight_color"]).then((items) => {
+        const status = items.wordspotting_highlight_on === true;
+        const color = items.wordspotting_highlight_color || "#FFFF00";
+
+        document.getElementById("highlight_switch").checked = status;
+        document.getElementById("highlight_color_input").value = color;
+        document.getElementById("highlight_color_row").style.display = status ? "flex" : "none";
     });
 }
 
