@@ -1,5 +1,5 @@
 import * as utils from '../src/js/utils.js';
-import { scanTextForMatches } from '../src/js/core/scanner.js';
+import { scanTextForMatches, hashString } from '../src/js/core/scanner.js';
 
 describe('utils', () => {
     beforeEach(() => {
@@ -105,5 +105,14 @@ describe('utils', () => {
         expect(matches).toHaveLength(2);
         expect(matches[0]).toEqual({ keyword: 'foo', index: 0, length: 3 });
         expect(matches[1]).toEqual({ keyword: 'foo', index: 8, length: 3 });
+    });
+
+    test('hashString is stable', () => {
+        expect(hashString('abc')).toBe(hashString('abc'));
+    });
+
+    test('mergeUnique deduplicates', () => {
+        const merged = utils.mergeUnique(['a', 'b'], ['b', 'c']);
+        expect(merged.sort()).toEqual(['a', 'b', 'c']);
     });
 });

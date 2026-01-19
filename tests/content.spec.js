@@ -73,10 +73,6 @@ describe('content helpers', () => {
         expect(count).toBe(1);
     });
 
-    test('hashString is stable', () => {
-        expect(content.hashString('abc')).toBe(content.hashString('abc'));
-    });
-
     test('getBodyTextSnapshot caches within window', async () => {
         document.body.innerText = 'first';
         const signal = { aborted: false };

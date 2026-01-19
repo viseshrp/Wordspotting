@@ -28,9 +28,4 @@ describe('options helpers', () => {
         expect(valid).toContain('*good*');
         expect(invalid).toContain('');
     });
-
-    test('mergeUnique deduplicates', () => {
-        const merged = options.mergeUnique(['a', 'b'], ['b', 'c']);
-        expect(merged.sort()).toEqual(['a', 'b', 'c']);
-    });
 });
