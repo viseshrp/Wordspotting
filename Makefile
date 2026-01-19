@@ -12,7 +12,7 @@ dev:
 test:
 	npm run test
 
-lint:
+lint: build
 	npm run lint
 	npm run lint:webext
 
