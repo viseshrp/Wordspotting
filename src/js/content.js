@@ -356,29 +356,13 @@ async function getScanWorkerAsync() {
 
     try {
         const workerUrl = chrome.runtime.getURL('src/js/scan-worker.js');
-        // Try to fetch source code to create an inline worker (CSP bypass)
-        // We use fetch + Blob because direct URL might be blocked by CSP
-        // AND we need to inject the scanner code because importScripts inside blob fails on strict CSP sites
-
-        const [workerRes, scannerRes] = await Promise.all([
-            fetch(workerUrl),
-            fetch(chrome.runtime.getURL('src/js/core/scanner.js'))
-        ]);
-
-        const workerCode = await workerRes.text();
-        const scannerCode = await scannerRes.text();
-
-        // Combine: scanner first, then worker
-        const combinedCode = `${scannerCode}\n${workerCode}`;
-
-        const blob = new Blob([combinedCode], { type: 'application/javascript' });
-        const blobUrl = URL.createObjectURL(blob);
-
-        scanWorker = new Worker(blobUrl);
+        // Prefer a normal worker loaded from the packaged extension URL.
+        // Some pages may block worker creation; we fall back to main-thread scanning.
+        scanWorker = new Worker(workerUrl);
         setupWorkerListeners(scanWorker);
         return scanWorker;
     } catch (e) {
-        console.warn("Wordspotting worker creation failed (inline blob):", e);
+        console.warn("Wordspotting worker creation failed:", e);
         workerFailed = true;
         return null;
     }

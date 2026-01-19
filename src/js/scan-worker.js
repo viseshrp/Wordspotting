@@ -1,5 +1,13 @@
 /* global normalizeKeywords, buildCombinedRegex, scanTextForMatches */
 
+try {
+    importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
+} catch (e) {
+    // If scanner can't be imported, scans will fail and content script will fall back.
+    // Avoid throwing at top-level to keep worker creation predictable.
+    void e;
+}
+
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_OVERLAP = 200;
 
