@@ -2,7 +2,7 @@
 node_modules/
 coverage/
 npm-debug.log
-node_modules/
 node-bin/
 dist/
 web-ext-artifacts/
+zip/
