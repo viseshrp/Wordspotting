@@ -1,5 +1,4 @@
 /* global normalizeKeywords, buildCombinedRegex, scanTextForMatches */
-importScripts('core/scanner.js');
 
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_OVERLAP = 200;

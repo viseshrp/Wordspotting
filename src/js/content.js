@@ -368,11 +368,8 @@ async function getScanWorkerAsync() {
         const workerCode = await workerRes.text();
         const scannerCode = await scannerRes.text();
 
-        // Remove the importScripts line from worker code since we inline it
-        const cleanWorkerCode = workerCode.replace(/importScripts\s*\(.*?\);/g, '');
-
         // Combine: scanner first, then worker
-        const combinedCode = scannerCode + '\n' + cleanWorkerCode;
+        const combinedCode = `${scannerCode}\n${workerCode}`;
 
         const blob = new Blob([combinedCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
