@@ -5,7 +5,7 @@
   "scripts": {
     "build": "webpack --mode production",
     "dev": "webpack --mode development --watch",
-    "lint:webext": "node scripts/lint-webext.js",
+    "lint:webext": "npm run build && node scripts/lint-webext.js",
     "version": "node scripts/sync-manifest-version.js && git add manifest.json",
     "test": "jest --coverage",
     "lint": "eslint .",
