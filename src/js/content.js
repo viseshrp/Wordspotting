@@ -3,7 +3,6 @@
 const isCommonJs = typeof module !== 'undefined' && module.exports;
 const scannerModule = isCommonJs ? require('./core/scanner') : globalThis;
 const scanTextForKeywords = scannerModule.scanTextForKeywords;
-const scanTextForMatches = scannerModule.scanTextForMatches;
 const hashString = scannerModule.hashString;
 
 let scanWorker = null;
@@ -213,13 +212,7 @@ async function performHighlightScan(keyword_list, color, signal) {
             text: node.nodeValue
         }));
 
-        let results;
-        try {
-            results = await scanWithWorkerForHighlights(keyword_list, chunks);
-        } catch (_e) {
-            // Worker unavailable or failed; fall back to main-thread scanning.
-            results = scanHighlightsLocally(keyword_list, textNodes);
-        }
+        const results = await scanWithWorkerForHighlights(keyword_list, chunks);
         if (signal?.aborted) return 0;
 
         return applyHighlights(results, textNodes, color);
@@ -229,22 +222,6 @@ async function performHighlightScan(keyword_list, color, signal) {
         // Fallback to standard scan if highlighting fails, but don't highlight
         return performStandardScan(keyword_list, document.body.innerText);
     }
-}
-
-function scanHighlightsLocally(keywordList, textNodes) {
-    const results = {};
-    if (!Array.isArray(textNodes) || textNodes.length === 0) return results;
-
-    for (let i = 0; i < textNodes.length; i++) {
-        const node = textNodes[i];
-        const text = node && typeof node.nodeValue === 'string' ? node.nodeValue : '';
-        if (!text) continue;
-        const matches = scanTextForMatches(keywordList, text);
-        if (matches.length > 0) {
-            results[i] = matches;
-        }
-    }
-    return results;
 }
 
 async function scanWithWorkerForHighlights(keywordList, chunks) {
