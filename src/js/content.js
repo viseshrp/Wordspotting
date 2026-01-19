@@ -1,9 +1,13 @@
 /* global Highlight */
-(() => {
-const isCommonJs = typeof module !== 'undefined' && module.exports;
-const scannerModule = isCommonJs ? require('./core/scanner') : globalThis;
-const scanTextForKeywords = scannerModule.scanTextForKeywords;
-const hashString = scannerModule.hashString;
+import {
+    getFromStorage,
+    logit,
+    isValidObj,
+    compileSitePatterns,
+    isUrlAllowedCompiled,
+} from './utils.js';
+import { scanTextForKeywords, hashString } from './core/scanner.js';
+import '../css/index.css';
 
 let scanWorker = null;
 const DEFAULT_CHUNK_SIZE = 150000;
@@ -12,13 +16,13 @@ let scanRequestId = 0;
 const workerRequests = new Map();
 let workerFailed = false;
 
-// Prevent duplicate injection in the same frame (skip for CommonJS/tests so exports are available)
-if (!isCommonJs && globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
-    return;
+// Prevent duplicate injection in the same frame
+if (globalThis.__WORDSPOTTING_CONTENT_LOADED__) {
+    // Already loaded
+} else {
+    globalThis.__WORDSPOTTING_CONTENT_LOADED__ = true;
+    init();
 }
-globalThis.__WORDSPOTTING_CONTENT_LOADED__ = true;
-
-// content.js - Content Script
 
 let lastScanSignature = null;
 let idleHandle = null;
@@ -27,72 +31,76 @@ let observer = null;
 let observerDebounce = null;
 let lastSnapshot = { text: '', timestamp: 0 };
 
-// Main execution (ignored during tests)
-/* istanbul ignore next */
-(async () => {
+async function init() {
+    // Main execution
     try {
-        const items = await getFromStorage("wordspotting_extension_on");
-        logit("Checking if extension is on...");
+        const items = await getFromStorage('wordspotting_extension_on');
+        logit('Checking if extension is on...');
         if (items.wordspotting_extension_on) {
             proceedWithSiteListCheck();
         }
     } catch (e) {
-        console.error("Error checking extension status:", e);
+        console.error('Error checking extension status:', e);
     }
-})();
 
-// Listen for messages from popup
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    (async () => {
-        try {
-            const items = await getFromStorage("wordspotting_extension_on");
-            const extensionOn = items.wordspotting_extension_on;
+    // Listen for messages from popup
+    chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+        (async () => {
+            try {
+                const items = await getFromStorage('wordspotting_extension_on');
+                const extensionOn = items.wordspotting_extension_on;
 
-            if (msg.from === 'popup' && msg.subject === 'word_list_request') {
-                if (!extensionOn) {
-                    sendResponse({ word_list: [], disabled: true });
+                if (msg.from === 'popup' && msg.subject === 'word_list_request') {
+                    if (!extensionOn) {
+                        sendResponse({ word_list: [], disabled: true });
+                        return;
+                    }
+
+                    const storage = await getFromStorage('wordspotting_word_list');
+                    const keyword_list = storage.wordspotting_word_list;
+
+                    if (isValidObj(keyword_list) && keyword_list.length > 0) {
+                        const occurring_word_list = getWordList(keyword_list);
+                        sendResponse({ word_list: occurring_word_list });
+                    } else {
+                        sendResponse({ word_list: [] });
+                    }
                     return;
                 }
 
-                const storage = await getFromStorage("wordspotting_word_list");
-                const keyword_list = storage.wordspotting_word_list;
-
-                if (isValidObj(keyword_list) && keyword_list.length > 0) {
-                    const occurring_word_list = getWordList(keyword_list);
-                    sendResponse({ word_list: occurring_word_list });
-                } else {
-                    sendResponse({ word_list: [] });
+                if (msg.from === 'background' && msg.subject === 'settings_updated') {
+                    lastScanSignature = null; // force a fresh scan on settings change
+                    scheduleScan();
+                    sendResponse({ ack: true });
+                    return;
                 }
-                return;
-            }
 
-            if (msg.from === 'background' && msg.subject === 'settings_updated') {
-                lastScanSignature = null; // force a fresh scan on settings change
-                scheduleScan();
-                sendResponse({ ack: true });
-                return;
+                sendResponse({}); // Always respond to avoid leaving the channel open
+            } catch (error) {
+                console.error('Error in onMessage:', error);
+                sendResponse({ word_list: [] });
             }
-
-            sendResponse({}); // Always respond to avoid leaving the channel open
-        } catch (error) {
-            console.error("Error in onMessage:", error);
-            sendResponse({ word_list: [] });
-        }
-    })();
-    return true; // Keep channel open
-});
+        })();
+        return true; // Keep channel open
+    });
+}
 
 /**
  * Wrapper around core scanner to keep existing interface.
  */
-function getWordList(keyword_list, bodyText) {
-    const textToScan = typeof bodyText === 'string' ? bodyText : (document.body ? document.body.innerText : "");
+export function getWordList(keyword_list, bodyText) {
+    const textToScan =
+        typeof bodyText === 'string'
+            ? bodyText
+            : document.body
+            ? document.body.innerText
+            : '';
     return scanTextForKeywords(keyword_list, textToScan);
 }
 
-async function proceedWithSiteListCheck() {
+export async function proceedWithSiteListCheck() {
     try {
-        const items = await getFromStorage("wordspotting_website_list");
+        const items = await getFromStorage('wordspotting_website_list');
         const allowed_sites = items.wordspotting_website_list || [];
         const compiled = compileSitePatterns(allowed_sites);
 
@@ -103,10 +111,10 @@ async function proceedWithSiteListCheck() {
             // Set up observer for SPA
             setupObserver();
         } else {
-            logit("No matching allowed site. Idling.");
+            logit('No matching allowed site. Idling.');
         }
     } catch (e) {
-        console.error("Error in proceedWithSiteListCheck:", e);
+        console.error('Error in proceedWithSiteListCheck:', e);
     }
 }
 
@@ -123,7 +131,7 @@ function cancelScheduledScan() {
     }
 }
 
-function scheduleScan() {
+export function scheduleScan() {
     cancelScheduledScan();
 
     currentScanController = new AbortController();
@@ -136,7 +144,7 @@ function scheduleScan() {
     }
 }
 
-function deferUntilPageIdle() {
+export function deferUntilPageIdle() {
     if (document.readyState === 'complete') {
         scheduleScan();
     } else {
@@ -144,12 +152,16 @@ function deferUntilPageIdle() {
     }
 }
 
-async function performScan(signal) {
+export async function performScan(signal) {
     try {
         if (signal?.aborted) return;
         if (!chrome.runtime || !chrome.runtime.id) return;
 
-        const items = await getFromStorage(["wordspotting_word_list", "wordspotting_highlight_on", "wordspotting_highlight_color"]);
+        const items = await getFromStorage([
+            'wordspotting_word_list',
+            'wordspotting_highlight_on',
+            'wordspotting_highlight_color',
+        ]);
         const keyword_list = items.wordspotting_word_list;
         const highlightOn = items.wordspotting_highlight_on === true;
         const highlightColor = items.wordspotting_highlight_color || '#FFFF00';
@@ -177,16 +189,19 @@ async function performScan(signal) {
         let foundCount = 0;
 
         if (highlightOn) {
-            foundCount = await performHighlightScan(keyword_list, highlightColor, signal);
+            foundCount = await performHighlightScan(
+                keyword_list,
+                highlightColor,
+                signal
+            );
         } else {
             clearHighlights();
             foundCount = await performStandardScan(keyword_list, bodyText);
         }
 
         sendKeywordCount(foundCount);
-
     } catch (e) {
-        console.error("Error in performScan:", e);
+        console.error('Error in performScan:', e);
     }
 }
 
@@ -195,7 +210,7 @@ async function performStandardScan(keyword_list, bodyText) {
     try {
         occurring_word_list = await scanWithWorker(keyword_list, bodyText);
     } catch (e) {
-        console.warn("Worker scan failed, falling back", e);
+        console.warn('Worker scan failed, falling back', e);
         occurring_word_list = getWordList(keyword_list, bodyText);
     }
     return occurring_word_list.length;
@@ -209,16 +224,15 @@ async function performHighlightScan(keyword_list, color, signal) {
         // Prepare chunks for worker
         const chunks = textNodes.map((node, index) => ({
             id: index,
-            text: node.nodeValue
+            text: node.nodeValue,
         }));
 
         const results = await scanWithWorkerForHighlights(keyword_list, chunks);
         if (signal?.aborted) return 0;
 
         return applyHighlights(results, textNodes, color);
-
     } catch (e) {
-        console.error("Highlight scan failed:", e);
+        console.error('Highlight scan failed:', e);
         // Fallback to standard scan if highlighting fails, but don't highlight
         return performStandardScan(keyword_list, document.body.innerText);
     }
@@ -227,7 +241,7 @@ async function performHighlightScan(keyword_list, color, signal) {
 async function scanWithWorkerForHighlights(keywordList, chunks) {
     const worker = await getScanWorkerAsync();
     if (!worker) {
-        throw new Error("Worker not available for highlighting");
+        throw new Error('Worker not available for highlighting');
     }
     return new Promise((resolve, reject) => {
         const id = ++scanRequestId;
@@ -236,24 +250,31 @@ async function scanWithWorkerForHighlights(keywordList, chunks) {
             type: 'scan_for_highlights',
             id,
             keywords: keywordList,
-            chunks // array of {id, text}
+            chunks, // array of {id, text}
         });
     });
 }
 
-function getTextNodes(root) {
+export function getTextNodes(root) {
     const nodes = [];
     if (!root) return nodes;
 
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
         acceptNode: (node) => {
             // Filter out empty or whitespace-only nodes to save processing
-            if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+            if (!node.nodeValue || !node.nodeValue.trim())
+                return NodeFilter.FILTER_REJECT;
             // Filter out script/style/etc
-            if (node.parentNode && ['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT'].includes(node.parentNode.tagName)) return NodeFilter.FILTER_REJECT;
+            if (
+                node.parentNode &&
+                ['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT'].includes(
+                    node.parentNode.tagName
+                )
+            )
+                return NodeFilter.FILTER_REJECT;
             // Filter invisible? (expensive, maybe skip for now)
             return NodeFilter.FILTER_ACCEPT;
-        }
+        },
     });
 
     let node = walker.nextNode();
@@ -264,7 +285,7 @@ function getTextNodes(root) {
     return nodes;
 }
 
-function applyHighlights(results, textNodes, color) {
+export function applyHighlights(results, textNodes, color) {
     if (!('highlights' in CSS)) return 0;
 
     const ranges = [];
@@ -320,9 +341,8 @@ function updateHighlightStyle(color) {
     `;
 }
 
-
 // Debounce function to limit how often we scan
-function debounce(func, wait) {
+export function debounce(func, wait) {
     let timeout = null;
     function debounced(...args) {
         if (timeout) clearTimeout(timeout);
@@ -336,7 +356,7 @@ function debounce(func, wait) {
 }
 
 // Throttled body text snapshot to avoid hammering innerText on chatty pages.
-async function getBodyTextSnapshot(signal) {
+export async function getBodyTextSnapshot(signal) {
     const now = Date.now();
     const cacheWindow = 500; // ms
     if (now - lastSnapshot.timestamp < cacheWindow) {
@@ -355,30 +375,12 @@ async function getScanWorkerAsync() {
     if (scanWorker) return scanWorker;
 
     try {
-        const workerUrl = chrome.runtime.getURL('src/js/scan-worker.js');
-        // Try to fetch source code to create an inline worker (CSP bypass)
-        // We use fetch + Blob because direct URL might be blocked by CSP
-        // AND we need to inject the scanner code because importScripts inside blob fails on strict CSP sites
-
-        const [workerRes, scannerRes] = await Promise.all([
-            fetch(workerUrl),
-            fetch(chrome.runtime.getURL('src/js/core/scanner.js'))
-        ]);
-
-        const workerCode = await workerRes.text();
-        const scannerCode = await scannerRes.text();
-
-        // Combine: scanner first, then worker
-        const combinedCode = `${scannerCode}\n${workerCode}`;
-
-        const blob = new Blob([combinedCode], { type: 'application/javascript' });
-        const blobUrl = URL.createObjectURL(blob);
-
-        scanWorker = new Worker(blobUrl);
+        const workerUrl = chrome.runtime.getURL('js/scan-worker.js');
+        scanWorker = new Worker(workerUrl);
         setupWorkerListeners(scanWorker);
         return scanWorker;
     } catch (e) {
-        console.warn("Wordspotting worker creation failed (inline blob):", e);
+        console.warn('Wordspotting worker creation failed:', e);
         workerFailed = true;
         return null;
     }
@@ -387,7 +389,7 @@ async function getScanWorkerAsync() {
 function setupWorkerListeners(worker) {
     worker.addEventListener('message', handleWorkerMessage);
     worker.addEventListener('error', (e) => {
-        console.warn("Wordspotting worker error:", e);
+        console.warn('Wordspotting worker error:', e);
         workerFailed = true;
         cleanupWorker();
     });
@@ -436,7 +438,7 @@ async function scanWithWorker(keywordList, text) {
             keywords: keywordList,
             text,
             chunkSize,
-            overlap
+            overlap,
         });
     });
 }
@@ -458,42 +460,32 @@ function getChunkingConfig(text, keywordList) {
     }
 
     const longestKeyword = Array.isArray(keywordList)
-        ? keywordList.reduce((max, k) => (typeof k === 'string' && k.length > max ? k.length : max), 0)
+        ? keywordList.reduce(
+              (max, k) => (typeof k === 'string' && k.length > max ? k.length : max),
+              0
+          )
         : 0;
     overlap = Math.max(overlap, Math.min(longestKeyword, 800));
 
     return { chunkSize, overlap };
 }
 
-function sendKeywordCount(count) {
+export function sendKeywordCount(count) {
     try {
-        chrome.runtime.sendMessage({
-            wordfound: count > 0,
-            keyword_count: count
-        }, () => {
-            // Best-effort; ignore any errors (navigation, worker sleep, etc.)
-            void chrome.runtime.lastError;
-        });
+        chrome.runtime.sendMessage(
+            {
+                wordfound: count > 0,
+                keyword_count: count,
+            },
+            () => {
+                // Best-effort; ignore any errors (navigation, worker sleep, etc.)
+                void chrome.runtime.lastError;
+            }
+        );
     } catch (err) {
         // Context gone; ignore.
         void err;
     }
-}
-
-if (typeof module !== 'undefined') {
-    module.exports = {
-        getWordList,
-        debounce,
-        getBodyTextSnapshot,
-        hashString,
-        sendKeywordCount,
-        performScan,
-        scheduleScan,
-        deferUntilPageIdle,
-        proceedWithSiteListCheck,
-        getTextNodes, // exported for testing
-        applyHighlights // exported for testing
-    };
 }
 
 function setupObserver() {
@@ -533,5 +525,3 @@ function setupObserver() {
         }
     });
 }
-
-})();

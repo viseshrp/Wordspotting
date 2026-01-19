@@ -1,4 +1,8 @@
-/* global normalizeKeywords, buildCombinedRegex, scanTextForMatches */
+import {
+    normalizeKeywords,
+    buildCombinedRegex,
+    scanTextForMatches,
+} from './core/scanner.js';
 
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_OVERLAP = 200;
@@ -70,8 +74,12 @@ self.addEventListener('message', (event) => {
     try {
         if (data.type === 'scan') {
             const text = typeof data.text === 'string' ? data.text : '';
-            const chunkSize = Number.isFinite(data.chunkSize) ? data.chunkSize : DEFAULT_CHUNK_SIZE;
-            const overlap = Number.isFinite(data.overlap) ? data.overlap : DEFAULT_OVERLAP;
+            const chunkSize = Number.isFinite(data.chunkSize)
+                ? data.chunkSize
+                : DEFAULT_CHUNK_SIZE;
+            const overlap = Number.isFinite(data.overlap)
+                ? data.overlap
+                : DEFAULT_OVERLAP;
             const words = scanTextInChunks(data.keywords, text, chunkSize, overlap);
             self.postMessage({ type: 'scan_result', id, words });
         } else if (data.type === 'scan_for_highlights') {
@@ -80,6 +88,10 @@ self.addEventListener('message', (event) => {
             self.postMessage({ type: 'scan_highlights_result', id, results });
         }
     } catch (e) {
-        self.postMessage({ type: 'scan_error', id, error: e.message || 'scan_failed' });
+        self.postMessage({
+            type: 'scan_error',
+            id,
+            error: e.message || 'scan_failed',
+        });
     }
 });

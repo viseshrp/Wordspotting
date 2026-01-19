@@ -1,52 +1,51 @@
 {
-  "manifest_version": 3,
-  "name": "Wordspotting",
-  "description": "Get notified when a word is found in a web page.",
-  "version": "1.0.0",
-  "icons": {
-    "16": "src/assets/ws16.png",
-    "24": "src/assets/ws24.png",
-    "32": "src/assets/ws32.png",
-    "48": "src/assets/ws48.png",
-    "128": "src/assets/ws128.png"
-  },
-  "action": {
-    "default_icon": {
-      "16": "src/assets/ws16.png",
-      "24": "src/assets/ws24.png",
-      "32": "src/assets/ws32.png",
-      "48": "src/assets/ws48.png",
-      "128": "src/assets/ws128.png"
+    "manifest_version": 3,
+    "name": "Wordspotting",
+    "description": "Get notified when a word is found in a web page.",
+    "version": "1.0.0",
+    "icons": {
+        "16": "assets/ws16.png",
+        "24": "assets/ws24.png",
+        "32": "assets/ws32.png",
+        "48": "assets/ws48.png",
+        "128": "assets/ws128.png"
     },
-    "default_title": "Wordspotting",
-    "default_popup": "src/pages/popup.html"
-  },
-  "permissions": [
-    "notifications",
-    "storage",
-    "scripting"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "background": {
-    "service_worker": "src/js/background.js"
-  },
-  "options_ui": {
-    "page": "src/pages/options.html",
-    "open_in_tab": true
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "src/assets/*.png",
-        "src/css/*.css",
-        "src/js/scan-worker.js",
-        "src/js/core/scanner.js"
-      ],
-      "matches": [
+    "action": {
+        "default_icon": {
+            "16": "assets/ws16.png",
+            "24": "assets/ws24.png",
+            "32": "assets/ws32.png",
+            "48": "assets/ws48.png",
+            "128": "assets/ws128.png"
+        },
+        "default_title": "Wordspotting",
+        "default_popup": "pages/popup.html"
+    },
+    "permissions": [
+        "notifications",
+        "storage",
+        "scripting"
+    ],
+    "host_permissions": [
         "<all_urls>"
-      ]
-    }
-  ]
+    ],
+    "background": {
+        "service_worker": "js/background.js"
+    },
+    "options_ui": {
+        "page": "pages/options.html",
+        "open_in_tab": true
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "assets/*.png",
+                "css/*.css",
+                "js/scan-worker.js"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        }
+    ]
 }

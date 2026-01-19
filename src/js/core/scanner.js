@@ -1,12 +1,12 @@
 // Core scanning helpers (no Chrome-specific logic).
 
-function normalizeKeywords(keywordList) {
+export function normalizeKeywords(keywordList) {
     return Array.isArray(keywordList)
         ? keywordList.filter((k) => k && typeof k === 'string' && k.trim().length > 0)
         : [];
 }
 
-function buildCombinedRegex(validKeywords) {
+export function buildCombinedRegex(validKeywords) {
     const patterns = [];
     const patternMap = [];
 
@@ -27,7 +27,7 @@ function buildCombinedRegex(validKeywords) {
     return { regex: new RegExp(combinedPattern, 'ig'), patternMap };
 }
 
-function scanTextForKeywords(keywordList, textToScan) {
+export function scanTextForKeywords(keywordList, textToScan) {
     const validKeywords = normalizeKeywords(keywordList);
     if (validKeywords.length === 0) return [];
 
@@ -61,7 +61,7 @@ function scanTextForKeywords(keywordList, textToScan) {
     return Array.from(foundKeywords);
 }
 
-function scanTextForMatches(keywordList, textToScan) {
+export function scanTextForMatches(keywordList, textToScan) {
     const validKeywords = normalizeKeywords(keywordList);
     if (validKeywords.length === 0) return [];
 
@@ -94,22 +94,11 @@ function scanTextForMatches(keywordList, textToScan) {
     return matches;
 }
 
-function hashString(str) {
+export function hashString(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
         hash = ((hash << 5) - hash) + str.charCodeAt(i);
         hash |= 0; // Convert to 32bit integer
     }
     return hash.toString();
-}
-
-/* istanbul ignore next */
-if (typeof module !== 'undefined') {
-    module.exports = {
-        normalizeKeywords,
-        buildCombinedRegex,
-        scanTextForKeywords,
-        scanTextForMatches,
-        hashString
-    };
 }

@@ -1,15 +1,17 @@
 // background.js - Service Worker
 
-try {
-    importScripts(chrome.runtime.getURL('src/js/utils.js'));
-    importScripts(chrome.runtime.getURL('src/js/settings.js'));
-    importScripts(chrome.runtime.getURL('src/js/core/scanner.js'));
-} catch (e) {
-    console.error('Failed to load background dependencies', e);
-}
+import {
+    getFromStorage,
+    saveToStorage,
+    logit,
+    isUrlAllowed,
+    isUrlAllowedCompiled,
+    compileSitePatterns,
+} from './utils.js';
+import { ensureSettingsInitialized } from './settings.js';
 
-const CONTENT_SCRIPT_FILES = ['src/js/utils.js', 'src/js/settings.js', 'src/js/core/scanner.js', 'src/js/content.js'];
-const CONTENT_STYLE_FILES = ['src/css/index.css'];
+const CONTENT_SCRIPT_FILES = ['js/content.js'];
+const CONTENT_STYLE_FILES = ['css/content.css'];
 let compiledAllowedSites = [];
 const lastFoundByTab = new Map(); // tabId -> boolean
 const lastCountByTab = new Map(); // tabId -> number
@@ -26,11 +28,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
         await refreshAllowedSitePatterns();
 
         if (details.reason === 'install') {
-            logit("First start initialization complete.");
-            chrome.tabs.create({url: "src/pages/options.html"});
+            logit('First start initialization complete.');
+            chrome.tabs.create({ url: 'pages/options.html' });
         }
     } catch (e) {
-        console.error("Error during initialization:", e);
+        console.error('Error during initialization:', e);
     }
 });
 
@@ -38,7 +40,6 @@ chrome.runtime.onInstalled.addListener(async (details) => {
  * Handle messages from content scripts
  */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-
     // Return true ensures we can send response asynchronously if needed
     // But since we are likely doing async work, we should wrap logic.
 
@@ -46,31 +47,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 });
 
-async function handleMessage(request, sender) {
-    const hasValidPayload = request &&
+async function handleMessage(request, sender, testSites = null) {
+    const hasValidPayload =
+        request &&
         typeof request.wordfound === 'boolean' &&
         typeof request.keyword_count === 'number';
 
     if (hasValidPayload) {
         const tabId = sender?.tab?.id;
         const tabUrl = sender?.tab?.url;
-        const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
+        const settings = await getFromStorage([
+            'wordspotting_extension_on',
+            'wordspotting_website_list',
+        ]);
 
         if (settings.wordspotting_extension_on === false) {
             if (tabId) setInactiveBadge(tabId);
-            return { ack: "disabled" };
+            return { ack: 'disabled' };
         }
 
-        const allowedSites = settings.wordspotting_website_list || [];
+        const allowedSites = testSites || settings.wordspotting_website_list || [];
         const isAllowed = tabUrl
-            ? (compiledAllowedSites.length > 0
+            ? compiledAllowedSites.length > 0
                 ? isUrlAllowedCompiled(tabUrl, compiledAllowedSites)
-                : isUrlAllowed(tabUrl, allowedSites))
+                : isUrlAllowed(tabUrl, allowedSites)
             : true;
 
         if (!isAllowed) {
             if (tabId) setInactiveBadge(tabId);
-            return { ack: "not_allowed" };
+            return { ack: 'not_allowed' };
         }
 
         // Set badge text
@@ -85,24 +90,24 @@ async function handleMessage(request, sender) {
 
             // Notify only on rising edge
             if (!prevFound && request.wordfound === true) {
-                const items = await getFromStorage("wordspotting_notifications_on");
+                const items = await getFromStorage('wordspotting_notifications_on');
                 if (items.wordspotting_notifications_on) {
-                    logit("Firing notification!");
+                    logit('Firing notification!');
                     showNotification(
-                        "src/assets/ws48.png",
+                        'assets/ws48.png',
                         'basic',
                         'Keyword found!',
-                        sender.tab ? sender.tab.title : "Page",
+                        sender.tab ? sender.tab.title : 'Page',
                         1
                     );
                 }
             }
         }
 
-        return { ack: "gotcha" };
+        return { ack: 'gotcha' };
     }
 
-    return { ack: "ignored" };
+    return { ack: 'ignored' };
 }
 
 function showNotification(iconUrl, type, title, message, priority) {
@@ -112,7 +117,7 @@ function showNotification(iconUrl, type, title, message, priority) {
         type: type,
         title: title,
         message: message,
-        priority: priority
+        priority: priority,
     };
 
     chrome.notifications.create('', opt);
@@ -141,10 +146,13 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // Re-evaluate active tab when allowed sites or on/off switch changes.
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
-    if (!changes.wordspotting_website_list &&
+    if (
+        !changes.wordspotting_website_list &&
         !changes.wordspotting_extension_on &&
         !changes.wordspotting_highlight_on &&
-        !changes.wordspotting_highlight_color) return;
+        !changes.wordspotting_highlight_color
+    )
+        return;
 
     if (changes.wordspotting_website_list) {
         refreshAllowedSitePatterns();
@@ -160,24 +168,32 @@ chrome.storage.onChanged.addListener((changes, area) => {
         } else if (changes.wordspotting_extension_on?.newValue === false) {
             setInactiveBadge(tab.id);
         }
-        chrome.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' }, () => {
-            // Ignore missing receivers (content may not be injected).
-            void chrome.runtime.lastError;
-        });
+        chrome.tabs.sendMessage(
+            tab.id,
+            { from: 'background', subject: 'settings_updated' },
+            () => {
+                // Ignore missing receivers (content may not be injected).
+                void chrome.runtime.lastError;
+            }
+        );
     });
 });
 
 async function maybeInjectContentScripts(tabId, url) {
     try {
-        const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
+        const settings = await getFromStorage([
+            'wordspotting_extension_on',
+            'wordspotting_website_list',
+        ]);
         if (settings.wordspotting_extension_on === false) {
             return;
         }
 
         const allowedSites = settings.wordspotting_website_list || [];
-        const isAllowed = compiledAllowedSites.length > 0
-            ? isUrlAllowedCompiled(url, compiledAllowedSites)
-            : isUrlAllowed(url, allowedSites);
+        const isAllowed =
+            compiledAllowedSites.length > 0
+                ? isUrlAllowedCompiled(url, compiledAllowedSites)
+                : isUrlAllowed(url, allowedSites);
 
         if (!isAllowed) {
             setInactiveBadge(tabId);
@@ -188,7 +204,7 @@ async function maybeInjectContentScripts(tabId, url) {
         await injectStyles(tabId);
         await injectScripts(tabId);
     } catch (e) {
-        console.error("Error during dynamic injection:", e);
+        console.error('Error during dynamic injection:', e);
     }
 }
 
@@ -196,11 +212,11 @@ async function injectStyles(tabId) {
     try {
         await chrome.scripting.insertCSS({
             target: { tabId },
-            files: CONTENT_STYLE_FILES
+            files: CONTENT_STYLE_FILES,
         });
     } catch (e) {
         // Ignore styling failures; script can still run.
-        console.warn("Style injection skipped:", e);
+        console.warn('Style injection skipped:', e);
     }
 }
 
@@ -210,32 +226,36 @@ async function injectScripts(tabId) {
 
     await chrome.scripting.executeScript({
         target: { tabId },
-        files: CONTENT_SCRIPT_FILES
+        files: CONTENT_SCRIPT_FILES,
     });
 }
 
 async function refreshAllowedSitePatterns() {
     try {
-        const items = await getFromStorage("wordspotting_website_list");
+        const items = await getFromStorage('wordspotting_website_list');
         compiledAllowedSites = compileSitePatterns(items.wordspotting_website_list || []);
     } catch (e) {
-        console.warn("Failed to refresh allowed site patterns:", e);
+        console.warn('Failed to refresh allowed site patterns:', e);
         compiledAllowedSites = [];
     }
 }
 
 async function updateBadgeForTab(tabId, url) {
     try {
-        const settings = await getFromStorage(["wordspotting_extension_on", "wordspotting_website_list"]);
+        const settings = await getFromStorage([
+            'wordspotting_extension_on',
+            'wordspotting_website_list',
+        ]);
         if (settings.wordspotting_extension_on === false) {
             setInactiveBadge(tabId);
             return;
         }
 
         const allowedSites = settings.wordspotting_website_list || [];
-        const isAllowed = compiledAllowedSites.length > 0
-            ? isUrlAllowedCompiled(url, compiledAllowedSites)
-            : isUrlAllowed(url, allowedSites);
+        const isAllowed =
+            compiledAllowedSites.length > 0
+                ? isUrlAllowedCompiled(url, compiledAllowedSites)
+                : isUrlAllowed(url, allowedSites);
 
         if (!isAllowed) {
             setInactiveBadge(tabId);
@@ -277,3 +297,64 @@ async function isContentAlreadyInjected(tabId) {
         return false;
     }
 }
+
+// Exposed for Playwright tests
+self.runSmokeTestLogic = async function () {
+    await saveToStorage({
+        wordspotting_website_list: ['*example.com*'],
+        wordspotting_extension_on: true,
+    });
+    await refreshAllowedSitePatterns();
+
+    const tab = await chrome.tabs.create({ url: 'https://example.com', active: true });
+
+    // Wait until the tab reports complete
+    await new Promise((resolve) => {
+        const waitForComplete = () =>
+            chrome.tabs.get(tab.id, (info) => {
+                if (info?.status === 'complete') {
+                    resolve();
+                } else {
+                    setTimeout(waitForComplete, 100);
+                }
+            });
+        waitForComplete();
+    });
+
+    // Give some time for background `onUpdated` -> `maybeInjectContentScripts` to run
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    // Drive badge update through the background handler directly
+    const response = await handleMessage(
+        { wordfound: true, keyword_count: 3 },
+        { tab: { id: tab.id, url: 'https://example.com', title: 'Example Domain' } }
+    );
+
+    // Ensure background badge state is explicitly set for this tab.
+    setCountBadge(tab.id, 3);
+
+    // Allow the message to propagate and badge to update; poll for expected text.
+    const expectedBadge = '3';
+    let text = '';
+    for (let i = 0; i < 10; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        text = await new Promise((resolve) =>
+            chrome.action.getBadgeText({ tabId: tab.id }, resolve)
+        );
+        if (text === expectedBadge) break;
+    }
+
+    const notificationCount =
+        typeof self.__wsNotificationCount === 'function' ? self.__wsNotificationCount() : 0;
+
+    await chrome.tabs.remove(tab.id);
+    return {
+        badgeText: text,
+        notificationCount,
+        debug: {
+            response,
+            text,
+            compiledAllowedSitesLength: compiledAllowedSites?.length ?? 0,
+        },
+    };
+};

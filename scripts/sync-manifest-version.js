@@ -10,8 +10,8 @@ const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
 if (manifest.version === pkg.version) {
-  console.log(`manifest.json already at ${pkg.version}`);
-  process.exit(0);
+    console.log(`manifest.json already at ${pkg.version}`);
+    process.exit(0);
 }
 
 manifest.version = pkg.version;

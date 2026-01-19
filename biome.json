@@ -1,19 +1,20 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
-  "files": {
-    "includes": [
-      "**/*",
-      "!node_modules",
-      "!coverage"
-    ]
-  },
-  "formatter": {
-    "enabled": true
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true
+    "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+    "files": {
+        "ignore": [
+            "dist",
+            "zip",
+            "node_modules",
+            "coverage"
+        ]
+    },
+    "formatter": {
+        "enabled": true
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": true
+        }
     }
-  }
 }
