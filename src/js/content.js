@@ -224,10 +224,10 @@ async function performHighlightScan(keyword_list, color, signal) {
     }
 }
 
-function scanWithWorkerForHighlights(keywordList, chunks) {
-    const worker = getScanWorker();
+async function scanWithWorkerForHighlights(keywordList, chunks) {
+    const worker = await getScanWorkerAsync();
     if (!worker) {
-        return Promise.reject(new Error("Worker not available for highlighting"));
+        throw new Error("Worker not available for highlighting");
     }
     return new Promise((resolve, reject) => {
         const id = ++scanRequestId;
@@ -350,15 +350,38 @@ async function getBodyTextSnapshot(signal) {
     return text;
 }
 
-function getScanWorker() {
+async function getScanWorkerAsync() {
     if (workerFailed) return null;
     if (scanWorker) return scanWorker;
+
     try {
-        scanWorker = new Worker(chrome.runtime.getURL('src/js/scan-worker.js'));
+        const workerUrl = chrome.runtime.getURL('src/js/scan-worker.js');
+        // Try to fetch source code to create an inline worker (CSP bypass)
+        // We use fetch + Blob because direct URL might be blocked by CSP
+        // AND we need to inject the scanner code because importScripts inside blob fails on strict CSP sites
+
+        const [workerRes, scannerRes] = await Promise.all([
+            fetch(workerUrl),
+            fetch(chrome.runtime.getURL('src/js/core/scanner.js'))
+        ]);
+
+        const workerCode = await workerRes.text();
+        const scannerCode = await scannerRes.text();
+
+        // Remove the importScripts line from worker code since we inline it
+        const cleanWorkerCode = workerCode.replace(/importScripts\s*\(.*?\);/g, '');
+
+        // Combine: scanner first, then worker
+        const combinedCode = scannerCode + '\n' + cleanWorkerCode;
+
+        const blob = new Blob([combinedCode], { type: 'application/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+
+        scanWorker = new Worker(blobUrl);
         setupWorkerListeners(scanWorker);
         return scanWorker;
     } catch (e) {
-        console.warn("Wordspotting worker creation failed:", e.name, e.message);
+        console.warn("Wordspotting worker creation failed (inline blob):", e);
         workerFailed = true;
         return null;
     }
@@ -400,10 +423,11 @@ function cleanupWorker() {
     workerRequests.clear();
 }
 
-function scanWithWorker(keywordList, text) {
-    const worker = getScanWorker();
+async function scanWithWorker(keywordList, text) {
+    const worker = await getScanWorkerAsync();
     if (!worker) {
-        return Promise.resolve(scanTextForKeywords(keywordList, text));
+        // Fallback for counting only (legacy/safety)
+        return scanTextForKeywords(keywordList, text);
     }
     return new Promise((resolve, reject) => {
         const { chunkSize, overlap } = getChunkingConfig(text, keywordList);
@@ -419,8 +443,6 @@ function scanWithWorker(keywordList, text) {
         });
     });
 }
-
-// scanWithWorkerForHighlights removed
 
 function getChunkingConfig(text, keywordList) {
     const length = typeof text === 'string' ? text.length : 0;
