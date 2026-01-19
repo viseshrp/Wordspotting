@@ -262,7 +262,15 @@ function normalizeToMatchPatterns(input) {
 
     // Already a match pattern
     if (raw.includes('://') && raw.includes('/*') && isValidMatchPattern(raw)) {
-        return [raw];
+        const scheme = raw.split('://')[0];
+        if (scheme === '*') {
+            const rest = raw.substring(raw.indexOf('://') + 3);
+            return [`http://${rest}`, `https://${rest}`];
+        }
+        if (scheme === 'http' || scheme === 'https') {
+            return [raw];
+        }
+        return [];
     }
 
     // Full URL
@@ -286,7 +294,7 @@ function normalizeToMatchPatterns(input) {
     const parts = host.split('.').filter(Boolean);
     const isLikelyRoot = parts.length <= 2;
     const hostPattern = isLikelyRoot ? `*.${host}` : host;
-    return [`*://${hostPattern}/*`];
+    return [`http://${hostPattern}/*`, `https://${hostPattern}/*`];
 }
 
 /**
@@ -299,13 +307,14 @@ function buildMatchPatternsForTab(urlString) {
     const url = new URL(urlString);
     const host = url.hostname;
     if (!host) throw new Error('Invalid URL');
+    const scheme = url.protocol.replace(':', '');
     const parts = host.split('.').filter(Boolean);
     const rootHost = parts.length <= 2 ? host : parts.slice(-2).join('.');
 
-    const root = `*://*.${rootHost}/*`;
-    const subdomain = `*://${host}/*`;
-    const path = `*://${host}${url.pathname}*`;
-    const full = `*://${host}${url.pathname}*`;
+    const root = `${scheme}://*.${rootHost}/*`;
+    const subdomain = `${scheme}://${host}/*`;
+    const path = `${scheme}://${host}${url.pathname}*`;
+    const full = `${scheme}://${host}${url.pathname}*`;
 
     return { root, subdomain, path, full };
 }
