@@ -79,6 +79,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const pattern = buildPatternForTab(tab.url, scope);
 
             try {
+                const granted = await new Promise((resolve) => {
+                    chrome.permissions.request({ origins: [pattern] }, (ok) => resolve(Boolean(ok)));
+                });
+
+                if (!granted) {
+                    showAlert("Permission request was denied.", "Permission", false);
+                    return;
+                }
+
                 const items = await getFromStorage("wordspotting_website_list");
                 const existing = Array.isArray(items.wordspotting_website_list) ? items.wordspotting_website_list : [];
                 const merged = mergeUnique(existing, [pattern]);
@@ -162,9 +171,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const items = await getFromStorage("wordspotting_website_list");
             const allowedSites = items.wordspotting_website_list || [];
-            const allowed = isUrlAllowed(tab.url, allowedSites);
+            const allowed = isUrlAllowedByMatchPatterns(tab.url, allowedSites) || isUrlAllowed(tab.url, allowedSites);
+            const originPattern = originPatternForUrl(tab.url);
+            const hasPermission = originPattern
+                ? await new Promise((resolve) => chrome.permissions.contains({ origins: [originPattern] }, (ok) => resolve(Boolean(ok))))
+                : false;
             updateSitePreview(tab.url);
-            return { allowed, hasPermission: true };
+            return { allowed, hasPermission };
         } catch (e) {
             console.error("Activation check failed:", e);
             return { allowed: false, hasPermission: false };
@@ -176,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildPatternForTab(urlString, scope) {
-        const patterns = buildPatternsForTab(urlString);
+        const patterns = buildMatchPatternsForTab(urlString);
         const pattern = patterns[scope];
         if (!pattern) {
             throw new Error("Invalid URL");
@@ -197,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedValue = siteScopeSelect.value || 'root';
         const uniquePatterns = new Set();
         const optionsToRender = [];
-        const patterns = buildPatternsForTab(urlString);
+        const patterns = buildMatchPatternsForTab(urlString);
 
         scopeOptions.forEach((scopeOption) => {
             const pattern = patterns[scopeOption.value] || '';

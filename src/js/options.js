@@ -97,7 +97,20 @@ function addSite(input) {
         return;
     }
 
-    const { valid, invalid } = partitionSitePatterns(list);
+    // Convert user input into Chrome match patterns and request permissions.
+    const expanded = [];
+    const invalid = [];
+    list.forEach((entry) => {
+        const patterns = normalizeToMatchPatterns(entry);
+        if (!patterns || patterns.length === 0) {
+            invalid.push(entry);
+        } else {
+            expanded.push(...patterns);
+        }
+    });
+
+    const uniqueExpanded = Array.from(new Set(expanded)).filter((p) => isValidMatchPattern(p));
+    const valid = uniqueExpanded;
 
     if (invalid.length > 0) {
         showAlert(`Skipped invalid pattern(s): ${invalid.join(", ")}`, "Validation", false);
@@ -108,15 +121,29 @@ function addSite(input) {
         return;
     }
 
-    getFromStorage("wordspotting_website_list").then((items) => {
+    getFromStorage("wordspotting_website_list").then(async (items) => {
         const stored = Array.isArray(items.wordspotting_website_list) ? items.wordspotting_website_list : [];
         const merged = mergeUnique(stored, valid);
-        return saveToStorage({"wordspotting_website_list": merged});
+
+        // Request optional host permissions from a user gesture.
+        const requested = await new Promise((resolve) => {
+            chrome.permissions.request({ origins: valid }, (granted) => resolve(Boolean(granted)));
+        });
+
+        if (!requested) {
+            showAlert("Permission request was denied. Nothing was added.", "Permission", false);
+            return;
+        }
+
+        await saveToStorage({"wordspotting_website_list": merged});
     }).then(() => {
         input.value = "";
         updateWebListDisplay();
-        showAlert("Website(s) added.", "Success", true);
-    }).catch(console.error);
+        showAlert("Website permission granted and saved.", "Success", true);
+    }).catch((e) => {
+        console.error(e);
+        showAlert("Failed to request/save permissions.", "Error", false);
+    });
 }
 
 function addWord(input) {
@@ -162,7 +189,13 @@ function removeIndex(type, index) {
     getFromStorage(key).then((items) => {
         const stored = items[key];
         if (isValidObj(stored)) {
-            stored.splice(index, 1);
+            const removed = stored.splice(index, 1);
+            // Best-effort: remove permission for removed site pattern.
+            if (type === 'site' && removed && removed[0]) {
+                chrome.permissions.remove({ origins: [removed[0]] }, () => {
+                    void chrome.runtime.lastError;
+                });
+            }
             return saveToStorage({[key]: stored});
         }
     }).then(() => {
@@ -176,7 +209,15 @@ function removeIndex(type, index) {
 
 function clearList(key, updateFn) {
     if (confirm("Are you sure you want to clear this list?")) {
-        saveToStorage({[key]: []}).then(() => {
+        getFromStorage(key).then(async (items) => {
+            const existing = Array.isArray(items[key]) ? items[key] : [];
+            if (key === 'wordspotting_website_list' && existing.length > 0) {
+                chrome.permissions.remove({ origins: existing }, () => {
+                    void chrome.runtime.lastError;
+                });
+            }
+            await saveToStorage({[key]: []});
+        }).then(() => {
             updateFn();
             showAlert("List cleared.", "Success", true);
         });
