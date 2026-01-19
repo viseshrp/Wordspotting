@@ -1,15 +1,14 @@
-// scripts/smoke_test.js
 const fs = require('node:fs');
 const path = require('node:path');
 
-console.log("Running Smoke Test...");
+console.log("Running Smoke Test (Build Artifacts)...");
 
-const rootDir = path.resolve(__dirname, '..');
+const buildDir = path.resolve(__dirname, '../build/chrome-mv3-prod');
 
 // 1. Check Manifest
-const manifestPath = path.join(rootDir, 'manifest.json');
+const manifestPath = path.join(buildDir, 'manifest.json');
 if (!fs.existsSync(manifestPath)) {
-    console.error("FAIL: manifest.json missing");
+    console.error("FAIL: manifest.json missing in build output. Did you build?");
     process.exit(1);
 }
 
@@ -27,21 +26,21 @@ try {
 
 // 2. Check Critical Files
 const criticalFiles = [
-    'src/js/background.js',
-    'src/js/content.js',
-    'src/js/utils.js',
-    'src/js/popup.js',
-    'src/js/options.js',
-    'src/css/popup.css',
-    'src/css/options.css',
-    'src/pages/popup.html',
-    'src/pages/options.html',
-    'src/assets/ws48.png'
+    'static/background/index.js',
+    'assets/js/content.js',
+    'assets/js/utils.js',
+    'assets/popup/popup.js',
+    'assets/options/options.js',
+    'assets/popup/popup.css',
+    'assets/options/options.css',
+    'assets/popup/popup.html',
+    'assets/options/options.html',
+    'assets/icon.png'
 ];
 
 let missing = 0;
 criticalFiles.forEach(file => {
-    if (!fs.existsSync(path.join(rootDir, file))) {
+    if (!fs.existsSync(path.join(buildDir, file))) {
         console.error(`FAIL: Missing critical file: ${file}`);
         missing++;
     }

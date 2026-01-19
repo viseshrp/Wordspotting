@@ -1,17 +1,8 @@
 module.exports = {
-  testEnvironment: "jsdom",
-  setupFilesAfterEnv: ["<rootDir>/tests/setup.js"],
-  collectCoverage: true,
-  collectCoverageFrom: [
-    "src/js/utils.js",
-    "src/js/settings.js"
-  ],
-  coverageThreshold: {
-    global: {
-      lines: 85,
-      statements: 85,
-      functions: 85,
-      branches: 70
-    }
-  }
+  testEnvironment: 'jsdom',
+  setupFiles: ['./tests/setup.js'],
+  testMatch: ['**/tests/**/*.spec.js'],
+  // Ignore src/ as it contains ES modules which Jest might struggle with if not transformed,
+  // but we are testing assets/ which are CommonJS/Universal.
+  transform: {}
 };

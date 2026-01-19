@@ -1,32 +1,49 @@
 {
   "name": "wordspotting",
+  "displayName": "Wordspotting",
   "version": "1.0.0",
   "description": "Get notified when a word is found in a web page.",
+  "author": "Visesh Prasad",
+  "license": "MIT",
   "scripts": {
-    "build": "node scripts/build.js",
-    "lint:webext": "node scripts/lint-webext.js",
-    "version": "node scripts/sync-manifest-version.js && git add manifest.json",
-    "test": "jest --coverage",
-    "lint": "eslint .",
-    "biome": "biome lint .",
-    "format": "prettier --write .",
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "test": "jest",
     "smoke": "node scripts/smoke_test.js",
     "smoke:e2e": "node scripts/smoke_playwright.js"
   },
+  "dependencies": {
+    "@parcel/watcher": "^2.5.4",
+    "plasmo": "0.89.4",
+    "sharp": "^0.34.5"
+  },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.11",
-    "archiver": "^7.0.1",
-    "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^30.2.0",
     "playwright-chromium": "^1.42.0",
-    "prettier": "^3.1.0",
-    "web-ext": "^8.4.0"
+    "prettier": "^3.1.0"
   },
-  "keywords": [
-    "chrome-extension",
-    "keyword-spotter"
-  ],
-  "author": "Visesh Prasad",
-  "license": "MIT"
+  "manifest": {
+    "host_permissions": [
+      "<all_urls>"
+    ],
+    "permissions": [
+      "notifications",
+      "storage",
+      "scripting"
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": [
+          "assets/js/scan-worker.js",
+          "assets/js/core/scanner.js",
+          "assets/css/index.css",
+          "assets/icon.png"
+        ],
+        "matches": [
+          "<all_urls>"
+        ]
+      }
+    ]
+  }
 }

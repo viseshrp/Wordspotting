@@ -28,48 +28,44 @@
 4. **Highlighting**: Toggle "Highlight Matches" in the settings to see keywords highlighted on the page. You can also customize the highlight color.
 5. Navigate to an allowed site. If a keyword is found, the extension icon will show a badge count, and you will receive a notification.
 
-## Permissions & Development
+## Development
 
-- Permissions: `notifications`, `storage`, `scripting`, and `host_permissions: <all_urls>`. Adding a site to your allowed list is considered opt-in; there are no runtime permission prompts.
-- Built with vanilla JavaScript, CSS, and HTML (Manifest V3). Source lives under `src/` (`src/js`, `src/css`, `src/pages`, `src/assets`).
-- CI: GitHub Actions runs lint (ESLint + Biome), unit tests (Jest), smoke checks (filesystem + Playwright), enforces a 1 MB package size, and uploads versioned build artifacts.
+Built with [Plasmo](https://docs.plasmo.com/) and Vanilla JavaScript (MV3).
 
-### Running Tests
+### Prerequisites
 
-```bash
-npm test
-```
+- Node.js 20+
+- npm
 
-### Linting
+### Setup
 
 ```bash
-npm run lint        # ESLint
-npm run biome       # Biome
-npm run lint:webext # WebExtension manifest/content validation (web-ext)
+npm install
 ```
 
-### Smoke Tests
+### Dev Server
 
 ```bash
-npm run smoke        # filesystem checks
-npm run smoke:e2e    # extension check (requires Playwright; install via `npx playwright install chromium`)
+npm run dev
 ```
 
-### Building for Release
+### Build
 
 ```bash
-npm run build    # outputs dist/wordspotting-<version>.zip
-# ./build.sh     # optional wrapper for CI parity
+make package
+```
+Outputs `dist/wordspotting-<version>.zip`.
+
+### Tests
+
+```bash
+make test         # Unit tests (Jest)
+npm run smoke:e2e # E2E tests (Playwright)
 ```
 
-### Chrome Web Store Submission Checklist
+## Permissions
 
-- `npm ci`
-- `npm run biome`
-- `npm test -- --runInBand`
-- `npm run smoke:e2e` (requires `npx playwright install chromium`)
-- `npm run build` to produce `dist/wordspotting-<version>.zip`, then upload that zip to the Chrome Web Store.
-- `npm version <x.y.z>` to bump versions and keep `manifest.json` in sync with tags and package metadata.
+- `notifications`, `storage`, `scripting`, and `host_permissions: <all_urls>`. Adding a site to your allowed list is considered opt-in; there are no runtime permission prompts.
 
 ## License
 

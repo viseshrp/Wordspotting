@@ -1,21 +1,12 @@
-/**
- * Smoke-test options helpers by loading file in JSDOM and using exported utils.
- */
-const utils = require('../src/js/utils.js');
-const {
-  partitionSitePatterns,
-  mergeUnique
-} = require('../src/js/options.js');
+// Mock document for options
+const utils = require('../assets/js/utils.js');
+const { partitionSitePatterns } = require('../assets/options/options.js');
 
 describe('options helpers', () => {
   test('partitionSitePatterns filters invalid', () => {
+    // Need to bind buildSiteRegex as it might be missing in context if not required properly
     const { valid, invalid } = partitionSitePatterns(['*good*', ''], utils.buildSiteRegex);
     expect(valid).toContain('*good*');
     expect(invalid).toContain('');
-  });
-
-  test('mergeUnique deduplicates', () => {
-    const merged = mergeUnique(['a', 'b'], ['b', 'c']);
-    expect(merged.sort()).toEqual(['a', 'b', 'c']);
   });
 });

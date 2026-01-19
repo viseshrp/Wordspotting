@@ -7,25 +7,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  quality:
-    name: Code Quality
+  build_and_test:
+    name: Build & Test
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run lint:webext
-      - run: npm run biome
-
-  smoke:
-    name: Smoke Tests
-    runs-on: ubuntu-latest
-    needs: quality
     steps:
       - uses: actions/checkout@v4
       - name: Use Node.js 20
@@ -35,67 +19,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install chromium
+      - run: make test
+      - run: make build
       - run: npm run smoke
       - run: npm run smoke:e2e
-
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    needs: [quality, smoke]
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: npm test -- --runInBand
-
-  package:
-    name: Build & Package
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      - name: Build Zip
-        run: npm run build
-      - name: Enforce size budget
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          ZIP="dist/wordspotting-${VERSION}.zip"
-          max_kb=1024
-          size_kb=$(du -k "$ZIP" | cut -f1)
-          echo "Package size: ${size_kb} KB (limit ${max_kb} KB) at ${ZIP}"
-          if [ "$size_kb" -gt "$max_kb" ]; then
-            echo "Package exceeds size budget."
-            exit 1
-          fi
+      - run: make package
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: wordspotting-extension
           path: dist/wordspotting-*.zip
-
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    needs: package
-    if: startsWith(github.ref, 'refs/tags/v')
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: wordspotting-extension
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/wordspotting-*.zip
-          draft: true

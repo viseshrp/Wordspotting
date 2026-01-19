@@ -1,0 +1,10 @@
+{
+  "extends": "plasmo/tsconfig.json",
+  "include": [
+    ".plasmo/index.d.ts",
+    "src"
+  ],
+  "compilerOptions": {
+    "allowJs": true
+  }
+}

@@ -1,43 +1,17 @@
-// Jest setup: provide global mocks for Chrome APIs and browser-y globals.
-
+// Mock chrome global
 global.chrome = {
   runtime: {
-    lastError: null,
-    onInstalled: { addListener: jest.fn() },
-    onMessage: { addListener: jest.fn() },
-    sendMessage: jest.fn()
+    getURL: (path) => path,
+    lastError: null
   },
   storage: {
     sync: {
-      set: jest.fn((_obj, cb) => cb?.()),
-      get: jest.fn((_keys, cb) => cb?.({}))
+      get: jest.fn(),
+      set: jest.fn()
     }
   },
-  permissions: {
-    contains: jest.fn((_, cb) => cb?.(true)),
-    request: jest.fn((_, cb) => cb?.(true))
-  },
   action: {
-    setBadgeText: jest.fn()
-  },
-  notifications: {
-    create: jest.fn()
-  },
-  tabs: {
-    create: jest.fn(),
-    query: jest.fn()
-  },
-  scripting: {
-    executeScript: jest.fn(),
-    insertCSS: jest.fn()
+    setBadgeText: jest.fn(),
+    setBadgeBackgroundColor: jest.fn()
   }
-};
-
-global.importScripts = () => {};
-global.requestIdleCallback = (cb) => cb();
-global.cancelIdleCallback = () => {};
-global.MutationObserver = class {
-  constructor(callback) { this.cb = callback; }
-  observe() {}
-  disconnect() {}
 };
