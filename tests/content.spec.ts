@@ -33,7 +33,6 @@ describe('content helpers', () => {
     }));
 
     jest.useFakeTimers();
-    // @ts-expect-error
     if (content.resetContentState) content.resetContentState();
   });
 
@@ -43,14 +42,12 @@ describe('content helpers', () => {
 
   test('getWordList finds keywords case-insensitively', () => {
     document.body.innerText = 'This has alpha and beta.';
-    // @ts-expect-error
     const result = content.getWordList(['ALPHA', 'beta']);
     expect(result.sort()).toEqual(['ALPHA', 'beta']);
   });
 
   test('getWordList skips invalid regex', () => {
     document.body.innerText = 'foo';
-    // @ts-expect-error
     const result = content.getWordList(['[bad']);
     expect(result).toEqual([]);
   });
