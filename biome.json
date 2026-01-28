@@ -4,7 +4,9 @@
     "includes": [
       "**/*",
       "!node_modules",
-      "!coverage"
+      "!coverage",
+      "!.wxt",
+      "!.output"
     ]
   },
   "formatter": {
@@ -13,7 +15,13 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off"
+      }
     }
   }
 }

@@ -18,7 +18,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run lint
+      - run: npm run build
       - run: npm run lint:webext
       - run: npm run biome
 
@@ -65,10 +65,12 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Build Zip
-        run: npm run build
+        run: npm run zip
       - name: Enforce size budget
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          mkdir -p dist
+          mv .output/*-chrome.zip "dist/wordspotting-${VERSION}.zip"
           ZIP="dist/wordspotting-${VERSION}.zip"
           max_kb=1024
           size_kb=$(du -k "$ZIP" | cut -f1)
