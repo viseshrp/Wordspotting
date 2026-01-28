@@ -53,6 +53,13 @@ async function main() {
 
   // Trigger badge and notification via a real tab + injected content script
   const { badgeText, notificationCount, debug } = await serviceWorker.evaluate(async () => {
+    // Wait for globals to be exposed
+    const start = Date.now();
+    while (typeof self.saveToStorage !== 'function') {
+      if (Date.now() - start > 5000) throw new Error('Timeout waiting for global exposure');
+      await new Promise(r => setTimeout(r, 100));
+    }
+
     // Ensure the site is allowlisted and extension is on for the test tab.
     await self.saveToStorage({
       wordspotting_website_list: ['*example.com*'],

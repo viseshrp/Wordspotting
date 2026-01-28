@@ -35,6 +35,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install chromium
+      - run: npm run build
       - run: npm run smoke
       - run: npm run smoke:e2e
 

@@ -3,7 +3,6 @@ import { getFromStorage, isUrlAllowed, isUrlAllowedCompiled, compileSitePatterns
 import { browser } from 'wxt/browser';
 
 // Point to the bundled content script (WXT unlisted script output)
-// WXT outputs unlisted scripts to the root or assets. We observed it at root.
 const CONTENT_SCRIPT_FILES = ['/injected.js'];
 const CONTENT_STYLE_FILES = ['/css/index.css'];
 
