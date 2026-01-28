@@ -6,37 +6,26 @@ console.log("Running Smoke Test...");
 
 const rootDir = path.resolve(__dirname, '..');
 
-// 1. Check Manifest
-const manifestPath = path.join(rootDir, 'manifest.json');
-if (!fs.existsSync(manifestPath)) {
-    console.error("FAIL: manifest.json missing");
+// 1. Check Manifest (Check WXT Config exists as source of truth)
+const configPath = path.join(rootDir, 'wxt.config.ts');
+if (!fs.existsSync(configPath)) {
+    console.error("FAIL: wxt.config.ts missing");
     process.exit(1);
 }
+console.log("PASS: wxt.config.ts present");
 
-try {
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    if (!manifest.version || !manifest.manifest_version) {
-        console.error("FAIL: Invalid manifest structure");
-        process.exit(1);
-    }
-    console.log("PASS: manifest.json is valid");
-} catch (_e) {
-    console.error("FAIL: manifest.json is not valid JSON");
-    process.exit(1);
-}
-
-// 2. Check Critical Files
+// 2. Check Critical Source Files (New Structure)
 const criticalFiles = [
-    'src/js/background.js',
-    'src/js/content.js',
-    'src/js/utils.js',
-    'src/js/popup.js',
-    'src/js/options.js',
-    'src/css/popup.css',
-    'src/css/options.css',
-    'src/pages/popup.html',
-    'src/pages/options.html',
-    'src/assets/ws48.png'
+    'entrypoints/background.ts',
+    'entrypoints/injected.ts',
+    'utils/utils.ts',
+    'entrypoints/popup/main.ts',
+    'entrypoints/options/main.ts',
+    'entrypoints/popup/popup.css',
+    'entrypoints/options/options.css',
+    'entrypoints/popup/index.html',
+    'entrypoints/options/index.html',
+    'public/assets/ws48.png'
 ];
 
 let missing = 0;

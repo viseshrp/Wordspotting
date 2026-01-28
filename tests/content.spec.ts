@@ -1,38 +1,43 @@
-describe('content helpers', () => {
-  let content;
+import * as content from '@/utils/content-core';
+import { browser } from 'wxt/browser';
+import * as utils from '@/utils/utils';
 
+jest.mock('@/utils/utils', () => ({
+    ...jest.requireActual('@/utils/utils'),
+    getFromStorage: jest.fn(),
+    saveToStorage: jest.fn(),
+    logit: jest.fn()
+}));
+
+// Mock browser (handled by jest config)
+
+// Mock scanner? No, use real one for integration logic or mock it if desired.
+// Original test used real scanner.
+
+describe('content helpers', () => {
   beforeEach(() => {
-    global.document = { body: { innerText: '' } };
-    global.getFromStorage = jest.fn(async () => ({}));
-    global.saveToStorage = jest.fn(async () => ({}));
-    global.logit = jest.fn();
-    console.warn = jest.fn();
-    global.isValidObj = (obj) => obj !== null && typeof obj !== 'undefined' && Object.keys(obj).length > 0;
-    const utils = require('../src/js/utils.js');
-    global.compileSitePatterns = utils.compileSitePatterns;
-    global.isUrlAllowedCompiled = utils.isUrlAllowedCompiled;
+    document.body.innerText = '';
+    jest.clearAllMocks();
 
     // Mock CSS highlights
-    global.CSS = { highlights: { set: jest.fn(), delete: jest.fn() } };
-    global.Highlight = jest.fn();
-    global.Range = jest.fn(() => ({ setStart: jest.fn(), setEnd: jest.fn() }));
-    global.NodeFilter = { SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER_REJECT: 2 };
+    (global as any).CSS = { highlights: { set: jest.fn(), delete: jest.fn() } };
+    (global as any).Highlight = jest.fn();
+    (global as any).Range = jest.fn(() => ({ setStart: jest.fn(), setEnd: jest.fn() }));
+    (global as any).NodeFilter = { SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER_REJECT: 2 };
 
     // Mock Worker
-    global.Worker = jest.fn(() => ({
+    (global as any).Worker = jest.fn(() => ({
         addEventListener: jest.fn(),
         postMessage: jest.fn(),
         terminate: jest.fn()
     }));
 
     jest.useFakeTimers();
-    global.chrome.runtime.id = 'test-runtime';
-    content = require('../src/js/content.js');
+    if (content.resetContentState) content.resetContentState();
   });
 
   afterEach(() => {
     jest.clearAllTimers();
-    jest.resetModules();
   });
 
   test('getWordList finds keywords case-insensitively', () => {
@@ -66,7 +71,7 @@ describe('content helpers', () => {
 
   test('getBodyTextSnapshot caches within window', async () => {
     document.body.innerText = 'first';
-    const signal = { aborted: false };
+    const signal = { aborted: false } as AbortSignal;
     const first = await content.getBodyTextSnapshot(signal);
     document.body.innerText = 'second';
     const second = await content.getBodyTextSnapshot(signal);
@@ -74,14 +79,14 @@ describe('content helpers', () => {
   });
 
   test('getBodyTextSnapshot aborts when signal aborted', async () => {
-    const signal = { aborted: true };
+    const signal = { aborted: true } as AbortSignal;
     const text = await content.getBodyTextSnapshot(signal);
     expect(text).toBe('');
   });
 
   test('performScan sends message when keywords match', async () => {
     document.body.innerText = 'sample keyword';
-    global.getFromStorage = jest.fn(async (keys) => {
+    (utils.getFromStorage as jest.Mock).mockImplementation(async (keys) => {
       if (Array.isArray(keys)) {
          return { wordspotting_word_list: ['keyword'], wordspotting_highlight_on: false };
       }
@@ -90,35 +95,38 @@ describe('content helpers', () => {
       }
       return {};
     });
-    global.chrome.runtime.sendMessage = jest.fn((_msg, cb) => cb?.({ ack: 'ok' }));
-    await content.performScan({ aborted: false });
-    expect(global.chrome.runtime.sendMessage).toHaveBeenCalled();
+
+    await content.performScan({ aborted: false } as AbortSignal);
+    expect(browser.runtime.sendMessage).toHaveBeenCalled();
   });
 
   test('performScan applies highlights when enabled', async () => {
     document.body.innerText = 'sample keyword';
 
-    // Mock getFromStorage
-    global.getFromStorage = jest.fn(async () => ({
+    (utils.getFromStorage as jest.Mock).mockResolvedValue({
         wordspotting_word_list: ['keyword'],
         wordspotting_highlight_on: true,
         wordspotting_highlight_color: '#FFFF00'
-    }));
+    });
+    // Worker mock is already active
 
-    // Re-require to pick up new Worker mock
-    jest.resetModules();
-    content = require('../src/js/content.js');
+    // We need the worker to respond.
+    // getScanWorkerAsync creates worker.
+    // scanWithWorkerForHighlights calls postMessage.
+
+    // To test this easily, we can call applyHighlights directly like original test did.
+    // Original test: content.applyHighlights(results, textNodes, '#FFFF00');
 
     const results = { "0": [{ keyword: "keyword", index: 0, length: 7 }] };
     const textNode = document.createTextNode("keyword");
     const textNodes = [textNode];
 
     content.applyHighlights(results, textNodes, '#FFFF00');
-    expect(global.CSS.highlights.set).toHaveBeenCalled();
+    expect((global as any).CSS.highlights.set).toHaveBeenCalled();
   });
 
   test('scheduleScan runs without error', () => {
-    global.requestIdleCallback = (cb) => cb();
+    (global as any).requestIdleCallback = (cb: (...args: any[]) => void) => cb();
     expect(() => content.scheduleScan()).not.toThrow();
   });
 });

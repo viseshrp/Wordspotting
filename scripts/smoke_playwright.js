@@ -17,7 +17,7 @@ async function main() {
   // const displaySession = useXvfb ? await startXvfb() : null;
   const displaySession = null;
   const _headless = true; // Use headless=new mode for extensions in newer Chromium
-  const extensionPath = path.resolve(__dirname, '..');
+  const extensionPath = path.resolve(__dirname, '..', '.output', 'chrome-mv3');
   if (!fs.existsSync(path.join(extensionPath, 'manifest.json'))) {
     throw new Error('manifest.json not found; run from repo root');
   }
@@ -46,19 +46,26 @@ async function main() {
 
   const workerUrl = serviceWorker.url();
   const extensionId = workerUrl.split('/')[2];
-  const optionsUrl = `chrome-extension://${extensionId}/src/pages/options.html`;
+  const optionsUrl = `chrome-extension://${extensionId}/options.html`;
 
   const page = await context.newPage();
   await page.goto(optionsUrl);
 
   // Trigger badge and notification via a real tab + injected content script
   const { badgeText, notificationCount, debug } = await serviceWorker.evaluate(async () => {
+    // Wait for globals to be exposed
+    const start = Date.now();
+    while (typeof self.saveToStorage !== 'function') {
+      if (Date.now() - start > 5000) throw new Error('Timeout waiting for global exposure');
+      await new Promise(r => setTimeout(r, 100));
+    }
+
     // Ensure the site is allowlisted and extension is on for the test tab.
-    await saveToStorage({
+    await self.saveToStorage({
       wordspotting_website_list: ['*example.com*'],
       wordspotting_extension_on: true
     });
-    await refreshAllowedSitePatterns();
+    await self.refreshAllowedSitePatterns();
 
     const tab = await chrome.tabs.create({ url: 'https://example.com', active: true });
 
