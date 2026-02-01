@@ -132,9 +132,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Update badge when user switches tabs.
 chrome.tabs.onActivated.addListener((activeInfo) => {
-    chrome.tabs.get(activeInfo.tabId, (tab) => {
-        if (chrome.runtime.lastError || !tab) return;
+    chrome.tabs.get(activeInfo.tabId).then((tab) => {
+        if (!tab) return;
         updateBadgeForTab(tab.id, tab.url);
+    }).catch((e) => {
+        console.warn('Failed to update badge on tab switch:', e);
     });
 });
 
