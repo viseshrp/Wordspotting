@@ -7,24 +7,36 @@ function normalizeKeywords(keywordList) {
 }
 
 function buildCombinedRegex(validKeywords) {
-    const patterns = [];
-    const patternMap = [];
+    if (validKeywords.length === 0) {
+        return null;
+    }
 
-    validKeywords.forEach((word, index) => {
-        try {
-            // Validate regex
-            new RegExp(word);
-            patterns.push(`(?<k${index}>${word})`);
-            patternMap[index] = word;
-        } catch (_e) {
-            // ignore invalid regex entry
-        }
-    });
-
-    if (patterns.length === 0) return null;
-
+    const patterns = validKeywords.map((word, index) => `(?<k${index}>${word})`);
     const combinedPattern = patterns.join('|');
-    return { regex: new RegExp(combinedPattern, 'ig'), patternMap };
+
+    try {
+        const regex = new RegExp(combinedPattern, 'ig');
+        return { regex, patternMap: validKeywords };
+    } catch (e) {
+        // Fallback for when an invalid keyword is present
+        const validPatterns = [];
+        const patternMap = [];
+        validKeywords.forEach((word, index) => {
+            try {
+                new RegExp(word);
+                validPatterns.push(`(?<k${index}>${word})`);
+                patternMap[index] = word;
+            } catch (_e) {
+                // ignore invalid regex entry
+            }
+        });
+
+        if (validPatterns.length === 0) {
+            return null;
+        }
+        const newCombinedPattern = validPatterns.join('|');
+        return { regex: new RegExp(newCombinedPattern, 'ig'), patternMap };
+    }
 }
 
 function scanTextForKeywords(keywordList, textToScan) {
