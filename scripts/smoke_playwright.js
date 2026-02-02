@@ -7,17 +7,12 @@
  */
 const path = require('node:path');
 const fs = require('node:fs');
-const { spawn } = require('node:child_process');
 const { chromium } = require('playwright-chromium');
 
 /* global refreshAllowedSitePatterns, handleMessage, setCountBadge, compiledAllowedSites */
 
 async function main() {
-  // const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
-  // const displaySession = useXvfb ? await startXvfb() : null;
-  const displaySession = null;
-  const _headless = true; // Use headless=new mode for extensions in newer Chromium
-  const extensionPath = path.resolve(__dirname, '..', '.output', 'chrome-mv3');
+  const extensionPath = path.resolve(__dirname, '..');
   if (!fs.existsSync(path.join(extensionPath, 'manifest.json'))) {
     throw new Error('manifest.json not found; run from repo root');
   }
@@ -46,26 +41,19 @@ async function main() {
 
   const workerUrl = serviceWorker.url();
   const extensionId = workerUrl.split('/')[2];
-  const optionsUrl = `chrome-extension://${extensionId}/options.html`;
+  const optionsUrl = `chrome-extension://${extensionId}/src/pages/options.html`;
 
   const page = await context.newPage();
   await page.goto(optionsUrl);
 
   // Trigger badge and notification via a real tab + injected content script
   const { badgeText, notificationCount, debug } = await serviceWorker.evaluate(async () => {
-    // Wait for globals to be exposed
-    const start = Date.now();
-    while (typeof self.saveToStorage !== 'function') {
-      if (Date.now() - start > 5000) throw new Error('Timeout waiting for global exposure');
-      await new Promise(r => setTimeout(r, 100));
-    }
-
     // Ensure the site is allowlisted and extension is on for the test tab.
-    await self.saveToStorage({
+    await saveToStorage({
       wordspotting_website_list: ['*example.com*'],
       wordspotting_extension_on: true
     });
-    await self.refreshAllowedSitePatterns();
+    await refreshAllowedSitePatterns();
 
     const tab = await chrome.tabs.create({ url: 'https://example.com', active: true });
 
@@ -117,9 +105,6 @@ async function main() {
   });
 
   await context.close();
-  if (displaySession) {
-    displaySession.stop();
-  }
 
   if (badgeText !== '3') {
     console.error('Badge debug info:', debug);
@@ -153,33 +138,4 @@ async function waitForServiceWorker(context, timeout = 15000) {
   }
 
   throw new Error(`Service worker not registered within ${timeout}ms`);
-}
-
-function _startXvfb() {
-  return new Promise((resolve, reject) => {
-    const display = ':99';
-    const xvfb = spawn('Xvfb', [display, '-screen', '0', '1280x720x24', '-nolisten', 'tcp'], {
-      stdio: 'ignore',
-      detached: true
-    });
-    xvfb.unref();
-
-    const readyTimer = setTimeout(() => {
-      resolve({
-        display,
-        stop: () => {
-          try {
-            process.kill(-xvfb.pid);
-          } catch {
-            // ignore
-          }
-        }
-      });
-    }, 300);
-
-    xvfb.once('error', (err) => {
-      clearTimeout(readyTimer);
-      reject(err);
-    });
-  });
 }

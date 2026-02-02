@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Get notified when a word is found in a web page.",
   "scripts": {
-    "build": "wxt build",
+    "build": "node scripts/build.js",
     "lint:webext": "node scripts/lint-webext.js",
     "version": "node scripts/sync-manifest-version.js && git add manifest.json",
     "test": "jest --coverage",
@@ -11,24 +11,17 @@
     "biome": "biome lint .",
     "format": "prettier --write .",
     "smoke": "node scripts/smoke_test.js",
-    "smoke:e2e": "node scripts/smoke_playwright.js",
-    "dev": "wxt",
-    "zip": "wxt zip",
-    "postinstall": "wxt prepare"
+    "smoke:e2e": "node scripts/smoke_playwright.js"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",
-    "@types/jest": "^30.0.0",
-    "@types/node": "^25.0.10",
     "archiver": "^7.0.1",
+    "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^30.2.0",
     "playwright-chromium": "^1.42.0",
     "prettier": "^3.1.0",
-    "ts-jest": "^29.4.6",
-    "typescript": "^5.9.3",
-    "web-ext": "^8.4.0",
-    "wxt": "^0.20.13"
+    "web-ext": "^8.4.0"
   },
   "keywords": [
     "chrome-extension",

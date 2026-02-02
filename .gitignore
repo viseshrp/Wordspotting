@@ -1,6 +1,8 @@
-.wxt/
-.output/
+.idea/*
 node_modules/
-dist/
-*.zip
 coverage/
+npm-debug.log
+node_modules/
+node-bin/
+dist/
+web-ext-artifacts/

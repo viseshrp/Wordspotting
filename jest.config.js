@@ -1,20 +1,17 @@
 module.exports = {
-  preset: "ts-jest",
   testEnvironment: "jsdom",
-  setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
+  setupFilesAfterEnv: ["<rootDir>/tests/setup.js"],
   collectCoverage: true,
   collectCoverageFrom: [
-    "utils/**/*.ts",
-    "entrypoints/**/*.ts",
-    "!entrypoints/popup/main.ts",
-    "!entrypoints/options/main.ts"
+    "src/js/utils.js",
+    "src/js/settings.js"
   ],
-  moduleNameMapper: {
-    "^@/(.*)$": "<rootDir>/$1",
-    "^wxt/browser$": "<rootDir>/tests/wxtBrowserMock.ts",
-    "\\.(css|less|scss|sass)$": "<rootDir>/tests/styleMock.js"
-  },
-  transform: {
-    "^.+\\.tsx?$": "ts-jest"
+  coverageThreshold: {
+    global: {
+      lines: 85,
+      statements: 85,
+      functions: 85,
+      branches: 70
+    }
   }
 };

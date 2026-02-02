@@ -1,13 +1,10 @@
-import * as utils from '@/utils/utils';
-import { browser } from 'wxt/browser';
-
-// Mock document for showAlert
-document.body.innerHTML = '';
-
 describe('utils', () => {
+  let utils;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    global.chrome.storage.sync.set = jest.fn((_obj, cb) => cb?.());
+    global.chrome.storage.sync.get = jest.fn((_keys, cb) => cb?.({ example: 1 }));
+    utils = require('../src/js/utils.js');
   });
 
   test('trimAndClean removes whitespace', () => {
@@ -22,7 +19,7 @@ describe('utils', () => {
 
   test('buildSiteRegex handles regex and glob', () => {
     expect(utils.buildSiteRegex('example')).toBeInstanceOf(RegExp);
-    expect(utils.buildSiteRegex('*example*')?.test('https://www.example.com')).toBe(true);
+    expect(utils.buildSiteRegex('*example*').test('https://www.example.com')).toBe(true);
   });
 
   test('isUrlAllowed matches with compiled patterns', () => {
@@ -31,11 +28,23 @@ describe('utils', () => {
     expect(utils.isUrlAllowedCompiled('https://bar.com', compiled)).toBe(false);
   });
 
-  test('saveToStorage and getFromStorage delegate to browser.storage.sync', async () => {
+  test('saveToStorage and getFromStorage delegate to chrome.storage.sync', async () => {
     await utils.saveToStorage({ foo: 'bar' });
-    expect(browser.storage.sync.set).toHaveBeenCalled();
-    await utils.getFromStorage('example');
-    expect(browser.storage.sync.get).toHaveBeenCalled();
+    expect(global.chrome.storage.sync.set).toHaveBeenCalled();
+    const res = await utils.getFromStorage('example');
+    expect(res.example).toBe(1);
+  });
+
+  test('saveToStorage rejects on lastError', async () => {
+    global.chrome.runtime.lastError = new Error('fail');
+    await expect(utils.saveToStorage({})).rejects.toBeInstanceOf(Error);
+    global.chrome.runtime.lastError = null;
+  });
+
+  test('getFromStorage rejects on lastError', async () => {
+    global.chrome.runtime.lastError = new Error('fail');
+    await expect(utils.getFromStorage('x')).rejects.toBeInstanceOf(Error);
+    global.chrome.runtime.lastError = null;
   });
 
   test('getRandomInt stays within bounds', () => {
@@ -52,8 +61,8 @@ describe('utils', () => {
     utils.showAlert('msg', 'title', true);
     const toast = document.querySelector('.ws-toast');
     expect(toast).toBeTruthy();
-    expect(toast?.textContent).toContain('msg');
-    jest.runAllTimers();
+    expect(toast.textContent).toContain('msg');
+    jest.runAllTimers(); // trigger fade/remove
   });
 
   test('logit writes to console', () => {
@@ -64,7 +73,7 @@ describe('utils', () => {
   });
 
   test('buildSiteRegex returns null for invalid input', () => {
-    expect(utils.buildSiteRegex(null as any)).toBeNull();
+    expect(utils.buildSiteRegex(null)).toBeNull();
   });
 
   test('isUrlAllowed handles empty list', () => {
@@ -72,7 +81,7 @@ describe('utils', () => {
   });
 
   test('compileSitePatterns handles non-array', () => {
-    expect(utils.compileSitePatterns(null as any)).toEqual([]);
+    expect(utils.compileSitePatterns(null)).toEqual([]);
   });
 
   test('buildPatternsForTab generates correct patterns', () => {
@@ -84,15 +93,18 @@ describe('utils', () => {
     expect(patterns.full).toBe("https://www.linkedin.com/jobs/view/123");
   });
 
-  // From options.spec.js
-  test('partitionSitePatterns filters invalid', () => {
-    const { valid, invalid } = utils.partitionSitePatterns(['*good*', '']);
-    expect(valid).toContain('*good*');
-    expect(invalid).toContain('');
+  test('buildPatternsForTab handles path with query', () => {
+    const url = "https://example.com/search?q=test";
+    const patterns = utils.buildPatternsForTab(url);
+    expect(patterns.path).toBe("*example.com/search*");
+    expect(patterns.full).toBe("https://example.com/search?q=test");
   });
 
-  test('mergeUnique deduplicates', () => {
-    const merged = utils.mergeUnique(['a', 'b'], ['b', 'c']);
-    expect(merged.sort()).toEqual(['a', 'b', 'c']);
+  test('scanTextForMatches finds all occurrences', () => {
+    const scanner = require('../src/js/core/scanner.js');
+    const matches = scanner.scanTextForMatches(['foo'], 'foo bar foo');
+    expect(matches).toHaveLength(2);
+    expect(matches[0]).toEqual({ keyword: 'foo', index: 0, length: 3 });
+    expect(matches[1]).toEqual({ keyword: 'foo', index: 8, length: 3 });
   });
 });
