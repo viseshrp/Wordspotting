@@ -1,11 +1,8 @@
 /**
  * Smoke-test options helpers by loading file in JSDOM and using exported utils.
  */
-const utils = require('../src/js/utils.js');
-const {
-  partitionSitePatterns,
-  mergeUnique
-} = require('../src/js/options.js');
+import * as utils from '../entrypoints/shared/utils';
+import { partitionSitePatterns, mergeUnique } from '../entrypoints/options/main';
 
 describe('options helpers', () => {
   test('partitionSitePatterns filters invalid', () => {

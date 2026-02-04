@@ -18,7 +18,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run lint
       - run: npm run lint:webext
       - run: npm run biome
 

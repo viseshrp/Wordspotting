@@ -5,25 +5,19 @@
  * - Sends a message to the background to set a badge
  * - Confirms badge text and that notifications.create is called
  */
-const path = require('node:path');
-const fs = require('node:fs');
-const { spawn } = require('node:child_process');
-const { chromium } = require('playwright-chromium');
-
-/* global refreshAllowedSitePatterns, handleMessage, setCountBadge, compiledAllowedSites */
+import path from 'node:path';
+import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { chromium } from 'playwright-chromium';
 
 async function main() {
-  // const useXvfb = process.platform === 'linux' && !process.env.DISPLAY;
-  // const displaySession = useXvfb ? await startXvfb() : null;
-  const displaySession = null;
-  const _headless = true; // Use headless=new mode for extensions in newer Chromium
-  const extensionPath = path.resolve(__dirname, '..');
+  const extensionPath = ensureBuildOutput();
   if (!fs.existsSync(path.join(extensionPath, 'manifest.json'))) {
     throw new Error('manifest.json not found; run from repo root');
   }
 
   const context = await chromium.launchPersistentContext('', {
-    headless: false, // Must be false for extensions usually, but we are using headless=new arg
+    headless: false,
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
@@ -46,7 +40,7 @@ async function main() {
 
   const workerUrl = serviceWorker.url();
   const extensionId = workerUrl.split('/')[2];
-  const optionsUrl = `chrome-extension://${extensionId}/src/pages/options.html`;
+  const optionsUrl = `chrome-extension://${extensionId}/options.html`;
 
   const page = await context.newPage();
   await page.goto(optionsUrl);
@@ -66,7 +60,7 @@ async function main() {
     await new Promise((resolve) => {
       const waitForComplete = () => chrome.tabs.get(tab.id, (info) => {
         if (info?.status === 'complete') {
-          resolve();
+          resolve(undefined);
         } else {
           setTimeout(waitForComplete, 100);
         }
@@ -110,9 +104,6 @@ async function main() {
   });
 
   await context.close();
-  if (displaySession) {
-    displaySession.stop();
-  }
 
   if (badgeText !== '3') {
     console.error('Badge debug info:', debug);
@@ -148,31 +139,28 @@ async function waitForServiceWorker(context, timeout = 15000) {
   throw new Error(`Service worker not registered within ${timeout}ms`);
 }
 
-function _startXvfb() {
-  return new Promise((resolve, reject) => {
-    const display = ':99';
-    const xvfb = spawn('Xvfb', [display, '-screen', '0', '1280x720x24', '-nolisten', 'tcp'], {
-      stdio: 'ignore',
-      detached: true
-    });
-    xvfb.unref();
+function ensureBuildOutput() {
+  const root = path.resolve(__dirname, '..');
+  const outputRoot = path.join(root, '.output');
+  if (!fs.existsSync(outputRoot)) {
+    run('npx', ['wxt', 'build'], root);
+  }
 
-    const readyTimer = setTimeout(() => {
-      resolve({
-        display,
-        stop: () => {
-          try {
-            process.kill(-xvfb.pid);
-          } catch {
-            // ignore
-          }
-        }
-      });
-    }, 300);
+  const entries = fs.readdirSync(outputRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
 
-    xvfb.once('error', (err) => {
-      clearTimeout(readyTimer);
-      reject(err);
-    });
-  });
+  const chromeEntry = entries.find((name) => name.includes('chrome')) || entries[0];
+  if (!chromeEntry) {
+    throw new Error('No WXT build output found in .output');
+  }
+
+  return path.join(outputRoot, chromeEntry);
+}
+
+function run(command: string, args: string[], cwd: string) {
+  const result = spawnSync(command, args, { stdio: 'inherit', cwd });
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
 }
