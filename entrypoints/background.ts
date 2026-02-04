@@ -126,7 +126,7 @@ export async function handleMessage(request: unknown, sender: chrome.runtime.Mes
     }
 
     const allowedSites = Array.isArray(settings.wordspotting_website_list)
-      ? settings.wordspotting_website_list
+      ? settings.wordspotting_website_list as string[]
       : [];
     const isAllowed = tabUrl
       ? (compiledAllowedSites.length > 0
@@ -195,7 +195,7 @@ async function maybeInjectContentScripts(tabId: number, url: string) {
     }
 
     const allowedSites = Array.isArray(settings.wordspotting_website_list)
-      ? settings.wordspotting_website_list
+      ? settings.wordspotting_website_list as string[]
       : [];
     const isAllowed = compiledAllowedSites.length > 0
       ? isUrlAllowedCompiled(url, compiledAllowedSites)
@@ -258,7 +258,7 @@ async function updateBadgeForTab(tabId: number, url?: string) {
     }
 
     const allowedSites = Array.isArray(settings.wordspotting_website_list)
-      ? settings.wordspotting_website_list
+      ? settings.wordspotting_website_list as string[]
       : [];
     const isAllowed = compiledAllowedSites.length > 0
       ? isUrlAllowedCompiled(url, compiledAllowedSites)
