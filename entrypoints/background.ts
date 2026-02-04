@@ -239,7 +239,10 @@ async function injectScripts(tabId: number) {
 export async function refreshAllowedSitePatterns() {
   try {
     const items = await getFromStorage<Record<string, unknown>>('wordspotting_website_list');
-    compiledAllowedSites = compileSitePatterns((items.wordspotting_website_list as string[]) || []);
+    const allowedSites = Array.isArray(items.wordspotting_website_list)
+      ? items.wordspotting_website_list as string[]
+      : [];
+    compiledAllowedSites = compileSitePatterns(allowedSites);
   } catch (e) {
     console.warn('Failed to refresh allowed site patterns:', e);
     compiledAllowedSites = [];
