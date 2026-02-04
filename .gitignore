@@ -6,3 +6,5 @@ node_modules/
 node-bin/
 dist/
 web-ext-artifacts/
+.wxt/
+.output/

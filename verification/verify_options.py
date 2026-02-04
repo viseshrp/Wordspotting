@@ -6,9 +6,17 @@ def run():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
 
-        # Determine the absolute path to options.html
+        # Determine the absolute path to options.html (prefer WXT build output)
         cwd = os.getcwd()
-        url = f"file://{cwd}/options.html"
+        output_root = os.path.join(cwd, ".output")
+        options_path = os.path.join(cwd, "entrypoints", "options", "index.html")
+        if os.path.isdir(output_root):
+            entries = [d for d in os.listdir(output_root) if os.path.isdir(os.path.join(output_root, d))]
+            chrome_entry = next((d for d in entries if "chrome" in d), entries[0] if entries else None)
+            if chrome_entry:
+                options_path = os.path.join(output_root, chrome_entry, "options.html")
+
+        url = f"file://{options_path}"
 
         print(f"Navigating to {url}")
         page.goto(url)

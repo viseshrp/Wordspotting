@@ -1,10 +1,12 @@
 module.exports = {
+  preset: "ts-jest",
   testEnvironment: "jsdom",
-  setupFilesAfterEnv: ["<rootDir>/tests/setup.js"],
+  setupFilesAfterEnv: ["<rootDir>/tests/setup.ts"],
+  testMatch: ["**/?(*.)+(spec|test).ts"],
   collectCoverage: true,
   collectCoverageFrom: [
-    "src/js/utils.js",
-    "src/js/settings.js"
+    "src/utils.ts",
+    "src/settings.ts"
   ],
   coverageThreshold: {
     global: {
