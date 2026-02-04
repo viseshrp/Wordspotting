@@ -311,17 +311,27 @@ function clearHighlights() {
 }
 
 let highlightStyleElement: HTMLStyleElement | null = null;
+const DEFAULT_HIGHLIGHT_COLOR = '#FFFF00';
 function updateHighlightStyle(color: string) {
   if (!highlightStyleElement) {
     highlightStyleElement = document.createElement('style');
     document.head.appendChild(highlightStyleElement);
   }
+  const safeColor = sanitizeHighlightColor(color);
   highlightStyleElement.textContent = `
         ::highlight(wordspotting-match) {
-            background-color: ${color};
+            background-color: ${safeColor};
             color: black;
         }
     `;
+}
+
+function sanitizeHighlightColor(value: string) {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(trimmed)) {
+    return trimmed;
+  }
+  return DEFAULT_HIGHLIGHT_COLOR;
 }
 
 // Debounce function to limit how often we scan
