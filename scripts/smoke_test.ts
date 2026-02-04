@@ -26,9 +26,9 @@ const criticalFiles = [
   'entrypoints/options/main.ts',
   'public/css/index.css',
   'public/assets/ws48.png',
-  'src/utils.ts',
-  'src/settings.ts',
-  'src/core/scanner.ts'
+  'entrypoints/shared/utils.ts',
+  'entrypoints/shared/settings.ts',
+  'entrypoints/shared/core/scanner.ts'
 ];
 
 let missing = 0;

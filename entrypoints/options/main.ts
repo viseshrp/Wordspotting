@@ -4,7 +4,7 @@ import {
   isValidObj,
   saveToStorage,
   showAlert
-} from '../../src/utils';
+} from '../shared/utils';
 
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {

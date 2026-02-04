@@ -4,7 +4,7 @@ import {
   isUrlAllowed,
   saveToStorage,
   showAlert
-} from '../../src/utils';
+} from '../shared/utils';
 
 document.addEventListener('DOMContentLoaded', () => {
   // UI References

@@ -5,8 +5,8 @@ import {
   isUrlAllowedCompiled,
   logit,
   saveToStorage
-} from '../src/utils';
-import { ensureSettingsInitialized } from '../src/settings';
+} from './shared/utils';
+import { ensureSettingsInitialized } from './shared/settings';
 
 const CONTENT_SCRIPT_FILES = ['injected.js'];
 const CONTENT_STYLE_FILES = ['css/index.css'];

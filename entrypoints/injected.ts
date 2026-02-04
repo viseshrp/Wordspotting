@@ -6,8 +6,8 @@ import {
   isUrlAllowedCompiled,
   isValidObj,
   logit
-} from '../src/utils';
-import { hashString, scanTextForKeywords } from '../src/core/scanner';
+} from './shared/utils';
+import { hashString, scanTextForKeywords } from './shared/core/scanner';
 
 let scanWorker: Worker | null = null;
 const DEFAULT_CHUNK_SIZE = 150000;

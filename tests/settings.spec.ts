@@ -1,4 +1,4 @@
-import { applySettingsDefaults, ensureSettingsInitialized, getSettings } from '../src/settings';
+import { applySettingsDefaults, ensureSettingsInitialized, getSettings } from '../entrypoints/shared/settings';
 
 type BrowserMock = {
   storage: {

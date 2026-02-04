@@ -1,4 +1,4 @@
-import { buildCombinedRegex, normalizeKeywords, scanTextForMatches } from '../src/core/scanner';
+import { buildCombinedRegex, normalizeKeywords, scanTextForMatches } from './shared/core/scanner';
 
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_OVERLAP = 200;

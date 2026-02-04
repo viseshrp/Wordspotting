@@ -1,7 +1,7 @@
 /**
  * Smoke-test options helpers by loading file in JSDOM and using exported utils.
  */
-import * as utils from '../src/utils';
+import * as utils from '../entrypoints/shared/utils';
 import { partitionSitePatterns, mergeUnique } from '../entrypoints/options/main';
 
 describe('options helpers', () => {

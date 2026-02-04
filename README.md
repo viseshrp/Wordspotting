@@ -31,7 +31,7 @@
 ## Permissions & Development
 
 - Permissions: `notifications`, `storage`, `scripting`, and `host_permissions: <all_urls>`. Adding a site to your allowed list is considered opt-in; there are no runtime permission prompts.
-- Built with TypeScript using WXT (Manifest V3). Source lives under `entrypoints/`, `src/`, and `public/`.
+- Built with TypeScript using WXT (Manifest V3). Source lives under `entrypoints/` (including `entrypoints/shared/`) and `public/`.
 - CI: GitHub Actions runs Biome, web-ext validation, unit tests (Jest), smoke checks (filesystem + Playwright), enforces a 1 MB package size, and uploads versioned build artifacts.
 
 ### Running Tests

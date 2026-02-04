@@ -5,8 +5,8 @@ module.exports = {
   testMatch: ["**/?(*.)+(spec|test).ts"],
   collectCoverage: true,
   collectCoverageFrom: [
-    "src/utils.ts",
-    "src/settings.ts"
+    "entrypoints/shared/utils.ts",
+    "entrypoints/shared/settings.ts"
   ],
   coverageThreshold: {
     global: {

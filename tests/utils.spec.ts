@@ -1,4 +1,4 @@
-import * as utils from '../src/utils';
+import * as utils from '../entrypoints/shared/utils';
 
 type BrowserMock = {
   storage: {
@@ -145,7 +145,7 @@ describe('utils', () => {
   });
 
   test('scanTextForMatches finds all occurrences', () => {
-    const scanner = require('../src/core/scanner');
+    const scanner = require('../entrypoints/shared/core/scanner');
     const matches = scanner.scanTextForMatches(['foo'], 'foo bar foo');
     expect(matches).toHaveLength(2);
     expect(matches[0]).toEqual({ keyword: 'foo', index: 0, length: 3 });
