@@ -1,46 +1,46 @@
-// Jest setup: provide global mocks for browser APIs and browser-y globals.
+import { vi } from 'vitest';
 
 const browserMock = {
   runtime: {
     id: 'test-runtime',
     lastError: null as Error | null,
-    onInstalled: { addListener: jest.fn() },
-    onMessage: { addListener: jest.fn() },
-    sendMessage: jest.fn(() => Promise.resolve()),
-    getURL: jest.fn((path: string) => `chrome-extension://test/${path}`),
-    openOptionsPage: jest.fn()
+    onInstalled: { addListener: vi.fn() },
+    onMessage: { addListener: vi.fn() },
+    sendMessage: vi.fn(() => Promise.resolve()),
+    getURL: vi.fn((targetPath: string) => `chrome-extension://test/${targetPath}`),
+    openOptionsPage: vi.fn(),
   },
   storage: {
     sync: {
-      set: jest.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.()),
-      get: jest.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({}))
+      set: vi.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.()),
+      get: vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({})),
     },
     onChanged: {
-      addListener: jest.fn()
-    }
+      addListener: vi.fn(),
+    },
   },
   permissions: {
-    contains: jest.fn((_perm: unknown, cb?: (result: boolean) => void) => cb?.(true)),
-    request: jest.fn((_perm: unknown, cb?: (result: boolean) => void) => cb?.(true))
+    contains: vi.fn((_perm: unknown, cb?: (result: boolean) => void) => cb?.(true)),
+    request: vi.fn((_perm: unknown, cb?: (result: boolean) => void) => cb?.(true)),
   },
   action: {
-    setBadgeText: jest.fn(() => Promise.resolve()),
-    setBadgeBackgroundColor: jest.fn(() => Promise.resolve())
+    setBadgeText: vi.fn(() => Promise.resolve()),
+    setBadgeBackgroundColor: vi.fn(() => Promise.resolve()),
   },
   notifications: {
-    create: jest.fn(() => Promise.resolve())
+    create: vi.fn(() => Promise.resolve()),
   },
   tabs: {
-    create: jest.fn(() => Promise.resolve()),
-    query: jest.fn(() => Promise.resolve([])),
-    get: jest.fn(() => Promise.resolve({ id: 1, url: 'https://example.com' })),
-    reload: jest.fn(() => Promise.resolve()),
-    sendMessage: jest.fn(() => Promise.resolve({ word_list: [] }))
+    create: vi.fn(() => Promise.resolve()),
+    query: vi.fn(() => Promise.resolve([])),
+    get: vi.fn(() => Promise.resolve({ id: 1, url: 'https://example.com' })),
+    reload: vi.fn(() => Promise.resolve()),
+    sendMessage: vi.fn(() => Promise.resolve({ word_list: [] })),
   },
   scripting: {
-    executeScript: jest.fn(() => Promise.resolve([{ result: false }])),
-    insertCSS: jest.fn(() => Promise.resolve())
-  }
+    executeScript: vi.fn(() => Promise.resolve([{ result: false }])),
+    insertCSS: vi.fn(() => Promise.resolve()),
+  },
 };
 
 (globalThis as unknown as { browser: typeof browserMock }).browser = browserMock;
@@ -58,20 +58,22 @@ const browserMock = {
 (globalThis as unknown as { cancelIdleCallback: () => void }).cancelIdleCallback = () => {};
 (globalThis as unknown as { MutationObserver: typeof MutationObserver }).MutationObserver = class {
   cb: () => void;
-  constructor(callback: () => void) { this.cb = callback; }
+  constructor(callback: () => void) {
+    this.cb = callback;
+  }
   observe() {}
   disconnect() {}
 } as unknown as typeof MutationObserver;
 
-(globalThis as unknown as { fetch: typeof fetch }).fetch = jest.fn(() =>
+(globalThis as unknown as { fetch: typeof fetch }).fetch = vi.fn(() =>
   Promise.resolve({
-    text: () => Promise.resolve('')
-  })
+    text: () => Promise.resolve(''),
+  }),
 ) as unknown as typeof fetch;
 
 if (!global.URL) {
   (globalThis as unknown as { URL: typeof URL }).URL = URL;
 }
 if (!global.URL.createObjectURL) {
-  global.URL.createObjectURL = jest.fn(() => 'blob:wordspotting');
+  global.URL.createObjectURL = vi.fn(() => 'blob:wordspotting');
 }

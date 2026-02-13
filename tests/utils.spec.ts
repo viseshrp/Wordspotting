@@ -1,10 +1,12 @@
+import { describe, test, expect, beforeEach, vi, type Mock } from 'vitest';
 import * as utils from '../entrypoints/shared/utils';
+import { scanTextForMatches } from '../entrypoints/shared/core/scanner';
 
 type BrowserMock = {
   storage: {
     sync: {
-      set: jest.Mock;
-      get: jest.Mock;
+      set: Mock;
+      get: Mock;
     };
   };
   runtime: {
@@ -15,8 +17,8 @@ type BrowserMock = {
 describe('utils', () => {
   beforeEach(() => {
     const mockBrowser = browser as unknown as BrowserMock;
-    mockBrowser.storage.sync.set = jest.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
-    mockBrowser.storage.sync.get = jest.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({ example: 1 }));
+    mockBrowser.storage.sync.set = vi.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({ example: 1 }));
     mockBrowser.runtime.lastError = null;
   });
 
@@ -50,8 +52,8 @@ describe('utils', () => {
 
   test('saveToStorage and getFromStorage handle promise-returning storage', async () => {
     const mockBrowser = browser as unknown as BrowserMock;
-    mockBrowser.storage.sync.set = jest.fn(() => Promise.resolve());
-    mockBrowser.storage.sync.get = jest.fn(() => Promise.resolve({ foo: 'bar' }));
+    mockBrowser.storage.sync.set = vi.fn(() => Promise.resolve());
+    mockBrowser.storage.sync.get = vi.fn(() => Promise.resolve({ foo: 'bar' }));
 
     await expect(utils.saveToStorage({ foo: 'bar' })).resolves.toBeUndefined();
     const res = await utils.getFromStorage<{ foo: string }>('foo');
@@ -82,17 +84,17 @@ describe('utils', () => {
 
   test('showAlert appends a toast', () => {
     document.body.innerHTML = '';
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     utils.showAlert('msg', 'title', true);
     const toast = document.querySelector('.ws-toast');
     expect(toast).toBeTruthy();
     expect(toast?.textContent).toContain('msg');
-    jest.runAllTimers(); // trigger fade/remove
+    vi.runAllTimers(); // trigger fade/remove
   });
 
 
   test('logit writes to console', () => {
-    const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     utils.logit('hi');
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
@@ -145,8 +147,7 @@ describe('utils', () => {
   });
 
   test('scanTextForMatches finds all occurrences', () => {
-    const scanner = require('../entrypoints/shared/core/scanner');
-    const matches = scanner.scanTextForMatches(['foo'], 'foo bar foo');
+    const matches = scanTextForMatches(['foo'], 'foo bar foo');
     expect(matches).toHaveLength(2);
     expect(matches[0]).toEqual({ keyword: 'foo', index: 0, length: 3 });
     expect(matches[1]).toEqual({ keyword: 'foo', index: 8, length: 3 });

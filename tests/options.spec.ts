@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 /**
  * Smoke-test options helpers by loading file in JSDOM and using exported utils.
  */

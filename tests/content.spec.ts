@@ -1,61 +1,62 @@
+import { describe, test, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 let content: typeof import('../entrypoints/injected');
 
 type BrowserMock = {
   storage: {
     sync: {
-      set: jest.Mock;
-      get: jest.Mock;
+      set: Mock;
+      get: Mock;
     };
   };
   runtime: {
     id: string;
-    sendMessage: jest.Mock;
-    getURL: jest.Mock;
+    sendMessage: Mock;
+    getURL: Mock;
   };
 };
 
 describe('content helpers', () => {
-  beforeEach(() => {
-    jest.resetModules();
+  beforeEach(async () => {
+    vi.resetModules();
     (globalThis as unknown as { __WORDSPOTTING_CONTENT_LOADED__: boolean }).__WORDSPOTTING_CONTENT_LOADED__ = false;
     (globalThis as unknown as { document: Document }).document = document;
     document.body.innerHTML = '<div></div>';
 
     const mockBrowser = browser as unknown as BrowserMock;
-    mockBrowser.storage.sync.get = jest.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({}));
-    mockBrowser.storage.sync.set = jest.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({}));
+    mockBrowser.storage.sync.set = vi.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
 
-    console.warn = jest.fn();
+    console.warn = vi.fn();
 
     // Mock CSS highlights
-    (globalThis as unknown as { CSS: unknown }).CSS = { highlights: { set: jest.fn(), delete: jest.fn() } };
-    (globalThis as unknown as { Highlight: unknown }).Highlight = jest.fn();
-    (globalThis as unknown as { Range: unknown }).Range = jest.fn(() => ({ setStart: jest.fn(), setEnd: jest.fn() }));
+    (globalThis as unknown as { CSS: unknown }).CSS = { highlights: { set: vi.fn(), delete: vi.fn() } };
+    (globalThis as unknown as { Highlight: unknown }).Highlight = vi.fn();
+    (globalThis as unknown as { Range: unknown }).Range = vi.fn(() => ({ setStart: vi.fn(), setEnd: vi.fn() }));
     (globalThis as unknown as { NodeFilter: unknown }).NodeFilter = { SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER_REJECT: 2 };
 
     // Mock Worker
-    (globalThis as unknown as { Worker: unknown }).Worker = jest.fn(() => ({
-      addEventListener: jest.fn(),
-      postMessage: jest.fn(),
-      terminate: jest.fn()
+    (globalThis as unknown as { Worker: unknown }).Worker = vi.fn(() => ({
+      addEventListener: vi.fn(),
+      postMessage: vi.fn(),
+      terminate: vi.fn()
     }));
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     mockBrowser.runtime.id = 'test-runtime';
-    mockBrowser.runtime.sendMessage = jest.fn(() => Promise.resolve({ ack: 'ok' }));
+    mockBrowser.runtime.sendMessage = vi.fn(() => Promise.resolve({ ack: 'ok' }));
 
-    mockBrowser.runtime.getURL = jest.fn((path: string) => `chrome-extension://test/${path}`);
-    (globalThis as unknown as { fetch: typeof fetch }).fetch = jest.fn(() =>
+    mockBrowser.runtime.getURL = vi.fn((path: string) => `chrome-extension://test/${path}`);
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = vi.fn(() =>
       Promise.reject(new Error('fetch blocked'))
     ) as unknown as typeof fetch;
 
-    (globalThis as unknown as { URL: typeof URL }).URL.createObjectURL = jest.fn(() => 'blob:wordspotting');
+    (globalThis as unknown as { URL: typeof URL }).URL.createObjectURL = vi.fn(() => 'blob:wordspotting');
 
-    content = require('../entrypoints/injected');
+    content = await import('../entrypoints/injected');
   });
 
   afterEach(() => {
-    jest.clearAllTimers();
+    vi.clearAllTimers();
   });
 
   test('getWordList finds keywords case-insensitively', () => {
@@ -79,7 +80,7 @@ describe('content helpers', () => {
     let count = 0;
     const fn = content.debounce(() => { count += 1; }, 10);
     fn(); fn(); fn();
-    jest.advanceTimersByTime(20);
+    vi.advanceTimersByTime(20);
     expect(count).toBe(1);
   });
 
@@ -105,7 +106,7 @@ describe('content helpers', () => {
   test('performScan sends message when keywords match', async () => {
     document.body.innerText = 'sample keyword';
     const mockBrowser = browser as unknown as BrowserMock;
-    mockBrowser.storage.sync.get = jest.fn((keys: unknown, cb?: (items: Record<string, unknown>) => void) => {
+    mockBrowser.storage.sync.get = vi.fn((keys: unknown, cb?: (items: Record<string, unknown>) => void) => {
       if (Array.isArray(keys)) {
         cb?.({ wordspotting_word_list: ['keyword'], wordspotting_highlight_on: false });
         return;
@@ -124,7 +125,7 @@ describe('content helpers', () => {
     document.body.innerText = 'sample keyword';
 
     const mockBrowser = browser as unknown as BrowserMock;
-    mockBrowser.storage.sync.get = jest.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({
       wordspotting_word_list: ['keyword'],
       wordspotting_highlight_on: true,
       wordspotting_highlight_color: '#FFFF00'
@@ -135,7 +136,7 @@ describe('content helpers', () => {
     const textNodes = [textNode];
 
     content.applyHighlights(results, textNodes, '#FFFF00');
-    expect((globalThis as unknown as { CSS: { highlights: { set: jest.Mock } } }).CSS.highlights.set).toHaveBeenCalled();
+    expect((globalThis as unknown as { CSS: { highlights: { set: Mock } } }).CSS.highlights.set).toHaveBeenCalled();
   });
 
   test('scheduleScan runs without error', () => {

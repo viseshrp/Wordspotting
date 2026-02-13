@@ -2,7 +2,8 @@
   "extends": "./.wxt/tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node", "jest", "chrome"]
+    "types": ["node", "vitest/globals", "chrome"]
   },
-  "include": ["entrypoints", "tests", "scripts", "types", "wxt.config.ts"]
+  "include": ["entrypoints", "tests", "scripts", "types", "wxt.config.ts"],
+  "exclude": ["tests/e2e"]
 }

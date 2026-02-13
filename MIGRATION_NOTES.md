@@ -46,11 +46,12 @@ Before:
 
 After:
 - Lint: **Biome only** (ESLint removed)
-- Web-ext validation: `npm run lint:webext` (now runs against WXT build output)
-- Unit tests: Jest (TypeScript via `ts-jest`)
-- Smoke: filesystem + Playwright (Playwright uses WXT build output)
+- Web-ext validation: `pnpm lint:webext` (now runs against WXT Firefox build output)
+- Unit tests: Vitest (`vitest run --coverage`)
+- E2E tests: Playwright Test (`pnpm test:e2e` after `pnpm build:e2e`)
+- Smoke: filesystem + Playwright
 - Size budget: unchanged
-- Artifact upload: unchanged (`dist/wordspotting-<version>.zip`)
+- Artifact upload: `.output/wordspotting-<version>-chrome.zip`
 
 ## Deviations
 
