@@ -37,28 +37,27 @@
 ### Running Tests
 
 ```bash
-npm test
+pnpm test
 ```
 
 ### Linting
 
 ```bash
-npm run biome       # Biome
-npm run lint:webext # WebExtension manifest/content validation (web-ext)
+pnpm lint            # Biome
+pnpm lint:webext     # WebExtension manifest/content validation (web-ext)
 ```
 
 ### Smoke Tests
 
 ```bash
-npm run smoke        # filesystem checks
-npm run smoke:e2e    # extension check (requires Playwright; install via `npx playwright install chromium`)
+pnpm smoke        # filesystem checks
+pnpm smoke:e2e    # extension check (requires Playwright; install via `pnpm exec playwright install --with-deps chromium`)
 ```
 
 ### Building for Release
 
 ```bash
 pnpm package     # outputs .output/wordspotting-<version>-chrome.zip
-# ./build.sh     # optional wrapper for CI parity
 ```
 
 ### Chrome Web Store Submission Checklist
