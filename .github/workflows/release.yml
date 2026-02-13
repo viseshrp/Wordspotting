@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish-github-release:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - name: Checkout repository at release tag
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Derive release version from tag
+        run: |
+          VERSION="$(node scripts/version-from-tag.mjs "${RELEASE_TAG}")"
+          echo "RELEASE_VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Using release version: ${VERSION}"
+
+      - run: pnpm install --frozen-lockfile
+      - name: Build zip
+        run: pnpm package
+
+      - name: Verify built manifest version matches release tag
+        run: |
+          MANIFEST=$(find .output -path "*/manifest.json" -print -quit)
+          if [ -z "$MANIFEST" ]; then
+            echo "No manifest.json found under .output."
+            exit 1
+          fi
+
+          VERSION_IN_MANIFEST=$(node -e "const fs=require('node:fs');const manifestPath=process.argv[1];const manifest=JSON.parse(fs.readFileSync(manifestPath,'utf8'));if(!manifest.version){process.exit(2)};process.stdout.write(manifest.version);" "$MANIFEST")
+
+          if [ "${VERSION_IN_MANIFEST}" != "${RELEASE_VERSION}" ]; then
+            echo "Manifest version '${VERSION_IN_MANIFEST}' does not match RELEASE_VERSION '${RELEASE_VERSION}'."
+            exit 1
+          fi
+          echo "Manifest version verified at ${VERSION_IN_MANIFEST} (${MANIFEST})."
+
+      - name: Resolve zip path
+        id: zip_path
+        run: |
+          ZIP=$(find dist .output -name "*.zip" -print -quit)
+          if [ -z "$ZIP" ]; then
+            echo "No zip file found in dist or .output."
+            exit 1
+          fi
+          echo "path=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Enforce size budget
+        run: |
+          ZIP="${{ steps.zip_path.outputs.path }}"
+          max_kb=1024
+          size_kb=$(du -k "$ZIP" | cut -f1)
+          echo "Package size: ${size_kb} KB (limit ${max_kb} KB) at ${ZIP}"
+          if [ "$size_kb" -gt "$max_kb" ]; then
+            echo "Package exceeds size budget."
+            exit 1
+          fi
+
+      - name: Upload release asset
+        run: |
+          gh release upload "${RELEASE_TAG}" \
+            "${{ steps.zip_path.outputs.path }}" \
+            --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

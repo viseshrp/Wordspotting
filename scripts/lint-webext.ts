@@ -32,11 +32,11 @@ async function main() {
     { shouldExitProgram: false }
   );
 
-  const allowed = errors.filter((err) =>
+  const allowed = errors.filter((err: { code: string; message: string }) =>
     (err.code === 'MANIFEST_FIELD_UNSUPPORTED' && err.message.includes('service_worker')) ||
     (err.code === 'EXTENSION_ID_REQUIRED' && err.message.includes('Manifest Version 3'))
   );
-  const fatal = errors.filter((err) => !allowed.includes(err));
+  const fatal = errors.filter((err: { code: string; message: string }) => !allowed.includes(err));
 
   if (allowed.length) {
     console.log('Ignoring MV3-specific Chrome fields flagged by web-ext:');

@@ -4,5 +4,5 @@
     "noEmit": true,
     "types": ["node", "jest", "chrome"]
   },
-  "include": ["entrypoints", "tests", "scripts", "wxt.config.ts"]
+  "include": ["entrypoints", "tests", "scripts", "types", "wxt.config.ts"]
 }

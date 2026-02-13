@@ -1,0 +1,51 @@
+name: Create Draft Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate release tag format
+        run: |
+          VERSION="$(node scripts/version-from-tag.mjs "${{ github.ref_name }}")"
+          echo "Validated release version: ${VERSION}"
+
+      - name: Check for existing release
+        run: |
+          if gh release view "${{ github.ref_name }}" > /dev/null 2>&1; then
+            echo "Release for tag '${{ github.ref_name }}' already exists."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create draft GitHub release
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "Release ${{ github.ref_name }}" \
+            --generate-notes \
+            --draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
