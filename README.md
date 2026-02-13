@@ -57,18 +57,18 @@ npm run smoke:e2e    # extension check (requires Playwright; install via `npx pl
 ### Building for Release
 
 ```bash
-npm run build    # outputs dist/wordspotting-<version>.zip
+pnpm package     # outputs .output/wordspotting-<version>-chrome.zip
 # ./build.sh     # optional wrapper for CI parity
 ```
 
 ### Chrome Web Store Submission Checklist
 
-- `npm ci`
-- `npm run biome`
-- `npm test -- --runInBand`
-- `npm run smoke:e2e` (requires `npx playwright install chromium`)
-- `npm run build` to produce `dist/wordspotting-<version>.zip`, then upload that zip to the Chrome Web Store.
-- `npm version <x.y.z>` to bump versions and keep `wxt.config.ts` output in sync with tags and package metadata.
+- `pnpm install --frozen-lockfile`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm smoke:e2e` (requires `pnpm exec playwright install --with-deps chromium`)
+- `pnpm package` to produce `.output/wordspotting-<version>-chrome.zip`, then upload that zip to the Chrome Web Store.
+- `pnpm version <x.y.z>` to bump versions and keep `wxt.config.ts` output in sync with tags and package metadata.
 
 ## License
 

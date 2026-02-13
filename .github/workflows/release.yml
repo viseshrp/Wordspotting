@@ -66,9 +66,9 @@ jobs:
       - name: Resolve zip path
         id: zip_path
         run: |
-          ZIP=$(find dist .output -name "*.zip" -print -quit)
+          ZIP=$(find .output -name "*.zip" -print -quit)
           if [ -z "$ZIP" ]; then
-            echo "No zip file found in dist or .output."
+            echo "No zip file found in .output."
             exit 1
           fi
           echo "path=$ZIP" >> "$GITHUB_OUTPUT"
