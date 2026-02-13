@@ -39,6 +39,16 @@ describe('settings defaults', () => {
     expect(result.wordspotting_notifications_on).toBe(false);
     expect(result.wordspotting_extension_on).toBe(true); // default
   });
+  
+  test('applySettingsDefaults keeps defaults when partial has undefined values', () => {
+    const partial = {
+      wordspotting_notifications_on: undefined,
+      wordspotting_theme: undefined
+    };
+    const result = applySettingsDefaults(partial);
+    expect(result.wordspotting_notifications_on).toBe(true);
+    expect(result.wordspotting_theme).toBe('system');
+  });
 
   test('ensureSettingsInitialized writes defaults when missing', async () => {
     await ensureSettingsInitialized();
@@ -63,5 +73,21 @@ describe('settings defaults', () => {
     const settings = await getSettings(['wordspotting_notifications_on']);
     expect(settings.wordspotting_notifications_on).toBe(false);
     expect(settings.wordspotting_extension_on).toBe(true);
+  });
+  
+  test('getSettings without keys requests full defaults lookup', async () => {
+    const mockBrowser = browser as unknown as BrowserMock;
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({}));
+    await getSettings();
+    expect(mockBrowser.storage.sync.get).toHaveBeenCalledWith(expect.arrayContaining([
+      'wordspotting_notifications_on',
+      'wordspotting_extension_on',
+      'wordspotting_highlight_on',
+      'wordspotting_highlight_color',
+      'wordspotting_website_list',
+      'wordspotting_word_list',
+      'wordspotting_theme',
+      'is_first_start'
+    ]), expect.any(Function));
   });
 });

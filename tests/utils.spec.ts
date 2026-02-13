@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import * as utils from '../entrypoints/shared/utils';
 import { scanTextForMatches } from '../entrypoints/shared/core/scanner';
 
@@ -20,6 +20,11 @@ describe('utils', () => {
     mockBrowser.storage.sync.set = vi.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
     mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({ example: 1 }));
     mockBrowser.runtime.lastError = null;
+  });
+  
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   test('trimAndClean removes whitespace', () => {
@@ -91,6 +96,15 @@ describe('utils', () => {
     expect(toast?.textContent).toContain('msg');
     vi.runAllTimers(); // trigger fade/remove
   });
+  
+  test('showAlert logs when document is unavailable', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.stubGlobal('document', undefined);
+    utils.showAlert('msg', 'title', false);
+    expect(spy).toHaveBeenCalled();
+    expect(spy.mock.calls[0]?.[0]).toContain('Alert: title - msg');
+    spy.mockRestore();
+  });
 
 
   test('logit writes to console', () => {
@@ -115,6 +129,11 @@ describe('utils', () => {
 
   test('isUrlAllowed handles empty list', () => {
     expect(utils.isUrlAllowed('https://x.com', [])).toBe(false);
+  });
+  
+  test('isUrlAllowedCompiled handles invalid url input without throwing', () => {
+    const compiled = utils.compileSitePatterns(['*example*']);
+    expect(utils.isUrlAllowedCompiled('%%%not-a-url%%%', compiled)).toBe(false);
   });
 
   test('isUrlAllowed returns false when regex build fails', () => {
