@@ -36,7 +36,7 @@ Status: **match** (no permission or host-permission changes).
 
 ## CI Gate Mapping
 
-Before:
+Before (legacy pipeline):
 - Lint: ESLint + Biome
 - Web-ext validation: `npm run lint:webext`
 - Unit tests: `jest --coverage`
