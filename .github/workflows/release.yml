@@ -43,7 +43,7 @@ jobs:
           echo "RELEASE_VERSION=${VERSION}" >> "$GITHUB_ENV"
           echo "Using release version: ${VERSION}"
 
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install
       - name: Build zip
         run: pnpm package
 
