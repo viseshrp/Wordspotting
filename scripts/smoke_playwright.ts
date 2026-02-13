@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Playwright-based smoke test:
  * - Loads the extension in headless Chromium

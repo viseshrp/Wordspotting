@@ -156,7 +156,7 @@ export async function handleMessage(request: unknown, sender: chrome.runtime.Mes
           logit('Firing notification!');
           showNotification(
             'assets/ws48.png',
-            'basic',
+            chrome.notifications.TemplateType.BASIC,
             'Keyword found!',
             sender.tab ? sender.tab.title || 'Page' : 'Page',
             1
@@ -173,7 +173,7 @@ export async function handleMessage(request: unknown, sender: chrome.runtime.Mes
 
 function showNotification(iconUrl: string, type: chrome.notifications.TemplateType, title: string, message: string, priority: number) {
   const icon = browser.runtime.getURL(iconUrl);
-  const opt: chrome.notifications.NotificationOptions<true> = {
+  const opt: chrome.notifications.NotificationCreateOptions = {
     iconUrl: icon,
     type,
     title,
@@ -181,7 +181,7 @@ function showNotification(iconUrl: string, type: chrome.notifications.TemplateTy
     priority
   };
 
-  void browser.notifications.create('', opt);
+  void browser.notifications.create(opt);
 }
 
 async function maybeInjectContentScripts(tabId: number, url: string) {
