@@ -16,13 +16,17 @@ export const test = base.extend<ExtensionFixtures>({
     const extensionPath = path.resolve(process.cwd(), '.output', 'chrome-mv3-e2e');
     const headlessSetting = testInfo.project.use.headless;
     const headless = typeof headlessSetting === 'boolean' ? headlessSetting : true;
+    const launchArgs = [
+      `--disable-extensions-except=${extensionPath}`,
+      `--load-extension=${extensionPath}`,
+    ];
+    if (headless) {
+      launchArgs.push('--headless=new');
+    }
 
     const context = await base.chromium.launchPersistentContext('', {
       headless,
-      args: [
-        `--disable-extensions-except=${extensionPath}`,
-        `--load-extension=${extensionPath}`,
-      ],
+      args: launchArgs,
     });
 
     await use(context);

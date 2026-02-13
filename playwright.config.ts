@@ -10,6 +10,8 @@ export default defineConfig({
   reporter: [['list']],
   outputDir: 'test-results',
   use: {
+    // Extension service worker is not reliably available in headless mode.
+    // CI runs this under xvfb-run, so headed is supported there.
     headless: false,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
