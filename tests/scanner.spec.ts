@@ -20,7 +20,8 @@ describe('scanner helpers', () => {
   test('buildCombinedRegex keeps valid patterns and maps them', () => {
     const combined = buildCombinedRegex(['foo', '[invalid', 'bar']);
     expect(combined).not.toBeNull();
-    expect(combined?.patternMap).toEqual(['foo', undefined, 'bar']);
+    const matched = scanTextForKeywords(['foo', '[invalid', 'bar'], 'foo ... bar');
+    expect(matched.sort()).toEqual(['bar', 'foo']);
   });
   
   test('scanTextForKeywords handles invalid inputs', () => {

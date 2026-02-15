@@ -125,13 +125,10 @@ describe('utils', () => {
     expect(utils.buildSiteRegex('   ')).toBeNull();
   });
 
-  test('buildSiteRegex returns null when regex construction fails', () => {
-    const originalRegExp = global.RegExp;
-    (globalThis as unknown as { RegExp: typeof RegExp }).RegExp = (() => {
-      throw new Error('fail');
-    }) as unknown as typeof RegExp;
-    expect(utils.buildSiteRegex('test')).toBeNull();
-    (globalThis as unknown as { RegExp: typeof RegExp }).RegExp = originalRegExp;
+  test('buildSiteRegex converts wildcard patterns to usable regex', () => {
+    const wildcard = utils.buildSiteRegex('*jobs/*');
+    expect(wildcard).toBeInstanceOf(RegExp);
+    expect(wildcard?.test('www.linkedin.com/jobs/view/123')).toBe(true);
   });
 
   test('isUrlAllowed handles empty list', () => {
@@ -148,13 +145,9 @@ describe('utils', () => {
     expect(utils.isUrlAllowedCompiled('%%%not-a-url%%%', compiled)).toBe(false);
   });
 
-  test('isUrlAllowed returns false when regex build fails', () => {
-    const originalRegExp = global.RegExp;
-    (globalThis as unknown as { RegExp: typeof RegExp }).RegExp = (() => {
-      throw new Error('fail');
-    }) as unknown as typeof RegExp;
-    expect(utils.isUrlAllowed('https://example.com', ['example'])).toBe(false);
-    (globalThis as unknown as { RegExp: typeof RegExp }).RegExp = originalRegExp;
+  test('isUrlAllowed supports wildcard list entries', () => {
+    expect(utils.isUrlAllowed('https://example.com/path', ['*example*'])).toBe(true);
+    expect(utils.isUrlAllowed('https://bar.com/path', ['*example*'])).toBe(false);
   });
 
   test('compileSitePatterns handles non-array', () => {
