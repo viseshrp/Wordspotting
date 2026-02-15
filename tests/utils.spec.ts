@@ -30,6 +30,12 @@ describe('utils', () => {
   test('trimAndClean removes whitespace', () => {
     expect(utils.trimAndClean('  hello world  ')).toBe('helloworld');
   });
+  
+  test('trimAndClean handles empty-like values', () => {
+    expect(utils.trimAndClean('')).toBe('');
+    expect(utils.trimAndClean(null)).toBe('');
+    expect(utils.trimAndClean(undefined)).toBe('');
+  });
 
   test('isValidObj', () => {
     expect(utils.isValidObj({ a: 1 })).toBe(true);
@@ -116,6 +122,7 @@ describe('utils', () => {
 
   test('buildSiteRegex returns null for invalid input', () => {
     expect(utils.buildSiteRegex(null)).toBeNull();
+    expect(utils.buildSiteRegex('   ')).toBeNull();
   });
 
   test('buildSiteRegex returns null when regex construction fails', () => {
@@ -129,6 +136,11 @@ describe('utils', () => {
 
   test('isUrlAllowed handles empty list', () => {
     expect(utils.isUrlAllowed('https://x.com', [])).toBe(false);
+  });
+  
+  test('isUrlAllowedCompiled returns false for missing inputs', () => {
+    expect(utils.isUrlAllowedCompiled(undefined, [/example/i])).toBe(false);
+    expect(utils.isUrlAllowedCompiled('https://example.com', [])).toBe(false);
   });
   
   test('isUrlAllowedCompiled handles invalid url input without throwing', () => {
@@ -163,6 +175,10 @@ describe('utils', () => {
     const patterns = utils.buildPatternsForTab(url);
     expect(patterns.path).toBe('*example.com/search*');
     expect(patterns.full).toBe('https://example.com/search?q=test');
+  });
+  
+  test('buildPatternsForTab throws for invalid url', () => {
+    expect(() => utils.buildPatternsForTab('not a url')).toThrow();
   });
 
   test('scanTextForMatches finds all occurrences', () => {
