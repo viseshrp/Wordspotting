@@ -23,6 +23,7 @@ test('smoke: badge and notification paths are exercised', async ({ context, serv
     await saveToStorage({
       wordspotting_website_list: ['*example.com*'],
       wordspotting_extension_on: true,
+      wordspotting_notifications_on: true,
     });
     await refreshAllowedSitePatterns();
 
@@ -44,13 +45,21 @@ test('smoke: badge and notification paths are exercised', async ({ context, serv
     });
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Wait until background initialization sets its baseline badge state.
+    for (let i = 0; i < 20; i += 1) {
+      const current = await new Promise<string>((resolve) => chrome.action.getBadgeText({ tabId }, resolve));
+      if (current === '0') break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    const liveTab = await chrome.tabs.get(tabId);
+    const liveUrl = liveTab?.url || 'https://example.com';
+    const liveTitle = liveTab?.title || 'Example Domain';
 
     const response = await handleMessage(
       { wordfound: true, keyword_count: 3 },
-      { tab: { id: tabId, url: 'https://example.com', title: 'Example Domain' } },
+      { tab: { id: tabId, url: liveUrl, title: liveTitle } },
     );
-
-    setCountBadge(tabId, 3);
 
     const expectedBadge = '3';
     let text = '';
@@ -76,5 +85,6 @@ test('smoke: badge and notification paths are exercised', async ({ context, serv
   });
 
   expect(result.badgeText).toBe('3');
+  expect(result.response?.ack).toBe('gotcha');
   expect(result.notificationCount).toBeGreaterThanOrEqual(1);
 });
