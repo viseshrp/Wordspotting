@@ -8,3 +8,4 @@ web-ext-artifacts/
 .wxt/
 .output/
 test-results/
+.DS_Store
