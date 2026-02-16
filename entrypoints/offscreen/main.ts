@@ -1,11 +1,10 @@
-import { scanTextForKeywords, scanTextForMatches } from '../shared/core/scanner';
+import { scanChunksForMatches, scanTextForKeywords, type HighlightMatch } from '../shared/core/scanner';
 import { getErrorMessage, logExtensionError } from '../shared/utils';
 
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_OVERLAP = 200;
 const WORKER_REQUEST_TIMEOUT_MS = 5000;
 
-type HighlightMatch = { keyword: string; index: number; length: number };
 type WorkerResult = string[] | Record<number, HighlightMatch[]>;
 type ScanTextRequest = {
   target: 'offscreen';
@@ -184,15 +183,7 @@ async function scanHighlightsUsingWorker(request: ScanHighlightsRequest) {
 }
 
 function scanHighlightsFallback(keywordList: string[], chunks: Array<{ id: number; text: string }>) {
-  const results: Record<number, HighlightMatch[]> = {};
-  for (const chunk of chunks) {
-    if (!chunk || typeof chunk.id !== 'number' || typeof chunk.text !== 'string') continue;
-    const matches = scanTextForMatches(keywordList, chunk.text);
-    if (matches.length > 0) {
-      results[chunk.id] = matches;
-    }
-  }
-  return results;
+  return scanChunksForMatches(keywordList, chunks);
 }
 
 if (typeof browser !== 'undefined' && browser.runtime?.onMessage) {

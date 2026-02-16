@@ -8,7 +8,6 @@ import {
   logit,
   withTimeout
 } from './shared/utils';
-import { scanTextForKeywords, scanTextForMatches } from './shared/core/scanner';
 import { ensureSettingsInitialized } from './shared/settings';
 
 const CONTENT_SCRIPT_FILES = ['injected.js'];
@@ -28,7 +27,6 @@ type WordspottingMessage = {
   keyword_count: number;
 };
 
-type HighlightMatch = { keyword: string; index: number; length: number };
 type ScanTextRequest = {
   from: 'injected';
   subject: 'scan_text_request';
@@ -246,35 +244,24 @@ async function handleMessage(request: unknown, sender: chrome.runtime.MessageSen
 }
 
 async function handleScanRequest(request: ScanTextRequest | ScanHighlightsRequest) {
-  if (await ensureOffscreenDocument()) {
-    try {
-      const response = await requestOffscreenScan(request);
-      if (isScanTextRequest(request)) {
-        const words = (response as { words?: unknown }).words;
-        if (Array.isArray(words)) return { words };
-      } else {
-        const results = (response as { results?: unknown }).results;
-        if (results && typeof results === 'object') return { results };
-      }
-      throw new Error('Invalid offscreen scan response');
-    } catch (error) {
-      logExtensionError('Offscreen scan execution failed; using fallback scanner', error, { operation: 'runtime_context' });
-    }
+  if (!(await ensureOffscreenDocument())) {
+    return { error: 'Offscreen scanner unavailable' };
   }
 
-  if (isScanTextRequest(request)) {
-    return { words: scanTextForKeywords(request.keywords, request.text) };
-  }
-
-  const results: Record<number, HighlightMatch[]> = {};
-  for (const chunk of request.chunks) {
-    if (!chunk || typeof chunk.text !== 'string' || typeof chunk.id !== 'number') continue;
-    const matches = scanTextForMatches(request.keywords, chunk.text);
-    if (matches.length > 0) {
-      results[chunk.id] = matches;
+  try {
+    const response = await requestOffscreenScan(request);
+    if (isScanTextRequest(request)) {
+      const words = (response as { words?: unknown }).words;
+      if (Array.isArray(words)) return { words };
+    } else {
+      const results = (response as { results?: unknown }).results;
+      if (results && typeof results === 'object') return { results };
     }
+    throw new Error('Invalid offscreen scan response');
+  } catch (error) {
+    logExtensionError('Offscreen scan execution failed', error, { operation: 'runtime_context' });
+    return { error: getErrorMessage(error) };
   }
-  return { results };
 }
 
 async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsRequest) {

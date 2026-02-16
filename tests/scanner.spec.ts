@@ -3,6 +3,7 @@ import {
   buildCombinedRegex,
   hashString,
   normalizeKeywords,
+  scanChunksForMatches,
   scanTextForKeywords,
   scanTextForMatches
 } from '../entrypoints/shared/core/scanner';
@@ -46,6 +47,28 @@ describe('scanner helpers', () => {
   
   test('scanTextForMatches returns empty for invalid keyword regex', () => {
     expect(scanTextForMatches(['[invalid'], 'text')).toEqual([]);
+  });
+
+  test('scanChunksForMatches returns chunk-indexed matches', () => {
+    const results = scanChunksForMatches(['foo', 'bar'], [
+      { id: 0, text: 'foo x' },
+      { id: 1, text: 'no hits' },
+      { id: 2, text: 'bar x foo' }
+    ]);
+
+    expect(results).toEqual({
+      0: [{ keyword: 'foo', index: 0, length: 3 }],
+      2: [
+        { keyword: 'bar', index: 0, length: 3 },
+        { keyword: 'foo', index: 6, length: 3 }
+      ]
+    });
+  });
+
+  test('scanChunksForMatches ignores invalid chunks', () => {
+    expect(scanChunksForMatches(['foo'], [null, { id: 'x', text: 'foo' }, { id: 1, text: 1 }, { id: 2, text: 'foo' }])).toEqual({
+      2: [{ keyword: 'foo', index: 0, length: 3 }]
+    });
   });
   
   test('hashString is deterministic and input-sensitive', () => {
