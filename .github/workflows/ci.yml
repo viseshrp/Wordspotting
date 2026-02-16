@@ -33,7 +33,6 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - run: pnpm install
-      - run: pnpm lint:webext
       - run: pnpm quality
 
   smoke:

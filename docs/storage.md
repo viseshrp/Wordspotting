@@ -6,8 +6,8 @@ understand the decisions and avoid common pitfalls.
 
 ## Goals and constraints
 - **Simple and predictable:** a small set of keys with defaults.
-- **Local-only behavior:** storage is handled via `browser.storage.sync` for cross-device
-  persistence, but behavior remains local to the browser.
+- **Browser-managed persistence:** storage is handled via `browser.storage.sync`, which can
+  sync across signed-in browser profiles.
 - **Minimal schema drift:** defaults are applied without overwriting existing values.
 
 ## Storage area
@@ -36,7 +36,8 @@ wordspotting_refresh_on_add: boolean
 - `wordspotting_highlight_color` sets the highlight background color.
 - `wordspotting_theme` controls popup/options theme.
 - `wordspotting_refresh_on_add` is set from the popup toggle and determines whether
-  to refresh the current tab after adding a site.
+  to refresh the current tab after adding a site. This key is optional and defaults
+  to `true` in popup behavior when missing.
 
 ### 3) User lists
 ```
@@ -56,11 +57,11 @@ wordspotting_highlight_color: "#FFFF00"
 wordspotting_theme: "system"
 wordspotting_refresh_on_add: true
 wordspotting_website_list: ["*example.com*", "*news.ycombinator.com*"]
-wordspotting_word_list: ["openai", "\bLLM\b"]
+wordspotting_word_list: ["openai", "\\bLLM\\b"]
 ```
 
 ## Defaults and initialization
-Defaults are defined in `entrypoints/shared/settings.ts` and applied by
+Defaults for core settings are defined in `entrypoints/shared/settings.ts` and applied by
 `ensureSettingsInitialized()` without overwriting user-set values.
 
 ## Read flow

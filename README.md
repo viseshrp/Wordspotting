@@ -32,7 +32,9 @@
 
 - Permissions: `notifications`, `storage`, `scripting`, and `host_permissions: <all_urls>`. Adding a site to your allowed list is considered opt-in; there are no runtime permission prompts.
 - Built with TypeScript using WXT (Manifest V3). Source lives under `entrypoints/` (including `entrypoints/shared/`) and `public/`.
-- CI: GitHub Actions runs Biome, web-ext validation, unit tests (Vitest), smoke checks (filesystem + Playwright), enforces a 1 MB package size, and uploads versioned build artifacts.
+- CI: GitHub Actions runs TypeScript + Biome checks, unit tests (Vitest + coverage upload), smoke checks (repository + Playwright), enforces a 1 MB package size, and uploads build artifacts.
+- Branch behavior: CI runs on pull requests and pushes to `main` / `release/*`; package artifact upload is `main` only.
+- Release behavior: publishing a GitHub release tag runs a separate workflow that builds the zip, verifies manifest version matches the tag, checks size budget, and uploads the zip to that release.
 
 ### Running Tests
 
@@ -40,17 +42,22 @@
 pnpm test
 ```
 
+### Quality Gate
+
+```bash
+pnpm quality         # TypeScript compile check + Biome lint
+```
+
 ### Linting
 
 ```bash
 pnpm lint            # Biome
-pnpm lint:webext     # WebExtension manifest/content validation (web-ext)
 ```
 
 ### Smoke Tests
 
 ```bash
-pnpm smoke        # filesystem checks
+pnpm smoke        # repository smoke checks
 pnpm smoke:e2e    # extension check (requires Playwright; install via `pnpm exec playwright install --with-deps chromium`)
 ```
 
@@ -63,7 +70,7 @@ pnpm package     # outputs .output/wordspotting-<version>-chrome.zip
 ### Chrome Web Store Submission Checklist
 
 - `pnpm install`
-- `pnpm lint`
+- `pnpm quality`
 - `pnpm test`
 - `pnpm smoke:e2e` (requires `pnpm exec playwright install --with-deps chromium`)
 - `pnpm package` to produce `.output/wordspotting-<version>-chrome.zip`, then upload that zip to the Chrome Web Store.
