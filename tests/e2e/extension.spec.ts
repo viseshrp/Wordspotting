@@ -113,14 +113,33 @@ test('keyword detection activates for pre-existing tab after settings update', a
       waitForComplete();
     });
 
-    const before = await new Promise<{ err: string | null; hasWords: boolean }>((resolve) => {
-      chrome.tabs.sendMessage(tabId, { from: 'popup', subject: 'word_list_request' }, (resp) => {
-        resolve({
-          err: chrome.runtime.lastError?.message || null,
-          hasWords: Array.isArray(resp?.word_list) && resp.word_list.length > 0
+    const getWordState = async (id: number) => {
+      const messageState = await new Promise<{ err: string | null; hasWords: boolean }>((resolve) => {
+        chrome.tabs.sendMessage(id, { from: 'popup', subject: 'word_list_request' }, (resp) => {
+          resolve({
+            err: chrome.runtime.lastError?.message || null,
+            hasWords: Array.isArray(resp?.word_list) && resp.word_list.length > 0
+          });
         });
       });
-    });
+
+      const badgeText = await chrome.action.getBadgeText({ tabId: id });
+      return { ...messageState, badgeText };
+    };
+
+    const waitForWordDetection = async (id: number, timeoutMs = 8000) => {
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        const state = await getWordState(id);
+        if (!state.err && state.hasWords) {
+          return state;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return getWordState(id);
+    };
+
+    const before = await getWordState(tabId);
 
     // Update settings while tab is already open; background should inject and trigger re-scan.
     await chrome.storage.sync.set({
@@ -129,18 +148,7 @@ test('keyword detection activates for pre-existing tab after settings update', a
       wordspotting_extension_on: true
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 2500));
-
-    const after = await new Promise<{ err: string | null; hasWords: boolean; badgeText: string }>((resolve) => {
-      chrome.tabs.sendMessage(tabId, { from: 'popup', subject: 'word_list_request' }, async (resp) => {
-        const badgeText = await chrome.action.getBadgeText({ tabId });
-        resolve({
-          err: chrome.runtime.lastError?.message || null,
-          hasWords: Array.isArray(resp?.word_list) && resp.word_list.length > 0,
-          badgeText
-        });
-      });
-    });
+    const after = await waitForWordDetection(tabId);
 
     await chrome.tabs.remove(tabId);
     return { before, after };
