@@ -13,11 +13,13 @@ import { hashString, scanTextForKeywords } from './shared/core/scanner';
 let scanWorker: Worker | null = null;
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_CHUNK_OVERLAP = 200;
+const WORKER_REQUEST_TIMEOUT_MS = 2500;
 let scanRequestId = 0;
 type WorkerResult = string[] | Record<string, Array<{ keyword: string; index: number; length: number }>>;
 const workerRequests = new Map<number, {
   resolve: (value: WorkerResult | PromiseLike<WorkerResult>) => void;
   reject: (reason?: Error) => void;
+  timeoutHandle: ReturnType<typeof setTimeout>;
 }>();
 let workerFailed = false;
 
@@ -401,6 +403,7 @@ function handleWorkerMessage(event: MessageEvent) {
   const pending = workerRequests.get(data.id);
   if (!pending) return;
   workerRequests.delete(data.id);
+  clearTimeout(pending.timeoutHandle);
 
   if (data.type === 'scan_result') {
     pending.resolve(Array.isArray(data.words) ? data.words : []);
@@ -417,6 +420,7 @@ function cleanupWorker() {
     scanWorker = null;
   }
   workerRequests.forEach((pending) => {
+    clearTimeout(pending.timeoutHandle);
     pending.reject(new Error('Worker terminated'));
   });
   workerRequests.clear();
@@ -448,9 +452,20 @@ function registerWorkerRequest<T extends WorkerResult>(
   resolve: (value: T | PromiseLike<T>) => void,
   reject: (reason?: Error) => void
 ) {
+  const timeoutHandle = setTimeout(() => {
+    const pending = workerRequests.get(id);
+    if (!pending) return;
+    workerRequests.delete(id);
+    clearTimeout(pending.timeoutHandle);
+    pending.reject(new Error('Worker scan timed out'));
+    workerFailed = true;
+    cleanupWorker();
+  }, WORKER_REQUEST_TIMEOUT_MS);
+
   workerRequests.set(id, {
     resolve: resolve as (value: WorkerResult | PromiseLike<WorkerResult>) => void,
-    reject
+    reject,
+    timeoutHandle
   });
 }
 

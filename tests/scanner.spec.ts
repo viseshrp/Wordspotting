@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   buildCombinedRegex,
   hashString,
+  isSafeKeywordPattern,
   normalizeKeywords,
   scanTextForKeywords,
   scanTextForMatches
@@ -15,6 +16,11 @@ describe('scanner helpers', () => {
   
   test('buildCombinedRegex returns null when no valid regex patterns exist', () => {
     expect(buildCombinedRegex(['[invalid'])).toBeNull();
+  });
+
+  test('isSafeKeywordPattern rejects potentially unsafe regex', () => {
+    expect(isSafeKeywordPattern('(a+)+$')).toBe(false);
+    expect(isSafeKeywordPattern('a\\1')).toBe(false);
   });
   
   test('buildCombinedRegex keeps valid patterns and maps them', () => {

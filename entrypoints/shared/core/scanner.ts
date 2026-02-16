@@ -1,9 +1,27 @@
 // Core scanning helpers (no Chrome-specific logic).
 
+const MAX_KEYWORD_REGEX_LENGTH = 120;
+const NESTED_QUANTIFIER_PATTERN = /\((?:[^()\\]|\\.)*[+*](?:[^()\\]|\\.)*\)[+*{]/;
+const BACKREFERENCE_PATTERN = /\\[1-9]/;
+
 export function normalizeKeywords(keywordList: unknown): string[] {
   return Array.isArray(keywordList)
     ? keywordList.filter((k) => k && typeof k === 'string' && k.trim().length > 0)
     : [];
+}
+
+export function isSafeKeywordPattern(pattern: string): boolean {
+  const trimmed = typeof pattern === 'string' ? pattern.trim() : '';
+  if (!trimmed) return false;
+  if (trimmed.length > MAX_KEYWORD_REGEX_LENGTH) return false;
+  if (NESTED_QUANTIFIER_PATTERN.test(trimmed)) return false;
+  if (BACKREFERENCE_PATTERN.test(trimmed)) return false;
+  try {
+    new RegExp(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function buildCombinedRegex(validKeywords: string[]): { regex: RegExp; patternMap: string[] } | null {
@@ -11,14 +29,9 @@ export function buildCombinedRegex(validKeywords: string[]): { regex: RegExp; pa
   const patternMap: string[] = [];
 
   validKeywords.forEach((word, index) => {
-    try {
-      // Validate regex
-      new RegExp(word);
-      patterns.push(`(?<k${index}>${word})`);
-      patternMap[index] = word;
-    } catch {
-      // ignore invalid regex entry
-    }
+    if (!isSafeKeywordPattern(word)) return;
+    patterns.push(`(?<k${index}>${word})`);
+    patternMap[index] = word;
   });
 
   if (patterns.length === 0) return null;
