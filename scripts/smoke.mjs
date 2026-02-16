@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
 
 const requiredFiles = [
   'package.json',
@@ -22,6 +23,19 @@ const missing = requiredFiles.filter((file) => !existsSync(resolve(process.cwd()
 if (missing.length > 0) {
   console.error('Smoke check failed. Missing files:');
   for (const file of missing) console.error(`- ${file}`);
+  process.exit(1);
+}
+
+const trackedArtifacts = execFileSync('git', ['ls-files', 'dist', 'coverage', 'test-results'], {
+  cwd: process.cwd(),
+  encoding: 'utf8'
+}).trim();
+
+if (trackedArtifacts.length > 0) {
+  console.error('Smoke check failed. Build/test artifacts must not be tracked:');
+  for (const file of trackedArtifacts.split('\n')) {
+    if (file) console.error(`- ${file}`);
+  }
   process.exit(1);
 }
 
