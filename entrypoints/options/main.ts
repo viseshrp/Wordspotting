@@ -6,7 +6,6 @@ import {
   saveToStorage,
   showAlert
 } from '../shared/utils';
-import { isSafeKeywordPattern } from '../shared/core/scanner';
 
 function logOptionsError(context: string, error: unknown) {
   logExtensionError(context, error);
@@ -152,7 +151,7 @@ function addWord(input: HTMLInputElement) {
   const { valid, invalid } = partitionKeywordPatterns(list);
 
   if (invalid.length > 0) {
-    showAlert(`Skipped invalid or unsafe regex: ${invalid.join(', ')}`, 'Validation', false);
+    showAlert(`Skipped invalid regex: ${invalid.join(', ')}`, 'Validation', false);
   }
 
   if (valid.length === 0) {
@@ -314,9 +313,11 @@ export function partitionKeywordPatterns(list: string[]) {
   const invalid: string[] = [];
 
   list.forEach((item) => {
-    if (isSafeKeywordPattern(item)) {
+    try {
+      // Validate regex
+      new RegExp(item);
       valid.push(item);
-    } else {
+    } catch {
       invalid.push(item);
     }
   });

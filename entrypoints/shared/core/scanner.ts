@@ -29,9 +29,14 @@ export function buildCombinedRegex(validKeywords: string[]): { regex: RegExp; pa
   const patternMap: string[] = [];
 
   validKeywords.forEach((word, index) => {
-    if (!isSafeKeywordPattern(word)) return;
-    patterns.push(`(?<k${index}>${word})`);
-    patternMap[index] = word;
+    try {
+      // Validate regex
+      new RegExp(word);
+      patterns.push(`(?<k${index}>${word})`);
+      patternMap[index] = word;
+    } catch {
+      // ignore invalid regex entry
+    }
   });
 
   if (patterns.length === 0) return null;
