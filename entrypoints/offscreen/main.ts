@@ -24,7 +24,6 @@ type OffscreenRequest = ScanTextRequest | ScanHighlightsRequest;
 
 let scanWorker: Worker | null = null;
 let scanRequestId = 0;
-let workerFailed = false;
 
 const workerRequests = new Map<number, {
   resolve: (value: WorkerResult | PromiseLike<WorkerResult>) => void;
@@ -56,7 +55,6 @@ function setupWorkerListeners(worker: Worker) {
   worker.addEventListener('message', handleWorkerMessage);
   worker.addEventListener('error', (error) => {
     logExtensionError('Offscreen worker error', error, { operation: 'runtime_context' });
-    workerFailed = true;
     cleanupWorker();
   });
 }
@@ -104,7 +102,6 @@ function registerWorkerRequest<T extends WorkerResult>(
     const timeoutError = new Error('Worker scan timed out');
     logExtensionError('Offscreen worker request timed out', timeoutError, { operation: 'runtime_context' });
     pending.reject(timeoutError);
-    workerFailed = true;
     cleanupWorker();
   }, WORKER_REQUEST_TIMEOUT_MS);
 
@@ -116,7 +113,6 @@ function registerWorkerRequest<T extends WorkerResult>(
 }
 
 function getScanWorkerAsync() {
-  if (workerFailed) return null;
   if (scanWorker) return scanWorker;
 
   try {
@@ -125,7 +121,6 @@ function getScanWorkerAsync() {
     return scanWorker;
   } catch (error) {
     logExtensionError('Failed to create offscreen worker', error, { operation: 'runtime_context' });
-    workerFailed = true;
     return null;
   }
 }
