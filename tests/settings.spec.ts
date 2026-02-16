@@ -1,10 +1,11 @@
+import { describe, test, expect, beforeEach, vi, type Mock } from 'vitest';
 import { applySettingsDefaults, ensureSettingsInitialized, getSettings } from '../entrypoints/shared/settings';
 
 type BrowserMock = {
   storage: {
     sync: {
-      set: jest.Mock;
-      get: jest.Mock;
+      set: Mock;
+      get: Mock;
     };
   };
   runtime: {
@@ -28,8 +29,8 @@ describe('settings defaults', () => {
   beforeEach(() => {
     const mockBrowser = browser as unknown as BrowserMock;
     mockBrowser.runtime.lastError = null;
-    mockBrowser.storage.sync.set = jest.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
-    mockBrowser.storage.sync.get = jest.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({}));
+    mockBrowser.storage.sync.set = vi.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({}));
   });
 
   test('applySettingsDefaults fills missing keys', () => {
@@ -38,29 +39,55 @@ describe('settings defaults', () => {
     expect(result.wordspotting_notifications_on).toBe(false);
     expect(result.wordspotting_extension_on).toBe(true); // default
   });
+  
+  test('applySettingsDefaults keeps defaults when partial has undefined values', () => {
+    const partial = {
+      wordspotting_notifications_on: undefined,
+      wordspotting_theme: undefined
+    };
+    const result = applySettingsDefaults(partial);
+    expect(result.wordspotting_notifications_on).toBe(true);
+    expect(result.wordspotting_theme).toBe('system');
+  });
 
   test('ensureSettingsInitialized writes defaults when missing', async () => {
     await ensureSettingsInitialized();
     expect(browser.storage.sync.set).toHaveBeenCalled();
-    const payload = (browser.storage.sync.set as jest.Mock).mock.calls[0][0];
+    const payload = (browser.storage.sync.set as Mock).mock.calls[0][0];
     expect(payload.wordspotting_settings_version).toBe(1);
   });
 
   test('ensureSettingsInitialized skips write when present', async () => {
     const mockBrowser = browser as unknown as BrowserMock;
-    mockBrowser.storage.sync.get = jest.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.(allSettings));
-    mockBrowser.storage.sync.set = jest.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.(allSettings));
+    mockBrowser.storage.sync.set = vi.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
     await ensureSettingsInitialized();
     expect(mockBrowser.storage.sync.set).not.toHaveBeenCalled();
   });
 
   test('getSettings returns defaults for missing keys', async () => {
     const mockBrowser = browser as unknown as BrowserMock;
-    mockBrowser.storage.sync.get = jest.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({
       wordspotting_notifications_on: false
     }));
     const settings = await getSettings(['wordspotting_notifications_on']);
     expect(settings.wordspotting_notifications_on).toBe(false);
     expect(settings.wordspotting_extension_on).toBe(true);
+  });
+  
+  test('getSettings without keys requests full defaults lookup', async () => {
+    const mockBrowser = browser as unknown as BrowserMock;
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({}));
+    await getSettings();
+    expect(mockBrowser.storage.sync.get).toHaveBeenCalledWith(expect.arrayContaining([
+      'wordspotting_notifications_on',
+      'wordspotting_extension_on',
+      'wordspotting_highlight_on',
+      'wordspotting_highlight_color',
+      'wordspotting_website_list',
+      'wordspotting_word_list',
+      'wordspotting_theme',
+      'is_first_start'
+    ]), expect.any(Function));
   });
 });

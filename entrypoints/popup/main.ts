@@ -1,6 +1,8 @@
 import {
   buildPatternsForTab,
+  type ExtensionErrorOperation,
   getFromStorage,
+  logExtensionError,
   isUrlAllowed,
   saveToStorage,
   showAlert
@@ -20,17 +22,20 @@ document.addEventListener('DOMContentLoaded', () => {
     { value: 'full', label: 'Full URL (exact match)' }
   ];
   const refreshPrefKey = 'wordspotting_refresh_on_add';
+  const handleAsyncError = (context: string, operation?: ExtensionErrorOperation) => (error: unknown) => {
+    logExtensionError(context, error, operation ? { operation } : undefined);
+  };
 
   // Theme
   getFromStorage<Record<string, unknown>>('wordspotting_theme').then((items) => {
     const theme = (items.wordspotting_theme as string) || 'system';
     applyTheme(theme);
-  });
+  }).catch(handleAsyncError('Failed to load popup theme'));
   getFromStorage<Record<string, unknown>>(refreshPrefKey).then((items) => {
     if (refreshOnAddToggle) {
       refreshOnAddToggle.checked = (items[refreshPrefKey] as boolean | undefined) !== false;
     }
-  });
+  }).catch(handleAsyncError('Failed to load refresh preference'));
 
   // Connect to Content Script
   browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
@@ -63,16 +68,20 @@ document.addEventListener('DOMContentLoaded', () => {
             void browser.action.setBadgeText({
               text: count > 0 ? count.toString() : '0',
               tabId: currTab.id
-            });
+            }).catch(handleAsyncError('Failed to sync popup badge count', 'badge_update'));
           }
-        }).catch(() => {
+        }).catch((error) => {
+          logExtensionError('Unable to fetch popup word list', error, { operation: 'tab_message' });
           // Content script might not be injected yet
           renderEmpty('Not active on this page.');
         });
+      }).catch((error) => {
+        logExtensionError('Failed to check popup activation', error);
+        renderEmpty('Could not read this tab.');
       });
       if (currTab.url) updateSitePreview(currTab.url);
     }
-  });
+  }).catch(handleAsyncError('Failed to query active tab for popup', 'tab_query'));
 
   if (addSiteBtn) {
     addSiteBtn.addEventListener('click', () => {
@@ -94,20 +103,22 @@ document.addEventListener('DOMContentLoaded', () => {
           setAddSiteVisibility(false);
           window.close();
           if (refreshOnAddToggle?.checked) {
-            await browser.tabs.reload(tab.id);
+            await browser.tabs.reload(tab.id).catch((error) => {
+              logExtensionError('Failed to reload tab after adding allowlist site', error, { operation: 'tab_reload' });
+            });
           }
         } catch (e) {
-          console.error('Failed to add site to allowlist', e);
+          logExtensionError('Failed to add site to allowlist', e);
           showAlert('Could not save site.', 'Error', false);
         }
-      });
+      }).catch(handleAsyncError('Failed to query active tab while adding site', 'tab_query'));
     });
   }
 
   if (refreshOnAddToggle) {
     refreshOnAddToggle.addEventListener('change', () => {
       saveToStorage({ [refreshPrefKey]: refreshOnAddToggle.checked })
-        .catch((e) => console.error('Failed to save refresh setting', e));
+        .catch((error) => logExtensionError('Failed to save refresh setting', error));
     });
   }
 
@@ -118,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tab?.url) {
           updateSitePreview(tab.url);
         }
-      });
+      }).catch(handleAsyncError('Failed to refresh popup scope options', 'tab_query'));
     });
   }
 
@@ -126,7 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const optionsButton = document.getElementById('options_btn');
   optionsButton?.addEventListener('click', () => {
     if (browser.runtime.openOptionsPage) {
-      void browser.runtime.openOptionsPage();
+      void browser.runtime.openOptionsPage().catch(handleAsyncError('Failed to open options page'));
     } else {
       window.open(browser.runtime.getURL('options.html'));
     }
@@ -154,7 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderEmpty(msg: string) {
     if (!keywordContainer) return;
-    keywordContainer.innerHTML = `<div class="empty-state">${msg}</div>`;
+    keywordContainer.innerHTML = '';
+    const emptyState = document.createElement('div');
+    emptyState.className = 'empty-state';
+    emptyState.textContent = msg;
+    keywordContainer.appendChild(emptyState);
   }
 
   function applyTheme(value: string) {
@@ -176,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tab.url) updateSitePreview(tab.url);
       return { allowed, hasPermission: true };
     } catch (e) {
-      console.error('Activation check failed:', e);
+      logExtensionError('Activation check failed', e);
       return { allowed: false, hasPermission: false };
     }
   }
@@ -198,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       updateScopeOptions(urlString);
     } catch (e) {
-      console.warn('Failed to update scope options', e);
+      logExtensionError('Failed to update scope options', e);
     }
   }
 

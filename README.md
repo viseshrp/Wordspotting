@@ -1,74 +1,147 @@
 # Wordspotting
 
-**Wordspotting** is a Chrome extension that notifies you when specific keywords are found on a webpage. It's a general-purpose page scanner you configure with your own keywords and allowed sites.
+[![Codecov](https://codecov.io/gh/viseshrp/Wordspotting/branch/main/graph/badge.svg)](https://codecov.io/gh/viseshrp/Wordspotting)
 
-## Features
+Wordspotting is a Chrome extension that scans pages for user-defined keywords and alerts you when matches appear. It is designed for configurable monitoring of specific sites, with local-first settings and optional in-page highlighting.
 
-- **Keyword Scanning**: Automatically scans webpages for your configured keywords.
-- **Site Allowlist**: Only runs on websites you explicitly allow (e.g., `example.com`, `news.example`).
-- **Notifications**: Get a system notification and a browser badge count when keywords are found.
-- **Highlighting**: Visually highlight found keywords on the page (requires Chrome 105+).
-- **SPA Support**: Works with single page applications and dynamic content.
-- **Regex Support**: Advanced users can use regular expressions for matching (e.g., `error|fail`).
-- **Privacy First**: All data is stored locally on your device. No data is sent to external servers.
-- **Dark Mode**: Native support for dark mode.
+## Core features
 
-## Installation
+- Scan page content for custom keywords (plain text or regex patterns).
+- Restrict scanning to an allowlist of sites you control.
+- Show match counts on the extension badge.
+- Fire notifications when matches appear (rising-edge behavior to reduce noise).
+- Highlight matched text on-page (Chrome 105+ CSS Highlights support).
+- Support dynamic pages and SPAs via observer-driven re-scan.
+- Keep settings in browser sync storage for profile-level persistence.
+- Theme support (`system`, `light`, `dark`).
 
-1. Download the latest release zip.
-2. Open Chrome and navigate to `chrome://extensions`.
-3. Enable **Developer Mode** (top right).
-4. Unzip the downloaded file, then click **Load unpacked** and select the extension folder.
+## How it works
 
-## Usage
+### Background service worker (`entrypoints/background.ts`)
 
-1. Click the extension icon and select **Options**.
-2. **Add Websites**: Enter the domains you want to scan (e.g., `example.com`, `*.docs.example`).
-3. **Add Keywords**: Enter the words or phrases you are looking for (e.g., `error`, `TODO`, `promo`).
-4. **Highlighting**: Toggle "Highlight Matches" in the settings to see keywords highlighted on the page. You can also customize the highlight color.
-5. Navigate to an allowed site. If a keyword is found, the extension icon will show a badge count, and you will receive a notification.
+- Initializes default settings on install.
+- Opens options on first install.
+- Watches tab updates and injects scanner code only on allowed URLs.
+- Receives scan results, updates badge text/color, and triggers notifications.
+- Reacts to storage changes and refreshes allowlist behavior.
 
-## Permissions & Development
+### Injected content script (`entrypoints/injected.ts`)
 
-- Permissions: `notifications`, `storage`, `scripting`, and `host_permissions: <all_urls>`. Adding a site to your allowed list is considered opt-in; there are no runtime permission prompts.
-- Built with TypeScript using WXT (Manifest V3). Source lives under `entrypoints/` (including `entrypoints/shared/`) and `public/`.
-- CI: GitHub Actions runs Biome, web-ext validation, unit tests (Jest), smoke checks (filesystem + Playwright), enforces a 1 MB package size, and uploads versioned build artifacts.
+- Runs on allowed tabs only.
+- Extracts page text, scans for keyword matches, and reports counts.
+- Re-scans for SPA/dynamic DOM updates.
+- Applies/removes highlight ranges when highlighting is enabled.
 
-### Running Tests
+### Scan worker (`entrypoints/scan-worker.ts`)
+
+- Offloads matching work from the main thread.
+- Helps keep scanning responsive on larger pages.
+
+### Popup and options UIs
+
+- `entrypoints/popup/`: current-tab status, quick add of the current site, shortcut to options.
+- `entrypoints/options/`: manage keyword list, allowlist, toggles, highlight color, and theme.
+
+## Allowlist and matching behavior
+
+- The extension only scans pages that match at least one allowlist pattern.
+- Patterns can be regex-like entries or wildcard-style entries (`*` supported).
+- Common examples:
+  - `*example.com*`
+  - `*news.ycombinator.com*`
+  - `https://docs.example.com/path`
+
+## Notifications and badge behavior
+
+- Badge shows:
+  - `-` for inactive/not-allowed tabs.
+  - `0` when allowed but no matches.
+  - Positive count when matches are found.
+- Notifications trigger only when a tab transitions from no match to match, not repeatedly on every scan.
+
+## Privacy
+
+- No external server dependency for scanning or settings.
+- Settings and lists are stored in `browser.storage.sync`.
+- Scanning runs in the browser extension context.
+
+## Development setup
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 10+
+
+### Install
 
 ```bash
-pnpm test
+pnpm install
 ```
 
-### Linting
+### Dev mode
 
 ```bash
-pnpm lint            # Biome
-pnpm lint:webext     # WebExtension manifest/content validation (web-ext)
+pnpm dev
 ```
 
-### Smoke Tests
+### Build
 
 ```bash
-pnpm smoke        # filesystem checks
-pnpm smoke:e2e    # extension check (requires Playwright; install via `pnpm exec playwright install --with-deps chromium`)
+pnpm build
 ```
 
-### Building for Release
+## Commands
 
 ```bash
-pnpm package     # outputs .output/wordspotting-<version>-chrome.zip
+pnpm quality      # TypeScript compile + Biome lint
+pnpm test         # Vitest with coverage
+pnpm smoke        # repository smoke checks
+pnpm smoke:e2e    # Playwright-based extension smoke flow
+pnpm package      # build zip artifact via WXT
 ```
 
-### Chrome Web Store Submission Checklist
+## Load unpacked in Chrome
 
-- `pnpm install --frozen-lockfile`
-- `pnpm lint`
-- `pnpm test`
-- `pnpm smoke:e2e` (requires `pnpm exec playwright install --with-deps chromium`)
-- `pnpm package` to produce `.output/wordspotting-<version>-chrome.zip`, then upload that zip to the Chrome Web Store.
-- `pnpm version <x.y.z>` to bump versions and keep `wxt.config.ts` output in sync with tags and package metadata.
+1. Run `pnpm dev` (or `pnpm build`).
+2. Open `chrome://extensions`.
+3. Enable **Developer mode**.
+4. Click **Load unpacked**.
+5. Select:
+   - Dev output: `.output/chrome-mv3-dev/`
+   - Build output: `.output/chrome-mv3/`
+
+## CI and release
+
+- CI runs quality checks, smoke checks, unit tests, and uploads coverage to Codecov.
+- On `main`, CI also packages and uploads a zip artifact.
+- Tagged releases run a release workflow that validates tag/version consistency and uploads the release asset.
+
+## Permissions
+
+- `notifications`: show browser notifications for new match events.
+- `storage`: persist settings and lists.
+- `scripting`: inject content script/CSS at runtime.
+- `host_permissions: <all_urls>`: required for runtime injection across user-allowlisted sites.
+
+## Project structure
+
+- `entrypoints/background.ts`: lifecycle, injection, badge, notifications.
+- `entrypoints/injected.ts`: page scanning and highlighting.
+- `entrypoints/scan-worker.ts`: worker-based scanning.
+- `entrypoints/popup/`: popup UI.
+- `entrypoints/options/`: options UI.
+- `entrypoints/shared/`: shared settings, storage, scanner utilities.
+- `tests/`: unit and e2e tests.
+- `docs/`: architecture, storage model, and Chrome Web Store support docs.
+
+## Troubleshooting
+
+- Badge stuck at `-`: verify the extension is enabled and the current site matches your allowlist.
+- Badge always `0`: verify keywords are configured and valid.
+- No notifications: check `wordspotting_notifications_on` setting.
+- Highlights not visible: ensure highlighting is enabled and the page/browser supports CSS Highlights.
+- Dynamic pages not updating: refresh once, then confirm site is allowlisted and extension is enabled.
 
 ## License
 
-MIT
+MIT.

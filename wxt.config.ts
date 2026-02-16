@@ -25,8 +25,7 @@ export default defineConfig({
       default_popup: 'popup.html'
     },
     options_ui: {
-      page: 'options.html',
-      open_in_tab: true
+      page: 'options.html'
     },
     icons: {
       '16': 'assets/ws16.png',
@@ -38,7 +37,7 @@ export default defineConfig({
     web_accessible_resources: [
       {
         resources: ['assets/*.png', 'css/*.css', 'scan-worker.js'],
-        matches: ['<all_urls>']
+        matches: ['http://*/*', 'https://*/*']
       }
     ]
   }

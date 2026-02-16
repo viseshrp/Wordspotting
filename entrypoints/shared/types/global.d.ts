@@ -1,6 +1,16 @@
 export {};
 
 declare global {
+  interface ImportMetaEnv {
+    readonly MODE: string;
+    readonly PROD: boolean;
+    readonly DEV: boolean;
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
+
   var __WORDSPOTTING_CONTENT_LOADED__: boolean | undefined;
   const browser: typeof chrome;
 
@@ -18,12 +28,6 @@ declare global {
   interface CSS {
     highlights: HighlightRegistry;
   }
-
-  var handleMessage: ((request: unknown, sender: chrome.runtime.MessageSender) => Promise<unknown>) | undefined;
-  var setCountBadge: ((tabId: number, count: number) => void) | undefined;
-  var refreshAllowedSitePatterns: (() => Promise<void>) | undefined;
-  var compiledAllowedSites: RegExp[] | undefined;
-  var saveToStorage: ((obj: Record<string, unknown>) => Promise<void>) | undefined;
 
   function defineBackground(main: () => void): void;
   function defineContentScript(config: unknown, main?: () => void): void;

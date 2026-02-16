@@ -1,3 +1,4 @@
+import { describe, test, expect } from 'vitest';
 /**
  * Smoke-test options helpers by loading file in JSDOM and using exported utils.
  */
@@ -15,4 +16,5 @@ describe('options helpers', () => {
     const merged = mergeUnique(['a', 'b'], ['b', 'c']);
     expect(merged.sort()).toEqual(['a', 'b', 'c']);
   });
+
 });

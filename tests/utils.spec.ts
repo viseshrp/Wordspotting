@@ -1,10 +1,12 @@
+import { describe, test, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import * as utils from '../entrypoints/shared/utils';
+import { scanTextForMatches } from '../entrypoints/shared/core/scanner';
 
 type BrowserMock = {
   storage: {
     sync: {
-      set: jest.Mock;
-      get: jest.Mock;
+      set: Mock;
+      get: Mock;
     };
   };
   runtime: {
@@ -15,13 +17,25 @@ type BrowserMock = {
 describe('utils', () => {
   beforeEach(() => {
     const mockBrowser = browser as unknown as BrowserMock;
-    mockBrowser.storage.sync.set = jest.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
-    mockBrowser.storage.sync.get = jest.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({ example: 1 }));
+    mockBrowser.storage.sync.set = vi.fn((_obj: Record<string, unknown>, cb?: () => void) => cb?.());
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({ example: 1 }));
     mockBrowser.runtime.lastError = null;
+  });
+  
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   test('trimAndClean removes whitespace', () => {
     expect(utils.trimAndClean('  hello world  ')).toBe('helloworld');
+  });
+  
+  test('trimAndClean handles empty-like values', () => {
+    expect(utils.trimAndClean('')).toBe('');
+    expect(utils.trimAndClean(null)).toBe('');
+    expect(utils.trimAndClean(undefined)).toBe('');
   });
 
   test('isValidObj', () => {
@@ -50,8 +64,8 @@ describe('utils', () => {
 
   test('saveToStorage and getFromStorage handle promise-returning storage', async () => {
     const mockBrowser = browser as unknown as BrowserMock;
-    mockBrowser.storage.sync.set = jest.fn(() => Promise.resolve());
-    mockBrowser.storage.sync.get = jest.fn(() => Promise.resolve({ foo: 'bar' }));
+    mockBrowser.storage.sync.set = vi.fn(() => Promise.resolve());
+    mockBrowser.storage.sync.get = vi.fn(() => Promise.resolve({ foo: 'bar' }));
 
     await expect(utils.saveToStorage({ foo: 'bar' })).resolves.toBeUndefined();
     const res = await utils.getFromStorage<{ foo: string }>('foo');
@@ -82,46 +96,122 @@ describe('utils', () => {
 
   test('showAlert appends a toast', () => {
     document.body.innerHTML = '';
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     utils.showAlert('msg', 'title', true);
     const toast = document.querySelector('.ws-toast');
     expect(toast).toBeTruthy();
     expect(toast?.textContent).toContain('msg');
-    jest.runAllTimers(); // trigger fade/remove
+    vi.runAllTimers(); // trigger fade/remove
+  });
+  
+  test('showAlert defaults to error toast and message-only text', () => {
+    document.body.innerHTML = '';
+    utils.showAlert('plain message');
+    const toast = document.querySelector('.ws-toast');
+    expect(toast?.className).toContain('error');
+    expect(toast?.textContent).toBe('plain message');
+  });
+  
+  test('showAlert logs when document is unavailable', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.stubGlobal('document', undefined);
+    utils.showAlert('msg', 'title', false);
+    expect(spy).toHaveBeenCalled();
+    expect(spy.mock.calls[0]?.[0]).toContain('Alert: title - msg');
+    spy.mockRestore();
   });
 
 
   test('logit writes to console', () => {
-    const spy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     utils.logit('hi');
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
+  
+  test('logit is silent in production mode', () => {
+    vi.stubEnv('PROD', true);
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    utils.logit('hi');
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  test('isIgnorableExtensionError detects transient extension runtime errors', () => {
+    expect(utils.isIgnorableExtensionError(new Error('No tab with id: 42'), 'tab_query')).toBe(true);
+    expect(utils.isIgnorableExtensionError(new Error('Unexpected fatal error'), 'tab_query')).toBe(false);
+  });
+  
+  test('isIgnorableExtensionError handles non-Error values', () => {
+    expect(utils.isIgnorableExtensionError('The tab was closed.', 'tab_query')).toBe(true);
+    expect(utils.isIgnorableExtensionError('Invalid tab ID: 9', 'tab_query')).toBe(false);
+    expect(utils.isIgnorableExtensionError({ message: 'some object error' }, 'tab_query')).toBe(false);
+  });
+
+  test('logExtensionError suppresses ignorable errors for an operation and logs unexpected ones', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    utils.logExtensionError('context', new Error('No tab with id: 42'), { operation: 'tab_query' });
+    utils.logExtensionError('context', new Error('Storage failed'), { operation: 'tab_query' });
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+  
+  test('logExtensionError uses error logger for error level', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    utils.logExtensionError('context', new Error('Storage failed'), 'error');
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+  
+  test('logExtensionError suppresses warn logs in production mode', () => {
+    vi.stubEnv('PROD', true);
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    utils.logExtensionError('context', new Error('Storage failed'), { level: 'warn', operation: 'tab_query' });
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+    vi.unstubAllEnvs();
+  });
 
   test('buildSiteRegex returns null for invalid input', () => {
     expect(utils.buildSiteRegex(null)).toBeNull();
+    expect(utils.buildSiteRegex('   ')).toBeNull();
+  });
+  
+  test('buildSiteRegex returns null if both direct and wildcard compilation fail', () => {
+    const ThrowingRegExp = vi.fn(() => {
+      throw new Error('boom');
+    });
+    vi.stubGlobal('RegExp', ThrowingRegExp as unknown as RegExpConstructor);
+    expect(utils.buildSiteRegex('example')).toBeNull();
   });
 
-  test('buildSiteRegex returns null when regex construction fails', () => {
-    const originalRegExp = global.RegExp;
-    (globalThis as unknown as { RegExp: typeof RegExp }).RegExp = (() => {
-      throw new Error('fail');
-    }) as unknown as typeof RegExp;
-    expect(utils.buildSiteRegex('test')).toBeNull();
-    (globalThis as unknown as { RegExp: typeof RegExp }).RegExp = originalRegExp;
+  test('buildSiteRegex converts wildcard patterns to usable regex', () => {
+    const wildcard = utils.buildSiteRegex('*jobs/*');
+    expect(wildcard).toBeInstanceOf(RegExp);
+    expect(wildcard?.test('www.linkedin.com/jobs/view/123')).toBe(true);
   });
 
   test('isUrlAllowed handles empty list', () => {
     expect(utils.isUrlAllowed('https://x.com', [])).toBe(false);
   });
+  
+  test('isUrlAllowed returns false for invalid list entries', () => {
+    expect(utils.isUrlAllowed('https://example.com', ['   '])).toBe(false);
+  });
+  
+  test('isUrlAllowedCompiled returns false for missing inputs', () => {
+    expect(utils.isUrlAllowedCompiled(undefined, [/example/i])).toBe(false);
+    expect(utils.isUrlAllowedCompiled('https://example.com', [])).toBe(false);
+  });
+  
+  test('isUrlAllowedCompiled handles invalid url input without throwing', () => {
+    const compiled = utils.compileSitePatterns(['*example*']);
+    expect(utils.isUrlAllowedCompiled('%%%not-a-url%%%', compiled)).toBe(false);
+  });
 
-  test('isUrlAllowed returns false when regex build fails', () => {
-    const originalRegExp = global.RegExp;
-    (globalThis as unknown as { RegExp: typeof RegExp }).RegExp = (() => {
-      throw new Error('fail');
-    }) as unknown as typeof RegExp;
-    expect(utils.isUrlAllowed('https://example.com', ['example'])).toBe(false);
-    (globalThis as unknown as { RegExp: typeof RegExp }).RegExp = originalRegExp;
+  test('isUrlAllowed supports wildcard list entries', () => {
+    expect(utils.isUrlAllowed('https://example.com/path', ['*example*'])).toBe(true);
+    expect(utils.isUrlAllowed('https://bar.com/path', ['*example*'])).toBe(false);
   });
 
   test('compileSitePatterns handles non-array', () => {
@@ -143,10 +233,17 @@ describe('utils', () => {
     expect(patterns.path).toBe('*example.com/search*');
     expect(patterns.full).toBe('https://example.com/search?q=test');
   });
+  
+  test('buildPatternsForTab throws for invalid url', () => {
+    expect(() => utils.buildPatternsForTab('not a url')).toThrow();
+  });
+  
+  test('buildPatternsForTab throws for urls with empty hostname', () => {
+    expect(() => utils.buildPatternsForTab('file:///tmp/test.txt')).toThrow('Invalid URL');
+  });
 
   test('scanTextForMatches finds all occurrences', () => {
-    const scanner = require('../entrypoints/shared/core/scanner');
-    const matches = scanner.scanTextForMatches(['foo'], 'foo bar foo');
+    const matches = scanTextForMatches(['foo'], 'foo bar foo');
     expect(matches).toHaveLength(2);
     expect(matches[0]).toEqual({ keyword: 'foo', index: 0, length: 3 });
     expect(matches[1]).toEqual({ keyword: 'foo', index: 8, length: 3 });

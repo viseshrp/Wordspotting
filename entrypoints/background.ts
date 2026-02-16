@@ -3,8 +3,8 @@ import {
   getFromStorage,
   isUrlAllowed,
   isUrlAllowedCompiled,
-  logit,
-  saveToStorage
+  logExtensionError,
+  logit
 } from './shared/utils';
 import { ensureSettingsInitialized } from './shared/settings';
 
@@ -29,8 +29,6 @@ function isWordspottingMessage(request: unknown): request is WordspottingMessage
 }
 
 export default defineBackground(() => {
-  exposeGlobalsForTests();
-
   browser.runtime.onInstalled.addListener(async (details) => {
     try {
       await ensureSettingsInitialized();
@@ -41,7 +39,7 @@ export default defineBackground(() => {
         await browser.tabs.create({ url: 'options.html' });
       }
     } catch (e) {
-      console.error('Error during initialization:', e);
+      logExtensionError('Error during initialization', e, 'error');
     }
   });
 
@@ -49,7 +47,7 @@ export default defineBackground(() => {
     handleMessage(request, sender)
       .then((response) => sendResponse(response))
       .catch((err) => {
-        console.error('Error handling message:', err);
+        logExtensionError('Error handling message', err, 'error');
         sendResponse({ ack: 'error' });
       });
     return true;
@@ -93,25 +91,29 @@ export default defineBackground(() => {
     }
 
     void (async () => {
-      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      const tab = tabs[0];
-      if (!tab || typeof tab.id !== 'number') return;
-      await updateBadgeForTab(tab.id, tab.url);
-      if (changes.wordspotting_extension_on?.newValue === true) {
-        await maybeInjectContentScripts(tab.id, tab.url || '');
-      } else if (changes.wordspotting_extension_on?.newValue === false) {
-        setInactiveBadge(tab.id);
-      }
       try {
-        await browser.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
-      } catch {
-        // Ignore missing receivers (content may not be injected).
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+        const tab = tabs[0];
+        if (!tab || typeof tab.id !== 'number') return;
+        await updateBadgeForTab(tab.id, tab.url);
+        if (changes.wordspotting_extension_on?.newValue === true) {
+          await maybeInjectContentScripts(tab.id, tab.url || '');
+        } else if (changes.wordspotting_extension_on?.newValue === false) {
+          setInactiveBadge(tab.id);
+        }
+        try {
+          await browser.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
+        } catch {
+          // Ignore missing receivers (content may not be injected).
+        }
+      } catch (error) {
+        logExtensionError('Failed to handle storage.onChanged tab sync', error, { operation: 'tab_query' });
       }
     })();
   });
 });
 
-export async function handleMessage(request: unknown, sender: chrome.runtime.MessageSender) {
+async function handleMessage(request: unknown, sender: chrome.runtime.MessageSender) {
   if (isWordspottingMessage(request)) {
     const tabId = sender?.tab?.id;
     const tabUrl = sender?.tab?.url;
@@ -181,7 +183,9 @@ function showNotification(iconUrl: string, type: chrome.notifications.TemplateTy
     priority
   };
 
-  void browser.notifications.create(opt);
+  void browser.notifications.create(opt).catch((error) => {
+    logExtensionError('Unable to create notification', error, { operation: 'notification' });
+  });
 }
 
 async function maybeInjectContentScripts(tabId: number, url: string) {
@@ -210,7 +214,7 @@ async function maybeInjectContentScripts(tabId: number, url: string) {
     await injectStyles(tabId);
     await injectScripts(tabId);
   } catch (e) {
-    console.error('Error during dynamic injection:', e);
+    logExtensionError('Error during dynamic injection', e, { operation: 'script_injection' });
   }
 }
 
@@ -222,7 +226,7 @@ async function injectStyles(tabId: number) {
     });
   } catch (e) {
     // Ignore styling failures; script can still run.
-    console.warn('Style injection skipped:', e);
+    logExtensionError('Style injection skipped', e, { operation: 'script_injection' });
   }
 }
 
@@ -236,7 +240,7 @@ async function injectScripts(tabId: number) {
   });
 }
 
-export async function refreshAllowedSitePatterns() {
+async function refreshAllowedSitePatterns() {
   try {
     const items = await getFromStorage<Record<string, unknown>>('wordspotting_website_list');
     const allowedSites = Array.isArray(items.wordspotting_website_list)
@@ -244,7 +248,7 @@ export async function refreshAllowedSitePatterns() {
       : [];
     compiledAllowedSites = compileSitePatterns(allowedSites);
   } catch (e) {
-    console.warn('Failed to refresh allowed site patterns:', e);
+    logExtensionError('Failed to refresh allowed site patterns', e);
     compiledAllowedSites = [];
   }
 }
@@ -275,14 +279,18 @@ async function updateBadgeForTab(tabId: number, url?: string) {
     const count = lastCountByTab.get(tabId) ?? 0;
     setCountBadge(tabId, count);
   } catch (e) {
-    console.warn('Unable to update badge status:', e);
+    logExtensionError('Unable to update badge status', e, { operation: 'badge_update' });
   }
 }
 
 function setBadge(tabId: number, text: string, color?: string) {
-  void browser.action.setBadgeText({ tabId, text });
+  void browser.action.setBadgeText({ tabId, text }).catch((error) => {
+    logExtensionError('Unable to set badge text', error, { operation: 'badge_update' });
+  });
   if (color) {
-    void browser.action.setBadgeBackgroundColor({ tabId, color });
+    void browser.action.setBadgeBackgroundColor({ tabId, color }).catch((error) => {
+      logExtensionError('Unable to set badge color', error, { operation: 'badge_update' });
+    });
   }
 }
 
@@ -290,7 +298,7 @@ function setInactiveBadge(tabId: number) {
   setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
 }
 
-export function setCountBadge(tabId: number, count: number) {
+function setCountBadge(tabId: number, count: number) {
   const text = count > 0 ? String(count) : '0';
   setBadge(tabId, text, BADGE_ACTIVE_COLOR);
 }
@@ -306,27 +314,4 @@ async function isContentAlreadyInjected(tabId: number) {
     // If we can't check (navigation/restricted), assume not injected.
     return false;
   }
-}
-
-function exposeGlobalsForTests() {
-  const g = globalThis as typeof globalThis & {
-    handleMessage?: typeof handleMessage;
-    setCountBadge?: typeof setCountBadge;
-    refreshAllowedSitePatterns?: typeof refreshAllowedSitePatterns;
-    saveToStorage?: typeof saveToStorage;
-    __name?: (target: unknown, value?: string) => unknown;
-  };
-
-  g.handleMessage = handleMessage;
-  g.setCountBadge = setCountBadge;
-  g.refreshAllowedSitePatterns = refreshAllowedSitePatterns;
-  g.saveToStorage = saveToStorage;
-  if (!g.__name) {
-    g.__name = (target) => target;
-  }
-
-  Object.defineProperty(globalThis, 'compiledAllowedSites', {
-    get: () => compiledAllowedSites,
-    set: (value) => { compiledAllowedSites = value; }
-  });
 }
