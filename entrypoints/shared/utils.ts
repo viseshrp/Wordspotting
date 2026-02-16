@@ -64,16 +64,20 @@ function isPromise<T>(value: MaybePromise<T>): value is Promise<T> {
   return Boolean(value) && typeof (value as Promise<T>).then === 'function';
 }
 
-/**
- * Storage area - use sync for cross-device persistence.
- */
-const storageArea = browser.storage.sync;
+function getStorageArea() {
+  const area = browser?.storage?.sync;
+  if (!area) {
+    throw new Error('Storage API unavailable');
+  }
+  return area;
+}
 
 /**
  * Save object to chrome.storage.sync
  */
 export function saveToStorage(obj: Record<string, unknown>): Promise<void> {
   return new Promise((resolve, reject) => {
+    const storageArea = getStorageArea();
     const maybe = storageArea.set(obj, () => {
       const err = browser.runtime.lastError;
       if (err) {
@@ -94,6 +98,7 @@ export function saveToStorage(obj: Record<string, unknown>): Promise<void> {
  */
 export function getFromStorage<T = Record<string, unknown>>(keys: StorageKeys): Promise<T> {
   return new Promise((resolve, reject) => {
+    const storageArea = getStorageArea();
     const maybe = storageArea.get(keys as unknown as string | string[] | Record<string, unknown>, (items: Record<string, unknown>) => {
       const err = browser.runtime.lastError;
       if (err) {

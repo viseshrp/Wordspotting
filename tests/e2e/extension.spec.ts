@@ -205,6 +205,54 @@ test('highlight mode keeps keyword detection active after settings update', asyn
       return getWordState(id);
     };
 
+    const getHighlightState = async (id: number) => {
+      const [inPage] = await chrome.scripting.executeScript({
+        target: { tabId: id },
+        func: () => {
+          const supportsHighlights = typeof CSS !== 'undefined' && 'highlights' in CSS;
+          if (!supportsHighlights) {
+            return {
+              supportsHighlights: false,
+              hasHighlightStyle: false,
+              rangeCount: 0
+            };
+          }
+
+          const hasHighlightStyle = Array.from(document.querySelectorAll('style')).some(
+            (style) => (style.textContent || '').includes('::highlight(wordspotting-match)')
+          );
+          const entry = CSS.highlights.get('wordspotting-match');
+          const rangeCount = entry && typeof (entry as { size?: unknown }).size === 'number'
+            ? ((entry as { size: number }).size)
+            : 0;
+
+          return {
+            supportsHighlights: true,
+            hasHighlightStyle,
+            rangeCount
+          };
+        }
+      });
+
+      return inPage?.result as {
+        supportsHighlights: boolean;
+        hasHighlightStyle: boolean;
+        rangeCount: number;
+      };
+    };
+
+    const waitForHighlightApplied = async (id: number, timeoutMs = 8000) => {
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        const state = await getHighlightState(id);
+        if (state.supportsHighlights && state.hasHighlightStyle && state.rangeCount > 0) {
+          return state;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return getHighlightState(id);
+    };
+
     await chrome.storage.sync.set({
       wordspotting_website_list: ['*example.com*'],
       wordspotting_word_list: ['example'],
@@ -214,10 +262,14 @@ test('highlight mode keeps keyword detection active after settings update', asyn
     });
 
     const afterWord = await waitForWordDetection(tabId);
+    const afterHighlight = await waitForHighlightApplied(tabId);
     await chrome.tabs.remove(tabId);
-    return { afterWord };
+    return { afterWord, afterHighlight };
   });
 
   expect(result.afterWord.err).toBeNull();
   expect(result.afterWord.hasWords).toBe(true);
+  expect(result.afterHighlight.supportsHighlights).toBe(true);
+  expect(result.afterHighlight.hasHighlightStyle).toBe(true);
+  expect(result.afterHighlight.rangeCount).toBeGreaterThan(0);
 });

@@ -21,6 +21,7 @@ const BADGE_INACTIVE_TEXT = '-';
 const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html';
 const OFFSCREEN_SCAN_TIMEOUT_MS = 5000;
 let creatingOffscreenDocument: Promise<void> | null = null;
+const OFFSCREEN_RECEIVER_RETRY_DELAY_MS = 75;
 
 type WordspottingMessage = {
   wordfound: boolean;
@@ -268,7 +269,25 @@ async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsReq
   const responsePromise = Promise.resolve(
     browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>
   );
-  return await withTimeout(responsePromise, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scanner timed out');
+  try {
+    return await withTimeout(responsePromise, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scanner timed out');
+  } catch (error) {
+    if (!isOffscreenReceiverUnavailable(error)) {
+      throw error;
+    }
+
+    // Offscreen document can exist before its message listener is ready. Retry once.
+    await ensureOffscreenDocument();
+    await new Promise((resolve) => setTimeout(resolve, OFFSCREEN_RECEIVER_RETRY_DELAY_MS));
+    const retryPromise = Promise.resolve(
+      browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>
+    );
+    return await withTimeout(retryPromise, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scanner timed out');
+  }
+}
+
+function isOffscreenReceiverUnavailable(error: unknown) {
+  return /receiving end does not exist/i.test(getErrorMessage(error));
 }
 
 async function ensureOffscreenDocument() {
