@@ -83,6 +83,7 @@ export default defineBackground(() => {
     if (area !== 'sync') return;
     if (!changes.wordspotting_website_list &&
       !changes.wordspotting_extension_on &&
+      !changes.wordspotting_word_list &&
       !changes.wordspotting_highlight_on &&
       !changes.wordspotting_highlight_color) return;
 
