@@ -6,7 +6,8 @@ import {
   isUrlAllowedCompiled,
   isValidObj,
   logExtensionError,
-  logit
+  logit,
+  withTimeout
 } from './shared/utils';
 import { hashString, scanTextForKeywords } from './shared/core/scanner';
 
@@ -397,20 +398,6 @@ async function sendOffscreenScanRequest<T>(request: Record<string, unknown>) {
   }
 
   return await withTimeout(Promise.resolve(maybePromise as Promise<T>), OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scan timed out');
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string) {
-  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_resolve, reject) => {
-        timeoutHandle = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
-      })
-    ]);
-  } finally {
-    if (timeoutHandle) clearTimeout(timeoutHandle);
-  }
 }
 
 function getChunkingConfig(text: string, keywordList: string[]) {

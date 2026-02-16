@@ -5,7 +5,8 @@ import {
   isUrlAllowed,
   isUrlAllowedCompiled,
   logExtensionError,
-  logit
+  logit,
+  withTimeout
 } from './shared/utils';
 import { scanTextForKeywords, scanTextForMatches } from './shared/core/scanner';
 import { ensureSettingsInitialized } from './shared/settings';
@@ -281,20 +282,6 @@ async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsReq
     browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>
   );
   return await withTimeout(responsePromise, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scanner timed out');
-}
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string) {
-  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_resolve, reject) => {
-        timeoutHandle = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
-      })
-    ]);
-  } finally {
-    if (timeoutHandle) clearTimeout(timeoutHandle);
-  }
 }
 
 async function ensureOffscreenDocument() {
