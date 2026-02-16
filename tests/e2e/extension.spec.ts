@@ -1,22 +1,25 @@
 import { test, expect } from './fixtures';
+import type { Worker } from '@playwright/test';
+
+async function waitForSettingsInit(serviceWorker: Worker) {
+  await serviceWorker.evaluate(async () => {
+    await new Promise<void>((resolve) => {
+      const poll = () => chrome.storage.sync.get('wordspotting_settings_version', (items) => {
+        if (typeof items.wordspotting_settings_version === 'number') {
+          resolve();
+          return;
+        }
+        setTimeout(poll, 100);
+      });
+      poll();
+    });
+  });
+}
 
 test('smoke: public runtime APIs are operational', async ({ serviceWorker }) => {
+  await waitForSettingsInit(serviceWorker);
+
   const result = await serviceWorker.evaluate(async () => {
-    const waitForSettingsInit = async () => {
-      await new Promise<void>((resolve) => {
-        const poll = () => chrome.storage.sync.get('wordspotting_settings_version', (items) => {
-          if (typeof items.wordspotting_settings_version === 'number') {
-            resolve();
-            return;
-          }
-          setTimeout(poll, 100);
-        });
-        poll();
-      });
-    };
-
-    await waitForSettingsInit();
-
     const testSettings = {
       wordspotting_website_list: ['*example.com*'],
       wordspotting_word_list: ['example'],
@@ -71,22 +74,9 @@ test('smoke: public runtime APIs are operational', async ({ serviceWorker }) => 
 });
 
 test('keyword detection activates for pre-existing tab after settings update', async ({ serviceWorker }) => {
+  await waitForSettingsInit(serviceWorker);
+
   const result = await serviceWorker.evaluate(async () => {
-    const waitForSettingsInit = async () => {
-      await new Promise<void>((resolve) => {
-        const poll = () => chrome.storage.sync.get('wordspotting_settings_version', (items) => {
-          if (typeof items.wordspotting_settings_version === 'number') {
-            resolve();
-            return;
-          }
-          setTimeout(poll, 100);
-        });
-        poll();
-      });
-    };
-
-    await waitForSettingsInit();
-
     // Start from a disabled/unlisted state so the tab loads without injected content.
     await chrome.storage.sync.set({
       wordspotting_website_list: [],
