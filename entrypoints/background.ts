@@ -5,8 +5,7 @@ import {
   isUrlAllowed,
   isUrlAllowedCompiled,
   logExtensionError,
-  logit,
-  saveToStorage
+  logit
 } from './shared/utils';
 import { ensureSettingsInitialized } from './shared/settings';
 
@@ -18,7 +17,6 @@ const lastCountByTab = new Map<number, number>();
 const BADGE_ACTIVE_COLOR = '#4caf50';
 const BADGE_INACTIVE_COLOR = '#9e9e9e';
 const BADGE_INACTIVE_TEXT = '-';
-const SHOULD_EXPOSE_TEST_GLOBALS = import.meta.env.MODE === 'test' || import.meta.env.MODE === 'e2e';
 
 type WordspottingMessage = {
   wordfound: boolean;
@@ -32,10 +30,6 @@ function isWordspottingMessage(request: unknown): request is WordspottingMessage
 }
 
 export default defineBackground(() => {
-  if (SHOULD_EXPOSE_TEST_GLOBALS) {
-    exposeGlobalsForTests();
-  }
-
   browser.runtime.onInstalled.addListener(async (details) => {
     try {
       await ensureSettingsInitialized();
@@ -120,7 +114,7 @@ export default defineBackground(() => {
   });
 });
 
-export async function handleMessage(request: unknown, sender: chrome.runtime.MessageSender) {
+async function handleMessage(request: unknown, sender: chrome.runtime.MessageSender) {
   if (isWordspottingMessage(request)) {
     const tabId = sender?.tab?.id;
     const tabUrl = sender?.tab?.url;
@@ -248,7 +242,7 @@ async function injectScripts(tabId: number) {
   });
 }
 
-export async function refreshAllowedSitePatterns() {
+async function refreshAllowedSitePatterns() {
   try {
     const items = await getFromStorage<Record<string, unknown>>('wordspotting_website_list');
     const allowedSites = Array.isArray(items.wordspotting_website_list)
@@ -307,7 +301,7 @@ function setInactiveBadge(tabId: number) {
   setBadge(tabId, BADGE_INACTIVE_TEXT, BADGE_INACTIVE_COLOR);
 }
 
-export function setCountBadge(tabId: number, count: number) {
+function setCountBadge(tabId: number, count: number) {
   const text = count > 0 ? String(count) : '0';
   setBadge(tabId, text, BADGE_ACTIVE_COLOR);
 }
@@ -323,27 +317,4 @@ async function isContentAlreadyInjected(tabId: number) {
     // If we can't check (navigation/restricted), assume not injected.
     return false;
   }
-}
-
-function exposeGlobalsForTests() {
-  const g = globalThis as typeof globalThis & {
-    handleMessage?: typeof handleMessage;
-    setCountBadge?: typeof setCountBadge;
-    refreshAllowedSitePatterns?: typeof refreshAllowedSitePatterns;
-    saveToStorage?: typeof saveToStorage;
-    __name?: (target: unknown, value?: string) => unknown;
-  };
-
-  g.handleMessage = handleMessage;
-  g.setCountBadge = setCountBadge;
-  g.refreshAllowedSitePatterns = refreshAllowedSitePatterns;
-  g.saveToStorage = saveToStorage;
-  if (!g.__name) {
-    g.__name = (target) => target;
-  }
-
-  Object.defineProperty(globalThis, 'compiledAllowedSites', {
-    get: () => compiledAllowedSites,
-    set: (value) => { compiledAllowedSites = value; }
-  });
 }
