@@ -66,6 +66,12 @@ export default defineBackground(() => {
       try {
         const tab = await browser.tabs.get(activeInfo.tabId);
         if (!tab || typeof tab.id !== 'number') return;
+        await maybeInjectContentScripts(tab.id, tab.url || '');
+        try {
+          await browser.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
+        } catch {
+          // Ignore missing receivers (content may not be injected yet/restricted).
+        }
         await updateBadgeForTab(tab.id, tab.url);
       } catch {
         // ignore
@@ -83,6 +89,7 @@ export default defineBackground(() => {
     if (area !== 'sync') return;
     if (!changes.wordspotting_website_list &&
       !changes.wordspotting_extension_on &&
+      !changes.wordspotting_word_list &&
       !changes.wordspotting_highlight_on &&
       !changes.wordspotting_highlight_color) return;
 
@@ -95,10 +102,14 @@ export default defineBackground(() => {
         const tabs = await browser.tabs.query({ active: true, currentWindow: true });
         const tab = tabs[0];
         if (!tab || typeof tab.id !== 'number') return;
+
+        const extensionState = await getFromStorage<Record<string, unknown>>('wordspotting_extension_on');
+        const extensionEnabled = extensionState.wordspotting_extension_on !== false;
+
         await updateBadgeForTab(tab.id, tab.url);
-        if (changes.wordspotting_extension_on?.newValue === true) {
+        if (extensionEnabled) {
           await maybeInjectContentScripts(tab.id, tab.url || '');
-        } else if (changes.wordspotting_extension_on?.newValue === false) {
+        } else {
           setInactiveBadge(tab.id);
         }
         try {
