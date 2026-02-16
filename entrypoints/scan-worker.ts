@@ -3,6 +3,13 @@ import { buildCombinedRegex, normalizeKeywords, scanTextForMatches } from './sha
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_OVERLAP = 200;
 
+function advanceRegexIfEmptyMatch(regex: RegExp, match: RegExpExecArray, textLength: number): void {
+  if (match[0].length === 0) {
+    if (regex.lastIndex >= textLength) return;
+    regex.lastIndex += 1;
+  }
+}
+
 function scanTextInChunks(keywordList: string[], text: string, chunkSize: number, overlap: number) {
   const validKeywords = normalizeKeywords(keywordList);
   if (validKeywords.length === 0) return [] as string[];
@@ -38,6 +45,7 @@ function scanTextInChunks(keywordList: string[], text: string, chunkSize: number
         return Array.from(foundKeywords);
       }
 
+      advanceRegexIfEmptyMatch(regex, match, chunk.length);
       match = regex.exec(chunk);
     }
 

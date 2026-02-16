@@ -28,6 +28,13 @@ export function buildCombinedRegex(validKeywords: string[]): { regex: RegExp; pa
   return { regex: new RegExp(combinedPattern, 'ig'), patternMap };
 }
 
+function advanceRegexIfEmptyMatch(regex: RegExp, match: RegExpExecArray, textLength: number): void {
+  if (match[0].length === 0) {
+    if (regex.lastIndex >= textLength) return;
+    regex.lastIndex += 1;
+  }
+}
+
 export function scanTextForKeywords(keywordList: unknown, textToScan: unknown): string[] {
   const validKeywords = normalizeKeywords(keywordList);
   if (validKeywords.length === 0) return [];
@@ -56,6 +63,7 @@ export function scanTextForKeywords(keywordList: unknown, textToScan: unknown): 
       return Array.from(foundKeywords);
     }
 
+    advanceRegexIfEmptyMatch(regex, match, text.length);
     match = regex.exec(text);
   }
 
@@ -89,6 +97,7 @@ export function scanTextForMatches(keywordList: unknown, textToScan: unknown): H
         }
       }
     }
+    advanceRegexIfEmptyMatch(regex, match, text.length);
     match = regex.exec(text);
   }
 

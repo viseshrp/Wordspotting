@@ -49,6 +49,14 @@ describe('scanner helpers', () => {
     expect(scanTextForMatches(['[invalid'], 'text')).toEqual([]);
   });
 
+  test('scanTextForKeywords handles zero-length regex without looping', () => {
+    expect(scanTextForKeywords(['^'], 'abc')).toEqual(['^']);
+  });
+
+  test('scanTextForMatches handles zero-length regex without looping', () => {
+    expect(scanTextForMatches(['^'], 'abc')).toEqual([{ keyword: '^', index: 0, length: 0 }]);
+  });
+
   test('scanChunksForMatches returns chunk-indexed matches', () => {
     const results = scanChunksForMatches(['foo', 'bar'], [
       { id: 0, text: 'foo x' },

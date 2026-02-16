@@ -1,4 +1,4 @@
-import { scanChunksForMatches, scanTextForKeywords, type HighlightMatch } from '../shared/core/scanner';
+import type { HighlightMatch } from '../shared/core/scanner';
 import { getErrorMessage, logExtensionError } from '../shared/utils';
 
 const DEFAULT_CHUNK_SIZE = 150000;
@@ -147,7 +147,7 @@ function getSafeOverlap(overlap: unknown) {
 async function scanTextUsingWorker(request: ScanTextRequest) {
   const worker = getScanWorkerAsync();
   if (!worker) {
-    return scanTextForKeywords(request.keywords, request.text);
+    throw new Error('Offscreen scan worker unavailable');
   }
 
   return await new Promise<string[]>((resolve, reject) => {
@@ -167,7 +167,7 @@ async function scanTextUsingWorker(request: ScanTextRequest) {
 async function scanHighlightsUsingWorker(request: ScanHighlightsRequest) {
   const worker = getScanWorkerAsync();
   if (!worker) {
-    return scanHighlightsFallback(request.keywords, request.chunks);
+    throw new Error('Offscreen scan worker unavailable');
   }
 
   return await new Promise<Record<number, HighlightMatch[]>>((resolve, reject) => {
@@ -180,10 +180,6 @@ async function scanHighlightsUsingWorker(request: ScanHighlightsRequest) {
       chunks: request.chunks
     });
   });
-}
-
-function scanHighlightsFallback(keywordList: string[], chunks: Array<{ id: number; text: string }>) {
-  return scanChunksForMatches(keywordList, chunks);
 }
 
 if (typeof browser !== 'undefined' && browser.runtime?.onMessage) {
