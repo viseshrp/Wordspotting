@@ -162,7 +162,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderEmpty(msg: string) {
     if (!keywordContainer) return;
-    keywordContainer.innerHTML = `<div class="empty-state">${msg}</div>`;
+    keywordContainer.innerHTML = '';
+    const emptyState = document.createElement('div');
+    emptyState.className = 'empty-state';
+    emptyState.textContent = msg;
+    keywordContainer.appendChild(emptyState);
   }
 
   function applyTheme(value: string) {
