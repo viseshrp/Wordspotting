@@ -2,6 +2,21 @@ import { test, expect } from './fixtures';
 
 test('smoke: public runtime APIs are operational', async ({ serviceWorker }) => {
   const result = await serviceWorker.evaluate(async () => {
+    const waitForSettingsInit = async () => {
+      await new Promise<void>((resolve) => {
+        const poll = () => chrome.storage.sync.get('wordspotting_settings_version', (items) => {
+          if (typeof items.wordspotting_settings_version === 'number') {
+            resolve();
+            return;
+          }
+          setTimeout(poll, 100);
+        });
+        poll();
+      });
+    };
+
+    await waitForSettingsInit();
+
     const testSettings = {
       wordspotting_website_list: ['*example.com*'],
       wordspotting_word_list: ['example'],
@@ -53,4 +68,87 @@ test('smoke: public runtime APIs are operational', async ({ serviceWorker }) => 
   expect(result.storedKeyCount).toBeGreaterThan(0);
   expect(result.hasSettings).toBe(true);
   expect(result.pageTitle.length).toBeGreaterThan(0);
+});
+
+test('keyword detection activates for pre-existing tab after settings update', async ({ serviceWorker }) => {
+  const result = await serviceWorker.evaluate(async () => {
+    const waitForSettingsInit = async () => {
+      await new Promise<void>((resolve) => {
+        const poll = () => chrome.storage.sync.get('wordspotting_settings_version', (items) => {
+          if (typeof items.wordspotting_settings_version === 'number') {
+            resolve();
+            return;
+          }
+          setTimeout(poll, 100);
+        });
+        poll();
+      });
+    };
+
+    await waitForSettingsInit();
+
+    // Start from a disabled/unlisted state so the tab loads without injected content.
+    await chrome.storage.sync.set({
+      wordspotting_website_list: [],
+      wordspotting_word_list: [],
+      wordspotting_extension_on: true,
+      wordspotting_notifications_on: false,
+      wordspotting_highlight_on: false
+    });
+
+    const tab = await chrome.tabs.create({ url: 'https://example.com', active: true });
+    const tabId = tab.id;
+    if (typeof tabId !== 'number') {
+      throw new Error('Tab ID is missing');
+    }
+
+    await new Promise<void>((resolve) => {
+      const waitForComplete = () => chrome.tabs.get(tabId, (info) => {
+        if (info?.status === 'complete') {
+          resolve();
+        } else {
+          setTimeout(waitForComplete, 100);
+        }
+      });
+      waitForComplete();
+    });
+
+    const before = await new Promise<{ err: string | null; hasWords: boolean }>((resolve) => {
+      chrome.tabs.sendMessage(tabId, { from: 'popup', subject: 'word_list_request' }, (resp) => {
+        resolve({
+          err: chrome.runtime.lastError?.message || null,
+          hasWords: Array.isArray(resp?.word_list) && resp.word_list.length > 0
+        });
+      });
+    });
+
+    // Update settings while tab is already open; background should inject and trigger re-scan.
+    await chrome.storage.sync.set({
+      wordspotting_website_list: ['*example.com*'],
+      wordspotting_word_list: ['example'],
+      wordspotting_extension_on: true
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+
+    const after = await new Promise<{ err: string | null; hasWords: boolean; badgeText: string }>((resolve) => {
+      chrome.tabs.sendMessage(tabId, { from: 'popup', subject: 'word_list_request' }, async (resp) => {
+        const badgeText = await chrome.action.getBadgeText({ tabId });
+        resolve({
+          err: chrome.runtime.lastError?.message || null,
+          hasWords: Array.isArray(resp?.word_list) && resp.word_list.length > 0,
+          badgeText
+        });
+      });
+    });
+
+    await chrome.tabs.remove(tabId);
+    return { before, after };
+  });
+
+  expect(result.before.err).toContain('Receiving end does not exist');
+  expect(result.before.hasWords).toBe(false);
+  expect(result.after.err).toBeNull();
+  expect(result.after.hasWords).toBe(true);
+  expect(Number(result.after.badgeText)).toBeGreaterThanOrEqual(1);
 });

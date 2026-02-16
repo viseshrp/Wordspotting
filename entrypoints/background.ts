@@ -66,6 +66,12 @@ export default defineBackground(() => {
       try {
         const tab = await browser.tabs.get(activeInfo.tabId);
         if (!tab || typeof tab.id !== 'number') return;
+        await maybeInjectContentScripts(tab.id, tab.url || '');
+        try {
+          await browser.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
+        } catch {
+          // Ignore missing receivers (content may not be injected yet/restricted).
+        }
         await updateBadgeForTab(tab.id, tab.url);
       } catch {
         // ignore
@@ -93,19 +99,22 @@ export default defineBackground(() => {
 
     void (async () => {
       try {
-        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-        const tab = tabs[0];
-        if (!tab || typeof tab.id !== 'number') return;
-        await updateBadgeForTab(tab.id, tab.url);
-        if (changes.wordspotting_extension_on?.newValue === true) {
-          await maybeInjectContentScripts(tab.id, tab.url || '');
-        } else if (changes.wordspotting_extension_on?.newValue === false) {
-          setInactiveBadge(tab.id);
-        }
-        try {
-          await browser.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
-        } catch {
-          // Ignore missing receivers (content may not be injected).
+        const tabs = await browser.tabs.query({ currentWindow: true });
+        const extensionState = await getFromStorage<Record<string, unknown>>('wordspotting_extension_on');
+        const extensionEnabled = extensionState.wordspotting_extension_on !== false;
+        for (const tab of tabs) {
+          if (!tab || typeof tab.id !== 'number') continue;
+          await updateBadgeForTab(tab.id, tab.url);
+          if (extensionEnabled) {
+            await maybeInjectContentScripts(tab.id, tab.url || '');
+          } else {
+            setInactiveBadge(tab.id);
+          }
+          try {
+            await browser.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
+          } catch {
+            // Ignore missing receivers (content may not be injected).
+          }
         }
       } catch (error) {
         logExtensionError('Failed to handle storage.onChanged tab sync', error, { operation: 'tab_query' });
