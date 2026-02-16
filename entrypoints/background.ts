@@ -327,7 +327,7 @@ async function ensureOffscreenDocument() {
   } catch (error) {
     const message = getErrorMessage(error);
     if (!/single offscreen document|already exists/i.test(message)) {
-      logExtensionError('Unable to create offscreen scanner document', error, 'error');
+      logExtensionError('Unable to create offscreen scanner document', error, { level: 'error', operation: 'runtime_context' });
       return false;
     }
   } finally {

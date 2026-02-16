@@ -197,7 +197,7 @@ async function performStandardScan(keywordList: string[], bodyText: string) {
   try {
     occurringWordList = await scanWithWorker(keywordList, bodyText);
   } catch (e) {
-    logExtensionError('Offscreen worker scan failed, falling back', e);
+    logExtensionError('Offscreen worker scan failed, falling back', e, { operation: 'runtime_context' });
     occurringWordList = getWordList(keywordList, bodyText);
   }
   return occurringWordList.length;
