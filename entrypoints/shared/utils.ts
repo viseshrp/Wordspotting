@@ -23,43 +23,40 @@ type LogExtensionErrorOptions = {
 
 const IGNORABLE_EXTENSION_ERROR_PATTERNS: Record<ExtensionErrorOperation, RegExp[]> = {
   tab_query: [
-    /no tab/i,
-    /invalid tab/i,
-    /tab .*closed/i,
-    /context invalidated/i
+    /no tab with id/i,
+    /the tab was closed/i,
+    /tabs cannot be queried right now/i,
+    /extension context invalidated/i
   ],
   tab_message: [
     /receiving end does not exist/i,
-    /message port closed/i,
-    /no tab/i,
-    /invalid tab/i,
-    /tab .*closed/i,
-    /context invalidated/i
+    /listener indicated an asynchronous response/i,
+    /message (port|channel) closed before a response was received/i,
+    /no tab with id/i,
+    /the tab was closed/i,
+    /extension context invalidated/i
   ],
   tab_reload: [
-    /no tab/i,
-    /invalid tab/i,
-    /tab .*closed/i,
-    /context invalidated/i
+    /no tab with id/i,
+    /the tab was closed/i,
+    /extension context invalidated/i
   ],
   script_injection: [
-    /no tab/i,
-    /invalid tab/i,
-    /tab .*closed/i,
-    /cannot access .*url/i,
-    /context invalidated/i
+    /no tab with id/i,
+    /the tab was closed/i,
+    /cannot access contents of (the page|url)/i,
+    /extension context invalidated/i
   ],
   badge_update: [
-    /no tab/i,
-    /invalid tab/i,
-    /tab .*closed/i,
-    /context invalidated/i
+    /no tab with id/i,
+    /the tab was closed/i,
+    /extension context invalidated/i
   ],
   notification: [
-    /context invalidated/i
+    /extension context invalidated/i
   ],
   runtime_context: [
-    /context invalidated/i
+    /extension context invalidated/i
   ]
 };
 

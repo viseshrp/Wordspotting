@@ -143,7 +143,8 @@ describe('utils', () => {
   });
   
   test('isIgnorableExtensionError handles non-Error values', () => {
-    expect(utils.isIgnorableExtensionError('Invalid tab ID: 9', 'tab_query')).toBe(true);
+    expect(utils.isIgnorableExtensionError('The tab was closed.', 'tab_query')).toBe(true);
+    expect(utils.isIgnorableExtensionError('Invalid tab ID: 9', 'tab_query')).toBe(false);
     expect(utils.isIgnorableExtensionError({ message: 'some object error' }, 'tab_query')).toBe(false);
   });
 
