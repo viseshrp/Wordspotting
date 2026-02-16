@@ -64,6 +64,14 @@ function isPromise<T>(value: MaybePromise<T>): value is Promise<T> {
   return Boolean(value) && typeof (value as Promise<T>).then === 'function';
 }
 
+/**
+ * Resolve storage lazily instead of at module load time.
+ *
+ * Why: this utils module is imported by multiple runtime contexts (background,
+ * content script, offscreen document). Some contexts can initialize before the
+ * storage facade is fully available; eager access at import time can crash the
+ * consumer before its listeners are registered.
+ */
 function getStorageArea() {
   const area = browser?.storage?.sync;
   if (!area) {
@@ -77,6 +85,8 @@ function getStorageArea() {
  */
 export function saveToStorage(obj: Record<string, unknown>): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Keep callback style for broad browser compatibility, but also support
+    // Promise-returning implementations when present.
     const storageArea = getStorageArea();
     const maybe = storageArea.set(obj, () => {
       const err = browser.runtime.lastError;
@@ -98,6 +108,7 @@ export function saveToStorage(obj: Record<string, unknown>): Promise<void> {
  */
 export function getFromStorage<T = Record<string, unknown>>(keys: StorageKeys): Promise<T> {
   return new Promise((resolve, reject) => {
+    // Mirror saveToStorage strategy: callback path + Promise path.
     const storageArea = getStorageArea();
     const maybe = storageArea.get(keys as unknown as string | string[] | Record<string, unknown>, (items: Record<string, unknown>) => {
       const err = browser.runtime.lastError;

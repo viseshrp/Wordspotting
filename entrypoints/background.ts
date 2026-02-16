@@ -276,7 +276,13 @@ async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsReq
       throw error;
     }
 
-    // Offscreen document can exist before its message listener is ready. Retry once.
+    /*
+     * Chrome can report an offscreen context as existing while the offscreen
+     * script is still booting and has not registered runtime.onMessage yet.
+     * In that narrow startup window, sendMessage fails with
+     * "Receiving end does not exist". A single short retry closes that race
+     * without adding indefinite retries or masking unrelated failures.
+     */
     await ensureOffscreenDocument();
     await new Promise((resolve) => setTimeout(resolve, OFFSCREEN_RECEIVER_RETRY_DELAY_MS));
     const retryPromise = Promise.resolve(
@@ -287,6 +293,8 @@ async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsReq
 }
 
 function isOffscreenReceiverUnavailable(error: unknown) {
+  // Match only the stable substring used by Chrome for missing listeners.
+  // Keep this narrow so we do not accidentally retry on unrelated runtime errors.
   return /receiving end does not exist/i.test(getErrorMessage(error));
 }
 

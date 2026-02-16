@@ -209,6 +209,9 @@ test('highlight mode keeps keyword detection active after settings update', asyn
       const [inPage] = await chrome.scripting.executeScript({
         target: { tabId: id },
         func: () => {
+          // Validate user-visible highlight behavior (painted ranges), not just
+          // keyword detection or badge updates. This catches regressions where
+          // scanning still works but highlight application silently fails.
           const supportsHighlights = typeof CSS !== 'undefined' && 'highlights' in CSS;
           if (!supportsHighlights) {
             return {
@@ -245,6 +248,8 @@ test('highlight mode keeps keyword detection active after settings update', asyn
       const started = Date.now();
       while (Date.now() - started < timeoutMs) {
         const state = await getHighlightState(id);
+        // Require both style injection and at least one range to avoid false
+        // positives from partial setup.
         if (state.supportsHighlights && state.hasHighlightStyle && state.rangeCount > 0) {
           return state;
         }
