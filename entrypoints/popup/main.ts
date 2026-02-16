@@ -1,5 +1,6 @@
 import {
   buildPatternsForTab,
+  type ExtensionErrorOperation,
   getFromStorage,
   logExtensionError,
   isUrlAllowed,
@@ -21,8 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     { value: 'full', label: 'Full URL (exact match)' }
   ];
   const refreshPrefKey = 'wordspotting_refresh_on_add';
-  const handleAsyncError = (context: string) => (error: unknown) => {
-    logExtensionError(context, error);
+  const handleAsyncError = (context: string, operation?: ExtensionErrorOperation) => (error: unknown) => {
+    logExtensionError(context, error, operation ? { operation } : undefined);
   };
 
   // Theme
@@ -67,10 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
             void browser.action.setBadgeText({
               text: count > 0 ? count.toString() : '0',
               tabId: currTab.id
-            }).catch(handleAsyncError('Failed to sync popup badge count'));
+            }).catch(handleAsyncError('Failed to sync popup badge count', 'badge_update'));
           }
         }).catch((error) => {
-          logExtensionError('Unable to fetch popup word list', error);
+          logExtensionError('Unable to fetch popup word list', error, { operation: 'tab_message' });
           // Content script might not be injected yet
           renderEmpty('Not active on this page.');
         });
@@ -80,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       if (currTab.url) updateSitePreview(currTab.url);
     }
-  }).catch(handleAsyncError('Failed to query active tab for popup'));
+  }).catch(handleAsyncError('Failed to query active tab for popup', 'tab_query'));
 
   if (addSiteBtn) {
     addSiteBtn.addEventListener('click', () => {
@@ -102,13 +103,15 @@ document.addEventListener('DOMContentLoaded', () => {
           setAddSiteVisibility(false);
           window.close();
           if (refreshOnAddToggle?.checked) {
-            await browser.tabs.reload(tab.id);
+            await browser.tabs.reload(tab.id).catch((error) => {
+              logExtensionError('Failed to reload tab after adding allowlist site', error, { operation: 'tab_reload' });
+            });
           }
         } catch (e) {
           logExtensionError('Failed to add site to allowlist', e);
           showAlert('Could not save site.', 'Error', false);
         }
-      }).catch(handleAsyncError('Failed to query active tab while adding site'));
+      }).catch(handleAsyncError('Failed to query active tab while adding site', 'tab_query'));
     });
   }
 
@@ -126,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tab?.url) {
           updateSitePreview(tab.url);
         }
-      }).catch(handleAsyncError('Failed to refresh popup scope options'));
+      }).catch(handleAsyncError('Failed to refresh popup scope options', 'tab_query'));
     });
   }
 

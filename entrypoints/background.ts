@@ -1,7 +1,6 @@
 import {
   compileSitePatterns,
   getFromStorage,
-  isIgnorableExtensionError,
   isUrlAllowed,
   isUrlAllowedCompiled,
   logExtensionError,
@@ -108,7 +107,7 @@ export default defineBackground(() => {
           // Ignore missing receivers (content may not be injected).
         }
       } catch (error) {
-        logExtensionError('Failed to handle storage.onChanged tab sync', error);
+        logExtensionError('Failed to handle storage.onChanged tab sync', error, { operation: 'tab_query' });
       }
     })();
   });
@@ -185,7 +184,7 @@ function showNotification(iconUrl: string, type: chrome.notifications.TemplateTy
   };
 
   void browser.notifications.create(opt).catch((error) => {
-    logExtensionError('Unable to create notification', error);
+    logExtensionError('Unable to create notification', error, { operation: 'notification' });
   });
 }
 
@@ -215,8 +214,7 @@ async function maybeInjectContentScripts(tabId: number, url: string) {
     await injectStyles(tabId);
     await injectScripts(tabId);
   } catch (e) {
-    if (isIgnorableExtensionError(e)) return;
-    logExtensionError('Error during dynamic injection', e);
+    logExtensionError('Error during dynamic injection', e, { operation: 'script_injection' });
   }
 }
 
@@ -228,7 +226,7 @@ async function injectStyles(tabId: number) {
     });
   } catch (e) {
     // Ignore styling failures; script can still run.
-    logExtensionError('Style injection skipped', e);
+    logExtensionError('Style injection skipped', e, { operation: 'script_injection' });
   }
 }
 
@@ -281,18 +279,17 @@ async function updateBadgeForTab(tabId: number, url?: string) {
     const count = lastCountByTab.get(tabId) ?? 0;
     setCountBadge(tabId, count);
   } catch (e) {
-    if (isIgnorableExtensionError(e)) return;
-    logExtensionError('Unable to update badge status', e);
+    logExtensionError('Unable to update badge status', e, { operation: 'badge_update' });
   }
 }
 
 function setBadge(tabId: number, text: string, color?: string) {
   void browser.action.setBadgeText({ tabId, text }).catch((error) => {
-    logExtensionError('Unable to set badge text', error);
+    logExtensionError('Unable to set badge text', error, { operation: 'badge_update' });
   });
   if (color) {
     void browser.action.setBadgeBackgroundColor({ tabId, color }).catch((error) => {
-      logExtensionError('Unable to set badge color', error);
+      logExtensionError('Unable to set badge color', error, { operation: 'badge_update' });
     });
   }
 }

@@ -138,19 +138,19 @@ describe('utils', () => {
   });
 
   test('isIgnorableExtensionError detects transient extension runtime errors', () => {
-    expect(utils.isIgnorableExtensionError(new Error('No tab with id: 42'))).toBe(true);
-    expect(utils.isIgnorableExtensionError(new Error('Unexpected fatal error'))).toBe(false);
+    expect(utils.isIgnorableExtensionError(new Error('No tab with id: 42'), 'tab_query')).toBe(true);
+    expect(utils.isIgnorableExtensionError(new Error('Unexpected fatal error'), 'tab_query')).toBe(false);
   });
   
   test('isIgnorableExtensionError handles non-Error values', () => {
-    expect(utils.isIgnorableExtensionError('Invalid tab ID: 9')).toBe(true);
-    expect(utils.isIgnorableExtensionError({ message: 'some object error' })).toBe(false);
+    expect(utils.isIgnorableExtensionError('Invalid tab ID: 9', 'tab_query')).toBe(true);
+    expect(utils.isIgnorableExtensionError({ message: 'some object error' }, 'tab_query')).toBe(false);
   });
 
-  test('logExtensionError suppresses ignorable errors and logs unexpected ones', () => {
+  test('logExtensionError suppresses ignorable errors for an operation and logs unexpected ones', () => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    utils.logExtensionError('context', new Error('No tab with id: 42'));
-    utils.logExtensionError('context', new Error('Storage failed'));
+    utils.logExtensionError('context', new Error('No tab with id: 42'), { operation: 'tab_query' });
+    utils.logExtensionError('context', new Error('Storage failed'), { operation: 'tab_query' });
     expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
@@ -165,7 +165,7 @@ describe('utils', () => {
   test('logExtensionError suppresses warn logs in production mode', () => {
     vi.stubEnv('PROD', true);
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    utils.logExtensionError('context', new Error('Storage failed'), 'warn');
+    utils.logExtensionError('context', new Error('Storage failed'), { level: 'warn', operation: 'tab_query' });
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
     vi.unstubAllEnvs();

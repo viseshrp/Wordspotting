@@ -7,14 +7,61 @@ type StorageKeys = string | string[] | Record<string, unknown>;
 type MaybePromise<T> = Promise<T> | T | undefined;
 type LogLevel = 'warn' | 'error';
 
-const IGNORABLE_EXTENSION_ERROR_PATTERNS = [
-  'No tab with id',
-  'Invalid tab ID',
-  'The tab was closed',
-  'Could not establish connection. Receiving end does not exist',
-  'The message port closed before a response was received',
-  'Extension context invalidated'
-];
+export type ExtensionErrorOperation =
+  | 'tab_query'
+  | 'tab_message'
+  | 'tab_reload'
+  | 'script_injection'
+  | 'badge_update'
+  | 'notification'
+  | 'runtime_context';
+
+type LogExtensionErrorOptions = {
+  level?: LogLevel;
+  operation?: ExtensionErrorOperation;
+};
+
+const IGNORABLE_EXTENSION_ERROR_PATTERNS: Record<ExtensionErrorOperation, RegExp[]> = {
+  tab_query: [
+    /no tab/i,
+    /invalid tab/i,
+    /tab .*closed/i,
+    /context invalidated/i
+  ],
+  tab_message: [
+    /receiving end does not exist/i,
+    /message port closed/i,
+    /no tab/i,
+    /invalid tab/i,
+    /tab .*closed/i,
+    /context invalidated/i
+  ],
+  tab_reload: [
+    /no tab/i,
+    /invalid tab/i,
+    /tab .*closed/i,
+    /context invalidated/i
+  ],
+  script_injection: [
+    /no tab/i,
+    /invalid tab/i,
+    /tab .*closed/i,
+    /cannot access .*url/i,
+    /context invalidated/i
+  ],
+  badge_update: [
+    /no tab/i,
+    /invalid tab/i,
+    /tab .*closed/i,
+    /context invalidated/i
+  ],
+  notification: [
+    /context invalidated/i
+  ],
+  runtime_context: [
+    /context invalidated/i
+  ]
+};
 
 function isPromise<T>(value: MaybePromise<T>): value is Promise<T> {
   return Boolean(value) && typeof (value as Promise<T>).then === 'function';
@@ -103,16 +150,26 @@ export function getErrorMessage(error: unknown): string {
   return String(error);
 }
 
-export function isIgnorableExtensionError(error: unknown): boolean {
+export function isIgnorableExtensionError(error: unknown, operation: ExtensionErrorOperation): boolean {
   const message = getErrorMessage(error);
-  return IGNORABLE_EXTENSION_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
+  return IGNORABLE_EXTENSION_ERROR_PATTERNS[operation].some((pattern) => pattern.test(message));
 }
 
-export function logExtensionError(context: string, error: unknown, level: LogLevel = 'warn'): void {
-  if (isIgnorableExtensionError(error)) return;
-  if (level === 'warn' && import.meta.env.PROD) return;
-  const logger = level === 'error' ? console.error : console.warn;
-  logger(`${context}:`, error);
+export function logExtensionError(
+  context: string,
+  error: unknown,
+  options: LogLevel | LogExtensionErrorOptions = 'warn'
+): void {
+  const resolved = typeof options === 'string'
+    ? { level: options as LogLevel }
+    : { level: options.level ?? 'warn', operation: options.operation };
+
+  if (resolved.operation && isIgnorableExtensionError(error, resolved.operation)) return;
+  if (resolved.level === 'warn' && import.meta.env.PROD) return;
+
+  const logger = resolved.level === 'error' ? console.error : console.warn;
+  const devLabel = import.meta.env.DEV && resolved.operation ? `[unexpected:${resolved.operation}] ` : '';
+  logger(`${devLabel}${context}:`, error);
 }
 
 export function getRandomInt(maximum: number, minimum: number): number {
