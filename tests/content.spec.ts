@@ -139,7 +139,7 @@ describe('content helpers', () => {
     expect((globalThis as unknown as { CSS: { highlights: { set: Mock } } }).CSS.highlights.set).toHaveBeenCalled();
   });
 
-  test('performScan falls back to local highlight scan when offscreen highlight scan fails', async () => {
+  test('performScan does not apply highlights when offscreen highlight scan fails', async () => {
     document.body.innerText = 'sample keyword in page';
 
     const mockBrowser = browser as unknown as BrowserMock;
@@ -160,7 +160,11 @@ describe('content helpers', () => {
     });
 
     await content.performScan({ aborted: false } as AbortSignal);
-    expect((globalThis as unknown as { CSS: { highlights: { set: Mock } } }).CSS.highlights.set).toHaveBeenCalled();
+    expect((globalThis as unknown as { CSS: { highlights: { set: Mock } } }).CSS.highlights.set).not.toHaveBeenCalled();
+    expect(browser.runtime.sendMessage).toHaveBeenCalledWith({
+      wordfound: true,
+      keyword_count: 1
+    });
   });
 
   test('scheduleScan runs without error', () => {

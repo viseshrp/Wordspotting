@@ -9,7 +9,7 @@ import {
   logit,
   withTimeout
 } from './shared/utils';
-import { hashString, scanTextForKeywords, scanTextForMatches, type HighlightMatch } from './shared/core/scanner';
+import { hashString, scanTextForKeywords } from './shared/core/scanner';
 
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_CHUNK_OVERLAP = 200;
@@ -220,38 +220,10 @@ async function performHighlightScan(keywordList: string[], color: string, signal
 
     return applyHighlights(results as Record<string, Array<{ keyword: string; index: number; length: number }>>, textNodes, color);
   } catch (e) {
-    logExtensionError('Highlight worker scan failed; using local fallback', e, { operation: 'runtime_context' });
-    try {
-      const localResults = await scanHighlightsLocally(keywordList, textNodes, signal);
-      if (signal?.aborted) return 0;
-      return applyHighlights(localResults as Record<string, Array<{ keyword: string; index: number; length: number }>>, textNodes, color);
-    } catch (fallbackError) {
-      logExtensionError('Highlight local fallback failed', fallbackError, { operation: 'runtime_context' });
-      // Final fallback to standard scan if highlighting fails entirely, but don't highlight.
-      return performStandardScan(keywordList, document.body.innerText);
-    }
+    logExtensionError('Highlight worker scan failed', e, { operation: 'runtime_context' });
+    // Fall back to non-highlight scan for count/badge continuity.
+    return performStandardScan(keywordList, document.body.innerText);
   }
-}
-
-async function scanHighlightsLocally(keywordList: string[], textNodes: Text[], signal?: AbortSignal) {
-  const results: Record<number, HighlightMatch[]> = {};
-  for (let index = 0; index < textNodes.length; index += 1) {
-    if (signal?.aborted) break;
-
-    const text = textNodes[index]?.nodeValue || '';
-    if (!text) continue;
-
-    const matches = scanTextForMatches(keywordList, text);
-    if (matches.length > 0) {
-      results[index] = matches;
-    }
-
-    // Yield periodically to avoid long main-thread stalls on large documents.
-    if (index > 0 && index % 200 === 0) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    }
-  }
-  return results;
 }
 
 async function scanWithWorkerForHighlights(keywordList: string[], chunks: Array<{ id: number; text: string }>) {
