@@ -37,7 +37,7 @@ export default defineConfig({
     web_accessible_resources: [
       {
         resources: ['assets/*.png', 'css/*.css', 'scan-worker.js'],
-        matches: ['<all_urls>']
+        matches: ['http://*/*', 'https://*/*']
       }
     ]
   }
