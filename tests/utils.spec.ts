@@ -130,7 +130,7 @@ describe('utils', () => {
   });
   
   test('logit is silent in production mode', () => {
-    vi.stubEnv('PROD', '1');
+    vi.stubEnv('PROD', true);
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     utils.logit('hi');
     expect(spy).not.toHaveBeenCalled();
@@ -163,7 +163,7 @@ describe('utils', () => {
   });
   
   test('logExtensionError suppresses warn logs in production mode', () => {
-    vi.stubEnv('PROD', '1');
+    vi.stubEnv('PROD', true);
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     utils.logExtensionError('context', new Error('Storage failed'), 'warn');
     expect(spy).not.toHaveBeenCalled();
