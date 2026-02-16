@@ -25,6 +25,7 @@ describe('utils', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   test('trimAndClean removes whitespace', () => {
@@ -103,6 +104,14 @@ describe('utils', () => {
     vi.runAllTimers(); // trigger fade/remove
   });
   
+  test('showAlert defaults to error toast and message-only text', () => {
+    document.body.innerHTML = '';
+    utils.showAlert('plain message');
+    const toast = document.querySelector('.ws-toast');
+    expect(toast?.className).toContain('error');
+    expect(toast?.textContent).toBe('plain message');
+  });
+  
   test('showAlert logs when document is unavailable', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.stubGlobal('document', undefined);
@@ -119,10 +128,23 @@ describe('utils', () => {
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
+  
+  test('logit is silent in production mode', () => {
+    vi.stubEnv('PROD', '1');
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    utils.logit('hi');
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
 
   test('isIgnorableExtensionError detects transient extension runtime errors', () => {
     expect(utils.isIgnorableExtensionError(new Error('No tab with id: 42'))).toBe(true);
     expect(utils.isIgnorableExtensionError(new Error('Unexpected fatal error'))).toBe(false);
+  });
+  
+  test('isIgnorableExtensionError handles non-Error values', () => {
+    expect(utils.isIgnorableExtensionError('Invalid tab ID: 9')).toBe(true);
+    expect(utils.isIgnorableExtensionError({ message: 'some object error' })).toBe(false);
   });
 
   test('logExtensionError suppresses ignorable errors and logs unexpected ones', () => {
@@ -132,10 +154,34 @@ describe('utils', () => {
     expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
+  
+  test('logExtensionError uses error logger for error level', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    utils.logExtensionError('context', new Error('Storage failed'), 'error');
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+  
+  test('logExtensionError suppresses warn logs in production mode', () => {
+    vi.stubEnv('PROD', '1');
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    utils.logExtensionError('context', new Error('Storage failed'), 'warn');
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+    vi.unstubAllEnvs();
+  });
 
   test('buildSiteRegex returns null for invalid input', () => {
     expect(utils.buildSiteRegex(null)).toBeNull();
     expect(utils.buildSiteRegex('   ')).toBeNull();
+  });
+  
+  test('buildSiteRegex returns null if both direct and wildcard compilation fail', () => {
+    const ThrowingRegExp = vi.fn(() => {
+      throw new Error('boom');
+    });
+    vi.stubGlobal('RegExp', ThrowingRegExp as unknown as RegExpConstructor);
+    expect(utils.buildSiteRegex('example')).toBeNull();
   });
 
   test('buildSiteRegex converts wildcard patterns to usable regex', () => {
@@ -146,6 +192,10 @@ describe('utils', () => {
 
   test('isUrlAllowed handles empty list', () => {
     expect(utils.isUrlAllowed('https://x.com', [])).toBe(false);
+  });
+  
+  test('isUrlAllowed returns false for invalid list entries', () => {
+    expect(utils.isUrlAllowed('https://example.com', ['   '])).toBe(false);
   });
   
   test('isUrlAllowedCompiled returns false for missing inputs', () => {
@@ -185,6 +235,10 @@ describe('utils', () => {
   
   test('buildPatternsForTab throws for invalid url', () => {
     expect(() => utils.buildPatternsForTab('not a url')).toThrow();
+  });
+  
+  test('buildPatternsForTab throws for urls with empty hostname', () => {
+    expect(() => utils.buildPatternsForTab('file:///tmp/test.txt')).toThrow('Invalid URL');
   });
 
   test('scanTextForMatches finds all occurrences', () => {
