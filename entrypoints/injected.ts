@@ -33,7 +33,7 @@ function init() {
         await proceedWithSiteListCheck();
       }
     } catch (e) {
-      logExtensionError('Error checking extension status', e);
+      logExtensionError('Error checking extension status', e, { operation: 'runtime_context' });
     }
   })();
 
@@ -75,7 +75,7 @@ function init() {
 
         sendResponse({}); // Always respond to avoid leaving the channel open
       } catch (error) {
-        logExtensionError('Error in onMessage', error);
+        logExtensionError('Error in onMessage', error, { operation: 'runtime_context' });
         sendResponse({ word_list: [] });
       }
     })();
@@ -107,7 +107,7 @@ export async function proceedWithSiteListCheck() {
       logit('No matching allowed site. Idling.');
     }
   } catch (e) {
-    logExtensionError('Error in proceedWithSiteListCheck', e);
+    logExtensionError('Error in proceedWithSiteListCheck', e, { operation: 'runtime_context' });
   }
 }
 
@@ -188,7 +188,7 @@ export async function performScan(signal?: AbortSignal) {
 
     sendKeywordCount(foundCount);
   } catch (e) {
-    logExtensionError('Error in performScan', e);
+    logExtensionError('Error in performScan', e, { operation: 'runtime_context' });
   }
 }
 
@@ -219,7 +219,7 @@ async function performHighlightScan(keywordList: string[], color: string, signal
 
     return applyHighlights(results as Record<string, Array<{ keyword: string; index: number; length: number }>>, textNodes, color);
   } catch (e) {
-    logExtensionError('Highlight scan failed', e);
+    logExtensionError('Highlight scan failed', e, { operation: 'runtime_context' });
     // Fallback to standard scan if highlighting fails, but don't highlight
     return performStandardScan(keywordList, document.body.innerText);
   }

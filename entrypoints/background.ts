@@ -107,7 +107,7 @@ export default defineBackground(() => {
     handleMessage(request, sender)
       .then((response) => sendResponse(response))
       .catch((err) => {
-        logExtensionError('Error handling message', err, 'error');
+        logExtensionError('Error handling message', err, { level: 'error', operation: 'runtime_context' });
         sendResponse({ ack: 'error' });
       });
     return true;
