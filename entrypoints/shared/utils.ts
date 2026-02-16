@@ -5,6 +5,16 @@
 type StorageKeys = string | string[] | Record<string, unknown>;
 
 type MaybePromise<T> = Promise<T> | T | undefined;
+type LogLevel = 'warn' | 'error';
+
+const IGNORABLE_EXTENSION_ERROR_PATTERNS = [
+  'No tab with id',
+  'Invalid tab ID',
+  'The tab was closed',
+  'Could not establish connection. Receiving end does not exist',
+  'The message port closed before a response was received',
+  'Extension context invalidated'
+];
 
 function isPromise<T>(value: MaybePromise<T>): value is Promise<T> {
   return Boolean(value) && typeof (value as Promise<T>).then === 'function';
@@ -81,10 +91,28 @@ export function trimAndClean(value: string | null | undefined): string {
 }
 
 export function logit(message: string): void {
+  if (import.meta.env.PROD) return;
   const dt = new Date();
   const utcDate = dt.toUTCString();
 
   console.log(`[${utcDate}]\t${message}`);
+}
+
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+export function isIgnorableExtensionError(error: unknown): boolean {
+  const message = getErrorMessage(error);
+  return IGNORABLE_EXTENSION_ERROR_PATTERNS.some((pattern) => message.includes(pattern));
+}
+
+export function logExtensionError(context: string, error: unknown, level: LogLevel = 'warn'): void {
+  if (isIgnorableExtensionError(error)) return;
+  if (level === 'warn' && import.meta.env.PROD) return;
+  const logger = level === 'error' ? console.error : console.warn;
+  logger(`${context}:`, error);
 }
 
 export function getRandomInt(maximum: number, minimum: number): number {

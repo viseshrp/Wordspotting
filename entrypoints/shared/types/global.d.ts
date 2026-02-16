@@ -1,6 +1,16 @@
 export {};
 
 declare global {
+  interface ImportMetaEnv {
+    readonly MODE: string;
+    readonly PROD: boolean;
+    readonly DEV: boolean;
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
+
   var __WORDSPOTTING_CONTENT_LOADED__: boolean | undefined;
   const browser: typeof chrome;
 

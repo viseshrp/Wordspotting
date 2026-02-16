@@ -1,8 +1,10 @@
 import {
   compileSitePatterns,
   getFromStorage,
+  isIgnorableExtensionError,
   isUrlAllowed,
   isUrlAllowedCompiled,
+  logExtensionError,
   logit,
   saveToStorage
 } from './shared/utils';
@@ -41,7 +43,7 @@ export default defineBackground(() => {
         await browser.tabs.create({ url: 'options.html' });
       }
     } catch (e) {
-      console.error('Error during initialization:', e);
+      logExtensionError('Error during initialization', e, 'error');
     }
   });
 
@@ -49,7 +51,7 @@ export default defineBackground(() => {
     handleMessage(request, sender)
       .then((response) => sendResponse(response))
       .catch((err) => {
-        console.error('Error handling message:', err);
+        logExtensionError('Error handling message', err, 'error');
         sendResponse({ ack: 'error' });
       });
     return true;
@@ -93,19 +95,23 @@ export default defineBackground(() => {
     }
 
     void (async () => {
-      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-      const tab = tabs[0];
-      if (!tab || typeof tab.id !== 'number') return;
-      await updateBadgeForTab(tab.id, tab.url);
-      if (changes.wordspotting_extension_on?.newValue === true) {
-        await maybeInjectContentScripts(tab.id, tab.url || '');
-      } else if (changes.wordspotting_extension_on?.newValue === false) {
-        setInactiveBadge(tab.id);
-      }
       try {
-        await browser.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
-      } catch {
-        // Ignore missing receivers (content may not be injected).
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+        const tab = tabs[0];
+        if (!tab || typeof tab.id !== 'number') return;
+        await updateBadgeForTab(tab.id, tab.url);
+        if (changes.wordspotting_extension_on?.newValue === true) {
+          await maybeInjectContentScripts(tab.id, tab.url || '');
+        } else if (changes.wordspotting_extension_on?.newValue === false) {
+          setInactiveBadge(tab.id);
+        }
+        try {
+          await browser.tabs.sendMessage(tab.id, { from: 'background', subject: 'settings_updated' });
+        } catch {
+          // Ignore missing receivers (content may not be injected).
+        }
+      } catch (error) {
+        logExtensionError('Failed to handle storage.onChanged tab sync', error);
       }
     })();
   });
@@ -181,7 +187,9 @@ function showNotification(iconUrl: string, type: chrome.notifications.TemplateTy
     priority
   };
 
-  void browser.notifications.create(opt);
+  void browser.notifications.create(opt).catch((error) => {
+    logExtensionError('Unable to create notification', error);
+  });
 }
 
 async function maybeInjectContentScripts(tabId: number, url: string) {
@@ -210,7 +218,8 @@ async function maybeInjectContentScripts(tabId: number, url: string) {
     await injectStyles(tabId);
     await injectScripts(tabId);
   } catch (e) {
-    console.error('Error during dynamic injection:', e);
+    if (isIgnorableExtensionError(e)) return;
+    logExtensionError('Error during dynamic injection', e);
   }
 }
 
@@ -222,7 +231,7 @@ async function injectStyles(tabId: number) {
     });
   } catch (e) {
     // Ignore styling failures; script can still run.
-    console.warn('Style injection skipped:', e);
+    logExtensionError('Style injection skipped', e);
   }
 }
 
@@ -244,7 +253,7 @@ export async function refreshAllowedSitePatterns() {
       : [];
     compiledAllowedSites = compileSitePatterns(allowedSites);
   } catch (e) {
-    console.warn('Failed to refresh allowed site patterns:', e);
+    logExtensionError('Failed to refresh allowed site patterns', e);
     compiledAllowedSites = [];
   }
 }
@@ -275,14 +284,19 @@ async function updateBadgeForTab(tabId: number, url?: string) {
     const count = lastCountByTab.get(tabId) ?? 0;
     setCountBadge(tabId, count);
   } catch (e) {
-    console.warn('Unable to update badge status:', e);
+    if (isIgnorableExtensionError(e)) return;
+    logExtensionError('Unable to update badge status', e);
   }
 }
 
 function setBadge(tabId: number, text: string, color?: string) {
-  void browser.action.setBadgeText({ tabId, text });
+  void browser.action.setBadgeText({ tabId, text }).catch((error) => {
+    logExtensionError('Unable to set badge text', error);
+  });
   if (color) {
-    void browser.action.setBadgeBackgroundColor({ tabId, color });
+    void browser.action.setBadgeBackgroundColor({ tabId, color }).catch((error) => {
+      logExtensionError('Unable to set badge color', error);
+    });
   }
 }
 

@@ -120,6 +120,19 @@ describe('utils', () => {
     spy.mockRestore();
   });
 
+  test('isIgnorableExtensionError detects transient extension runtime errors', () => {
+    expect(utils.isIgnorableExtensionError(new Error('No tab with id: 42'))).toBe(true);
+    expect(utils.isIgnorableExtensionError(new Error('Unexpected fatal error'))).toBe(false);
+  });
+
+  test('logExtensionError suppresses ignorable errors and logs unexpected ones', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    utils.logExtensionError('context', new Error('No tab with id: 42'));
+    utils.logExtensionError('context', new Error('Storage failed'));
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
   test('buildSiteRegex returns null for invalid input', () => {
     expect(utils.buildSiteRegex(null)).toBeNull();
     expect(utils.buildSiteRegex('   ')).toBeNull();

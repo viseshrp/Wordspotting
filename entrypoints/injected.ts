@@ -5,6 +5,7 @@ import {
   getFromStorage,
   isUrlAllowedCompiled,
   isValidObj,
+  logExtensionError,
   logit
 } from './shared/utils';
 import { hashString, scanTextForKeywords } from './shared/core/scanner';
@@ -39,7 +40,7 @@ function init() {
         await proceedWithSiteListCheck();
       }
     } catch (e) {
-      console.error('Error checking extension status:', e);
+      logExtensionError('Error checking extension status', e);
     }
   })();
 
@@ -77,7 +78,7 @@ function init() {
 
         sendResponse({}); // Always respond to avoid leaving the channel open
       } catch (error) {
-        console.error('Error in onMessage:', error);
+        logExtensionError('Error in onMessage', error);
         sendResponse({ word_list: [] });
       }
     })();
@@ -109,7 +110,7 @@ export async function proceedWithSiteListCheck() {
       logit('No matching allowed site. Idling.');
     }
   } catch (e) {
-    console.error('Error in proceedWithSiteListCheck:', e);
+    logExtensionError('Error in proceedWithSiteListCheck', e);
   }
 }
 
@@ -190,7 +191,7 @@ export async function performScan(signal?: AbortSignal) {
 
     sendKeywordCount(foundCount);
   } catch (e) {
-    console.error('Error in performScan:', e);
+    logExtensionError('Error in performScan', e);
   }
 }
 
@@ -199,7 +200,7 @@ async function performStandardScan(keywordList: string[], bodyText: string) {
   try {
     occurringWordList = await scanWithWorker(keywordList, bodyText);
   } catch (e) {
-    console.warn('Worker scan failed, falling back', e);
+    logExtensionError('Worker scan failed, falling back', e);
     occurringWordList = getWordList(keywordList, bodyText);
   }
   return occurringWordList.length;
@@ -221,7 +222,7 @@ async function performHighlightScan(keywordList: string[], color: string, signal
 
     return applyHighlights(results as Record<string, Array<{ keyword: string; index: number; length: number }>>, textNodes, color);
   } catch (e) {
-    console.error('Highlight scan failed:', e);
+    logExtensionError('Highlight scan failed', e);
     // Fallback to standard scan if highlighting fails, but don't highlight
     return performStandardScan(keywordList, document.body.innerText);
   }
@@ -379,7 +380,7 @@ async function getScanWorkerAsync() {
     setupWorkerListeners(scanWorker);
     return scanWorker;
   } catch (e) {
-    console.warn('Wordspotting worker creation failed (inline blob):', e);
+    logExtensionError('Wordspotting worker creation failed (inline blob)', e);
     workerFailed = true;
     return null;
   }
@@ -388,7 +389,7 @@ async function getScanWorkerAsync() {
 function setupWorkerListeners(worker: Worker) {
   worker.addEventListener('message', handleWorkerMessage);
   worker.addEventListener('error', (e) => {
-    console.warn('Wordspotting worker error:', e);
+    logExtensionError('Wordspotting worker error', e);
     workerFailed = true;
     cleanupWorker();
   });

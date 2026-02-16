@@ -2,9 +2,14 @@ import {
   buildSiteRegex,
   getFromStorage,
   isValidObj,
+  logExtensionError,
   saveToStorage,
   showAlert
 } from '../shared/utils';
+
+function logOptionsError(context: string, error: unknown) {
+  logExtensionError(context, error);
+}
 
 if (typeof document !== 'undefined') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -39,14 +44,14 @@ if (typeof document !== 'undefined') {
       const status = this.checked;
       saveToStorage({ wordspotting_notifications_on: status }).then(() => {
         showAlert(`Notifications turned ${status ? 'ON' : 'OFF'}`, 'Settings Saved', true);
-      });
+      }).catch((error) => logOptionsError('Failed to update notifications switch', error));
     });
 
     (document.getElementById('extension_switch') as HTMLInputElement).addEventListener('change', function () {
       const status = this.checked;
       saveToStorage({ wordspotting_extension_on: status }).then(() => {
         showAlert(`Extension turned ${status ? 'ON' : 'OFF'}`, 'Settings Saved', true);
-      });
+      }).catch((error) => logOptionsError('Failed to update extension switch', error));
     });
 
     // Highlight Switch
@@ -57,14 +62,15 @@ if (typeof document !== 'undefined') {
       colorRow.style.display = status ? 'flex' : 'none';
       saveToStorage({ wordspotting_highlight_on: status }).then(() => {
         showAlert(`Highlighting turned ${status ? 'ON' : 'OFF'}`, 'Settings Saved', true);
-      });
+      }).catch((error) => logOptionsError('Failed to update highlight switch', error));
     });
 
     // Highlight Color
     const colorInput = document.getElementById('highlight_color_input') as HTMLInputElement;
     colorInput.addEventListener('change', function () {
       const color = this.value;
-      void saveToStorage({ wordspotting_highlight_color: color });
+      void saveToStorage({ wordspotting_highlight_color: color })
+        .catch((error) => logOptionsError('Failed to update highlight color', error));
     });
 
     // Theme select
@@ -72,7 +78,8 @@ if (typeof document !== 'undefined') {
     themeSelect.addEventListener('change', () => {
       const value = themeSelect.value;
       applyTheme(value);
-      void saveToStorage({ wordspotting_theme: value });
+      void saveToStorage({ wordspotting_theme: value })
+        .catch((error) => logOptionsError('Failed to update theme setting', error));
     });
 
     // Delegate click for removing items
@@ -123,7 +130,7 @@ function addSite(input: HTMLInputElement) {
     input.value = '';
     updateWebListDisplay();
     showAlert('Website(s) added.', 'Success', true);
-  }).catch(console.error);
+  }).catch((error) => logOptionsError('Failed to add site patterns', error));
 }
 
 function addWord(input: HTMLInputElement) {
@@ -160,7 +167,7 @@ function addWord(input: HTMLInputElement) {
     input.value = '';
     updateBLWordListDisplay();
     showAlert('Keyword(s) added.', 'Success', true);
-  }).catch(console.error);
+  }).catch((error) => logOptionsError('Failed to add keyword patterns', error));
 }
 
 function removeIndex(type: string | undefined, index: number) {
@@ -179,7 +186,7 @@ function removeIndex(type: string | undefined, index: number) {
     } else {
       updateBLWordListDisplay();
     }
-  });
+  }).catch((error) => logOptionsError('Failed to remove list item', error));
 }
 
 function clearList(key: string, updateFn: () => void) {
@@ -187,7 +194,7 @@ function clearList(key: string, updateFn: () => void) {
     saveToStorage({ [key]: [] }).then(() => {
       updateFn();
       showAlert('List cleared.', 'Success', true);
-    });
+    }).catch((error) => logOptionsError('Failed to clear list', error));
   }
 }
 
@@ -214,7 +221,7 @@ function updateWebListDisplay() {
     } else {
       container.innerHTML = '<small>No sites added.</small>';
     }
-  });
+  }).catch((error) => logOptionsError('Failed to load site list', error));
 }
 
 function updateBLWordListDisplay() {
@@ -231,7 +238,7 @@ function updateBLWordListDisplay() {
     } else {
       container.innerHTML = '<small>No keywords added.</small>';
     }
-  });
+  }).catch((error) => logOptionsError('Failed to load keyword list', error));
 }
 
 function createChip(text: string, index: number, type: string) {
@@ -250,14 +257,14 @@ function updateNotifSwitchDisplay() {
   getFromStorage<Record<string, unknown>>('wordspotting_notifications_on').then((items) => {
     const status = items.wordspotting_notifications_on as boolean | undefined;
     (document.getElementById('notifications_switch') as HTMLInputElement).checked = (status !== false);
-  });
+  }).catch((error) => logOptionsError('Failed to load notifications switch state', error));
 }
 
 function updateExtSwitchDisplay() {
   getFromStorage<Record<string, unknown>>('wordspotting_extension_on').then((items) => {
     const status = items.wordspotting_extension_on as boolean | undefined;
     (document.getElementById('extension_switch') as HTMLInputElement).checked = (status !== false);
-  });
+  }).catch((error) => logOptionsError('Failed to load extension switch state', error));
 }
 
 function updateHighlightSettingsDisplay() {
@@ -271,7 +278,7 @@ function updateHighlightSettingsDisplay() {
     (document.getElementById('highlight_switch') as HTMLInputElement).checked = status;
     (document.getElementById('highlight_color_input') as HTMLInputElement).value = color;
     (document.getElementById('highlight_color_row') as HTMLElement).style.display = status ? 'flex' : 'none';
-  });
+  }).catch((error) => logOptionsError('Failed to load highlight settings', error));
 }
 
 function shakeInput(input: HTMLInputElement) {
@@ -287,7 +294,7 @@ function updateThemeDisplay() {
     const select = document.getElementById('theme_select') as HTMLSelectElement;
     select.value = theme;
     applyTheme(theme);
-  });
+  }).catch((error) => logOptionsError('Failed to load theme setting', error));
 }
 
 function applyTheme(value: string) {
