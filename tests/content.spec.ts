@@ -139,6 +139,30 @@ describe('content helpers', () => {
     expect((globalThis as unknown as { CSS: { highlights: { set: Mock } } }).CSS.highlights.set).toHaveBeenCalled();
   });
 
+  test('performScan falls back to local highlight scan when offscreen highlight scan fails', async () => {
+    document.body.innerText = 'sample keyword in page';
+
+    const mockBrowser = browser as unknown as BrowserMock;
+    mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({
+      wordspotting_word_list: ['keyword'],
+      wordspotting_highlight_on: true,
+      wordspotting_highlight_color: '#FFFF00'
+    }));
+    mockBrowser.runtime.sendMessage = vi.fn((msg: unknown) => {
+      if (
+        typeof msg === 'object' &&
+        msg !== null &&
+        (msg as { subject?: string }).subject === 'scan_highlights_request'
+      ) {
+        return Promise.resolve({ error: 'offscreen unavailable' });
+      }
+      return Promise.resolve({ ack: 'ok' });
+    });
+
+    await content.performScan({ aborted: false } as AbortSignal);
+    expect((globalThis as unknown as { CSS: { highlights: { set: Mock } } }).CSS.highlights.set).toHaveBeenCalled();
+  });
+
   test('scheduleScan runs without error', () => {
     (globalThis as unknown as { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback = (cb) => {
       cb();
