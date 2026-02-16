@@ -19,20 +19,24 @@ junior developers and useful for future maintenance.
 - Supports SPA/dynamic content using a MutationObserver and idle scheduling.
 - Applies highlight ranges (Chrome 105+) when enabled.
 
-3) **Scan worker** (`entrypoints/scan-worker.ts`)
+3) **Offscreen scanner host** (`entrypoints/offscreen/`)
+- Runs in extension-owned context and owns the scan worker lifecycle.
+- Receives scan requests from background and returns results.
+
+4) **Scan worker** (`entrypoints/scan-worker.ts`)
 - Runs heavy keyword matching off the main thread.
 - Supports chunked scans for large pages and precise range matches for highlights.
 
-4) **Popup UI** (`entrypoints/popup/`)
+5) **Popup UI** (`entrypoints/popup/`)
 - Shows keywords found on the current tab.
 - Lets users add the current site to the allowlist (with scope options).
 - Provides a refresh-on-add toggle and quick access to options.
 
-5) **Options UI** (`entrypoints/options/`)
+6) **Options UI** (`entrypoints/options/`)
 - Manages keyword list, allowlist, notifications toggle, extension toggle,
   highlight toggle, highlight color, and theme.
 
-6) **Shared utilities** (`entrypoints/shared/`)
+7) **Shared utilities** (`entrypoints/shared/`)
 - Storage helpers, regex utilities, and scanner primitives.
 
 ## Data flow summary
@@ -65,7 +69,7 @@ onTabUpdated(tabId, url):
 ```
 content script schedules scan on idle or SPA changes
   -> read keyword list + highlight settings
-  -> scan text (worker if available)
+  -> request offscreen scanner run through background
   -> send { wordfound, keyword_count } to background
 
 background receives message

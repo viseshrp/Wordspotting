@@ -11,7 +11,7 @@ export default defineConfig({
     name: 'Wordspotting',
     description: 'Get notified when a word is found in a web page.',
     version: pkg.version,
-    permissions: ['notifications', 'storage', 'scripting'],
+    permissions: ['notifications', 'storage', 'scripting', 'offscreen'],
     host_permissions: ['<all_urls>'],
     action: {
       default_icon: {
@@ -36,7 +36,7 @@ export default defineConfig({
     },
     web_accessible_resources: [
       {
-        resources: ['assets/*.png', 'css/*.css', 'scan-worker.js'],
+        resources: ['assets/*.png', 'css/*.css'],
         matches: ['http://*/*', 'https://*/*']
       }
     ]

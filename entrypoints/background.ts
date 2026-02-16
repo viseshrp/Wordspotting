@@ -1,11 +1,13 @@
 import {
   compileSitePatterns,
+  getErrorMessage,
   getFromStorage,
   isUrlAllowed,
   isUrlAllowedCompiled,
   logExtensionError,
   logit
 } from './shared/utils';
+import { scanTextForKeywords, scanTextForMatches } from './shared/core/scanner';
 import { ensureSettingsInitialized } from './shared/settings';
 
 const CONTENT_SCRIPT_FILES = ['injected.js'];
@@ -16,16 +18,60 @@ const lastCountByTab = new Map<number, number>();
 const BADGE_ACTIVE_COLOR = '#4caf50';
 const BADGE_INACTIVE_COLOR = '#9e9e9e';
 const BADGE_INACTIVE_TEXT = '-';
+const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html';
+const OFFSCREEN_SCAN_TIMEOUT_MS = 5000;
+let creatingOffscreenDocument: Promise<void> | null = null;
 
 type WordspottingMessage = {
   wordfound: boolean;
   keyword_count: number;
 };
 
+type HighlightMatch = { keyword: string; index: number; length: number };
+type ScanTextRequest = {
+  from: 'injected';
+  subject: 'scan_text_request';
+  keywords: string[];
+  text: string;
+  chunkSize: number;
+  overlap: number;
+};
+type ScanHighlightsRequest = {
+  from: 'injected';
+  subject: 'scan_highlights_request';
+  keywords: string[];
+  chunks: Array<{ id: number; text: string }>;
+};
+type OffscreenForwardRequest = (ScanTextRequest | ScanHighlightsRequest) & { target: 'offscreen' };
+
 function isWordspottingMessage(request: unknown): request is WordspottingMessage {
   if (!request || typeof request !== 'object') return false;
   const typed = request as WordspottingMessage;
   return typeof typed.wordfound === 'boolean' && typeof typed.keyword_count === 'number';
+}
+
+function isScanTextRequest(request: unknown): request is ScanTextRequest {
+  if (!request || typeof request !== 'object') return false;
+  const typed = request as Partial<ScanTextRequest>;
+  return typed.from === 'injected' &&
+    typed.subject === 'scan_text_request' &&
+    Array.isArray(typed.keywords) &&
+    typeof typed.text === 'string' &&
+    typeof typed.chunkSize === 'number' &&
+    typeof typed.overlap === 'number';
+}
+
+function isScanHighlightsRequest(request: unknown): request is ScanHighlightsRequest {
+  if (!request || typeof request !== 'object') return false;
+  const typed = request as Partial<ScanHighlightsRequest>;
+  return typed.from === 'injected' &&
+    typed.subject === 'scan_highlights_request' &&
+    Array.isArray(typed.keywords) &&
+    Array.isArray(typed.chunks);
+}
+
+function isOffscreenTargetedRequest(request: unknown): request is OffscreenForwardRequest {
+  return Boolean(request && typeof request === 'object' && (request as { target?: string }).target === 'offscreen');
 }
 
 export default defineBackground(() => {
@@ -44,6 +90,20 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (isOffscreenTargetedRequest(request)) {
+      return false;
+    }
+
+    if (isScanTextRequest(request) || isScanHighlightsRequest(request)) {
+      handleScanRequest(request)
+        .then((response) => sendResponse(response))
+        .catch((error) => {
+          logExtensionError('Failed to handle offscreen scan request', error, { level: 'error', operation: 'runtime_context' });
+          sendResponse({ error: getErrorMessage(error) });
+        });
+      return true;
+    }
+
     handleMessage(request, sender)
       .then((response) => sendResponse(response))
       .catch((err) => {
@@ -184,6 +244,114 @@ async function handleMessage(request: unknown, sender: chrome.runtime.MessageSen
   return { ack: 'ignored' };
 }
 
+async function handleScanRequest(request: ScanTextRequest | ScanHighlightsRequest) {
+  if (await ensureOffscreenDocument()) {
+    try {
+      const response = await requestOffscreenScan(request);
+      if (isScanTextRequest(request)) {
+        const words = (response as { words?: unknown }).words;
+        if (Array.isArray(words)) return { words };
+      } else {
+        const results = (response as { results?: unknown }).results;
+        if (results && typeof results === 'object') return { results };
+      }
+      throw new Error('Invalid offscreen scan response');
+    } catch (error) {
+      logExtensionError('Offscreen scan execution failed; using fallback scanner', error, { operation: 'runtime_context' });
+    }
+  }
+
+  if (isScanTextRequest(request)) {
+    return { words: scanTextForKeywords(request.keywords, request.text) };
+  }
+
+  const results: Record<number, HighlightMatch[]> = {};
+  for (const chunk of request.chunks) {
+    if (!chunk || typeof chunk.text !== 'string' || typeof chunk.id !== 'number') continue;
+    const matches = scanTextForMatches(request.keywords, chunk.text);
+    if (matches.length > 0) {
+      results[chunk.id] = matches;
+    }
+  }
+  return { results };
+}
+
+async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsRequest) {
+  const responsePromise = Promise.resolve(
+    browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>
+  );
+  return await withTimeout(responsePromise, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scanner timed out');
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string) {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
+}
+
+async function ensureOffscreenDocument() {
+  if (!chrome.offscreen || typeof chrome.offscreen.createDocument !== 'function') {
+    return false;
+  }
+
+  const offscreenDocumentUrl = chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH);
+  if (await hasOffscreenDocument(offscreenDocumentUrl)) {
+    return true;
+  }
+
+  if (creatingOffscreenDocument) {
+    await creatingOffscreenDocument;
+    return await hasOffscreenDocument(offscreenDocumentUrl);
+  }
+
+  const reason = (
+    (chrome.offscreen.Reason as Record<string, chrome.offscreen.Reason>).WORKERS ??
+    chrome.offscreen.Reason.DOM_SCRAPING
+  );
+  creatingOffscreenDocument = chrome.offscreen.createDocument({
+    url: OFFSCREEN_DOCUMENT_PATH,
+    reasons: [reason],
+    justification: 'Run keyword scanning worker in an extension-owned offscreen context.'
+  });
+
+  try {
+    await creatingOffscreenDocument;
+  } catch (error) {
+    const message = getErrorMessage(error);
+    if (!/single offscreen document|already exists/i.test(message)) {
+      logExtensionError('Unable to create offscreen scanner document', error, 'error');
+      return false;
+    }
+  } finally {
+    creatingOffscreenDocument = null;
+  }
+
+  return await hasOffscreenDocument(offscreenDocumentUrl);
+}
+
+async function hasOffscreenDocument(url: string) {
+  const runtime = chrome.runtime as typeof chrome.runtime & {
+    getContexts?: (filter: { contextTypes?: string[]; documentUrls?: string[] }) => Promise<Array<{ documentUrl?: string }>>;
+  };
+
+  if (typeof runtime.getContexts === 'function') {
+    const contexts = await runtime.getContexts({
+      contextTypes: ['OFFSCREEN_DOCUMENT'],
+      documentUrls: [url]
+    });
+    return contexts.length > 0;
+  }
+
+  return false;
+}
 function showNotification(iconUrl: string, type: chrome.notifications.TemplateType, title: string, message: string, priority: number) {
   const icon = browser.runtime.getURL(iconUrl);
   const opt: chrome.notifications.NotificationCreateOptions = {
