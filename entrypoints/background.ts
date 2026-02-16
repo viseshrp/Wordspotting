@@ -18,6 +18,7 @@ const lastCountByTab = new Map<number, number>();
 const BADGE_ACTIVE_COLOR = '#4caf50';
 const BADGE_INACTIVE_COLOR = '#9e9e9e';
 const BADGE_INACTIVE_TEXT = '-';
+const SHOULD_EXPOSE_TEST_GLOBALS = import.meta.env.MODE === 'test' || import.meta.env.MODE === 'e2e';
 
 type WordspottingMessage = {
   wordfound: boolean;
@@ -31,7 +32,9 @@ function isWordspottingMessage(request: unknown): request is WordspottingMessage
 }
 
 export default defineBackground(() => {
-  exposeGlobalsForTests();
+  if (SHOULD_EXPOSE_TEST_GLOBALS) {
+    exposeGlobalsForTests();
+  }
 
   browser.runtime.onInstalled.addListener(async (details) => {
     try {
