@@ -16,6 +16,7 @@
 - Is data persisted by the extension?
   - **Yes** for user settings only: keyword list, allowlist, and preferences in `chrome.storage.sync`
   - **No** for page text, URL, and title (processed in-memory only)
+  - Page text matching executes in extension contexts (offscreen document + worker), not remote services.
 
 ## User Disclosure Text (for listing)
 

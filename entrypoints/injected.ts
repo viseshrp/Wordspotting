@@ -397,7 +397,7 @@ async function sendOffscreenScanRequest<T>(request: Record<string, unknown>) {
     throw new Error('Offscreen scan request did not return a promise');
   }
 
-  return await withTimeout(Promise.resolve(maybePromise as Promise<T>), OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scan timed out');
+  return await withTimeout(maybePromise as Promise<T>, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scan timed out');
 }
 
 function getChunkingConfig(text: string, keywordList: string[]) {

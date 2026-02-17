@@ -20,8 +20,15 @@ const BADGE_INACTIVE_COLOR = '#9e9e9e';
 const BADGE_INACTIVE_TEXT = '-';
 const OFFSCREEN_DOCUMENT_PATH = 'offscreen.html';
 const OFFSCREEN_SCAN_TIMEOUT_MS = 5000;
+const OFFSCREEN_READY_TIMEOUT_MS = 3000;
+const OFFSCREEN_READY_PROBE_TIMEOUT_MS = 1000;
 let creatingOffscreenDocument: Promise<void> | null = null;
-const OFFSCREEN_RECEIVER_RETRY_DELAY_MS = 75;
+// Readiness state for the offscreen message listener.
+// The service worker can restart independently from the offscreen document,
+// so this state is intentionally recoverable via ready probe + ready signal.
+let offscreenReady = false;
+let resolveOffscreenReady: (() => void) | null = null;
+let offscreenReadyPromise = createOffscreenReadyPromise();
 
 type WordspottingMessage = {
   wordfound: boolean;
@@ -42,7 +49,12 @@ type ScanHighlightsRequest = {
   keywords: string[];
   chunks: Array<{ id: number; text: string }>;
 };
+type OffscreenReadyMessage = {
+  from: 'offscreen';
+  subject: 'ready';
+};
 type OffscreenForwardRequest = (ScanTextRequest | ScanHighlightsRequest) & { target: 'offscreen' };
+type OffscreenReadyProbeRequest = { target: 'offscreen'; subject: 'ready_check' };
 
 function isWordspottingMessage(request: unknown): request is WordspottingMessage {
   if (!request || typeof request !== 'object') return false;
@@ -74,6 +86,32 @@ function isOffscreenTargetedRequest(request: unknown): request is OffscreenForwa
   return Boolean(request && typeof request === 'object' && (request as { target?: string }).target === 'offscreen');
 }
 
+function isOffscreenReadyMessage(request: unknown): request is OffscreenReadyMessage {
+  if (!request || typeof request !== 'object') return false;
+  const typed = request as Partial<OffscreenReadyMessage>;
+  return typed.from === 'offscreen' && typed.subject === 'ready';
+}
+
+function createOffscreenReadyPromise() {
+  return new Promise<void>((resolve) => {
+    resolveOffscreenReady = resolve;
+  });
+}
+
+function resetOffscreenReadyState() {
+  offscreenReady = false;
+  offscreenReadyPromise = createOffscreenReadyPromise();
+}
+
+function markOffscreenReady() {
+  if (offscreenReady) return;
+  offscreenReady = true;
+  if (resolveOffscreenReady) {
+    resolveOffscreenReady();
+    resolveOffscreenReady = null;
+  }
+}
+
 export default defineBackground(() => {
   browser.runtime.onInstalled.addListener(async (details) => {
     try {
@@ -90,6 +128,13 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // Handshake message from offscreen script, emitted after its listener is registered.
+    if (isOffscreenReadyMessage(request)) {
+      markOffscreenReady();
+      sendResponse({ ack: 'ready' });
+      return false;
+    }
+
     if (isOffscreenTargetedRequest(request)) {
       return false;
     }
@@ -266,9 +311,10 @@ async function handleScanRequest(request: ScanTextRequest | ScanHighlightsReques
 }
 
 async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsRequest) {
-  const responsePromise = Promise.resolve(
-    browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>
-  );
+  // Deterministic gate: do not forward scan requests until offscreen listener is ready.
+  await waitForOffscreenReady();
+
+  const responsePromise = browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>;
   try {
     return await withTimeout(responsePromise, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scanner timed out');
   } catch (error) {
@@ -276,18 +322,12 @@ async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsReq
       throw error;
     }
 
-    /*
-     * Chrome can report an offscreen context as existing while the offscreen
-     * script is still booting and has not registered runtime.onMessage yet.
-     * In that narrow startup window, sendMessage fails with
-     * "Receiving end does not exist". A single short retry closes that race
-     * without adding indefinite retries or masking unrelated failures.
-     */
-    await ensureOffscreenDocument();
-    await new Promise((resolve) => setTimeout(resolve, OFFSCREEN_RECEIVER_RETRY_DELAY_MS));
-    const retryPromise = Promise.resolve(
-      browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>
-    );
+    resetOffscreenReadyState();
+    if (!(await ensureOffscreenDocument())) {
+      throw error;
+    }
+    await waitForOffscreenReady();
+    const retryPromise = browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>;
     return await withTimeout(retryPromise, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scanner timed out');
   }
 }
@@ -296,6 +336,43 @@ function isOffscreenReceiverUnavailable(error: unknown) {
   // Match only the stable substring used by Chrome for missing listeners.
   // Keep this narrow so we do not accidentally retry on unrelated runtime errors.
   return /receiving end does not exist/i.test(getErrorMessage(error));
+}
+
+async function probeOffscreenReady() {
+  try {
+    // Probe is used to recover readiness after background service-worker restarts.
+    // If offscreen is already alive, this avoids waiting for another ready signal.
+    const responsePromise = browser.runtime.sendMessage({
+      target: 'offscreen',
+      subject: 'ready_check'
+    } as OffscreenReadyProbeRequest) as Promise<unknown>;
+    const response = await withTimeout(responsePromise, OFFSCREEN_READY_PROBE_TIMEOUT_MS, 'Offscreen ready probe timed out');
+    return Boolean(
+      response &&
+      typeof response === 'object' &&
+      (response as { ready?: unknown }).ready === true
+    );
+  } catch (error) {
+    if (isOffscreenReceiverUnavailable(error)) {
+      return false;
+    }
+    logExtensionError('Offscreen ready probe failed', error, { operation: 'runtime_context' });
+    return false;
+  }
+}
+
+async function waitForOffscreenReady() {
+  if (offscreenReady) return;
+
+  // Service workers can restart and lose in-memory readiness state while the
+  // offscreen document is still alive. Probe first to recover quickly.
+  if (await probeOffscreenReady()) {
+    markOffscreenReady();
+    return;
+  }
+
+  // If probe misses because offscreen is still booting, wait for explicit ready signal.
+  await withTimeout(offscreenReadyPromise, OFFSCREEN_READY_TIMEOUT_MS, 'Offscreen listener did not become ready');
 }
 
 async function ensureOffscreenDocument() {
@@ -309,9 +386,12 @@ async function ensureOffscreenDocument() {
   }
 
   if (creatingOffscreenDocument) {
+    // Another caller is already creating the document; wait and reuse result.
     await creatingOffscreenDocument;
     return await hasOffscreenDocument(offscreenDocumentUrl);
   }
+
+  resetOffscreenReadyState();
 
   const reason = (
     (chrome.offscreen.Reason as Record<string, chrome.offscreen.Reason>).WORKERS ??

@@ -32,6 +32,13 @@ Wordspotting is a Chrome extension that scans pages for user-defined keywords an
 - Re-scans for SPA/dynamic DOM updates.
 - Applies/removes highlight ranges when highlighting is enabled.
 
+### Offscreen scanner host (`entrypoints/offscreen/`)
+
+- Runs scan orchestration in an extension-owned offscreen document.
+- Registers a deterministic readiness handshake with background (`ready` + `ready_check`)
+  before scan requests are forwarded.
+- Owns scan worker lifecycle and returns scan results to background.
+
 ### Scan worker (`entrypoints/scan-worker.ts`)
 
 - Offloads matching work from the main thread.
@@ -121,12 +128,14 @@ pnpm package      # build zip artifact via WXT
 - `notifications`: show browser notifications for new match events.
 - `storage`: persist settings and lists.
 - `scripting`: inject content script/CSS at runtime.
+- `offscreen`: host scan execution in an extension-owned offscreen document.
 - `host_permissions: <all_urls>`: required for runtime injection across user-allowlisted sites.
 
 ## Project structure
 
 - `entrypoints/background.ts`: lifecycle, injection, badge, notifications.
 - `entrypoints/injected.ts`: page scanning and highlighting.
+- `entrypoints/offscreen/`: offscreen scan host and readiness handshake.
 - `entrypoints/scan-worker.ts`: worker-based scanning.
 - `entrypoints/popup/`: popup UI.
 - `entrypoints/options/`: options UI.
