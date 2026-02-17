@@ -28,7 +28,7 @@ export function buildCombinedRegex(validKeywords: string[]): { regex: RegExp; pa
   return { regex: new RegExp(combinedPattern, 'ig'), patternMap };
 }
 
-function advanceRegexIfEmptyMatch(regex: RegExp, match: RegExpExecArray, textLength: number): void {
+export function advanceRegexIfEmptyMatch(regex: RegExp, match: RegExpExecArray, textLength: number): void {
   if (match[0].length === 0) {
     if (regex.lastIndex >= textLength) return;
     regex.lastIndex += 1;
