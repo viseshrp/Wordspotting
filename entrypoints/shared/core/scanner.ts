@@ -1,4 +1,5 @@
 // Core scanning helpers (no Chrome-specific logic).
+export type HighlightMatch = { keyword: string; index: number; length: number };
 
 export function normalizeKeywords(keywordList: unknown): string[] {
   return Array.isArray(keywordList)
@@ -25,6 +26,13 @@ export function buildCombinedRegex(validKeywords: string[]): { regex: RegExp; pa
 
   const combinedPattern = patterns.join('|');
   return { regex: new RegExp(combinedPattern, 'ig'), patternMap };
+}
+
+export function advanceRegexIfEmptyMatch(regex: RegExp, match: RegExpExecArray, textLength: number): void {
+  if (match[0].length === 0) {
+    if (regex.lastIndex >= textLength) return;
+    regex.lastIndex += 1;
+  }
 }
 
 export function scanTextForKeywords(keywordList: unknown, textToScan: unknown): string[] {
@@ -55,18 +63,19 @@ export function scanTextForKeywords(keywordList: unknown, textToScan: unknown): 
       return Array.from(foundKeywords);
     }
 
+    advanceRegexIfEmptyMatch(regex, match, text.length);
     match = regex.exec(text);
   }
 
   return Array.from(foundKeywords);
 }
 
-export function scanTextForMatches(keywordList: unknown, textToScan: unknown): Array<{ keyword: string; index: number; length: number }> {
+export function scanTextForMatches(keywordList: unknown, textToScan: unknown): HighlightMatch[] {
   const validKeywords = normalizeKeywords(keywordList);
   if (validKeywords.length === 0) return [];
 
   const text = typeof textToScan === 'string' ? textToScan : '';
-  const matches: Array<{ keyword: string; index: number; length: number }> = [];
+  const matches: HighlightMatch[] = [];
   const combined = buildCombinedRegex(validKeywords);
   if (!combined) return [];
 
@@ -88,10 +97,29 @@ export function scanTextForMatches(keywordList: unknown, textToScan: unknown): A
         }
       }
     }
+    advanceRegexIfEmptyMatch(regex, match, text.length);
     match = regex.exec(text);
   }
 
   return matches;
+}
+
+export function scanChunksForMatches(keywordList: unknown, chunks: unknown): Record<number, HighlightMatch[]> {
+  const results: Record<number, HighlightMatch[]> = {};
+  if (!Array.isArray(chunks)) return results;
+
+  for (const chunk of chunks) {
+    if (!chunk || typeof chunk !== 'object') continue;
+    const typed = chunk as { id?: unknown; text?: unknown };
+    if (typeof typed.id !== 'number' || !Number.isFinite(typed.id) || typeof typed.text !== 'string') continue;
+
+    const matches = scanTextForMatches(keywordList, typed.text);
+    if (matches.length > 0) {
+      results[typed.id] = matches;
+    }
+  }
+
+  return results;
 }
 
 export function hashString(str: string): string {

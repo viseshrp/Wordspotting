@@ -85,6 +85,18 @@ describe('utils', () => {
     await expect(utils.getFromStorage('x')).rejects.toBeInstanceOf(Error);
     mockBrowser.runtime.lastError = null;
   });
+  
+  test('saveToStorage rejects when storage API is unavailable', async () => {
+    const runtime = (browser as unknown as BrowserMock).runtime;
+    vi.stubGlobal('browser', { runtime, storage: undefined });
+    await expect(utils.saveToStorage({ foo: 'bar' })).rejects.toThrow('Storage API unavailable');
+  });
+  
+  test('getFromStorage rejects when storage API is unavailable', async () => {
+    const runtime = (browser as unknown as BrowserMock).runtime;
+    vi.stubGlobal('browser', { runtime, storage: undefined });
+    await expect(utils.getFromStorage('foo')).rejects.toThrow('Storage API unavailable');
+  });
 
   test('getRandomInt stays within bounds', () => {
     for (let i = 0; i < 5; i += 1) {

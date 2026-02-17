@@ -65,15 +65,29 @@ function isPromise<T>(value: MaybePromise<T>): value is Promise<T> {
 }
 
 /**
- * Storage area - use sync for cross-device persistence.
+ * Resolve storage lazily instead of at module load time.
+ *
+ * Why: this utils module is imported by multiple runtime contexts (background,
+ * content script, offscreen document). Some contexts can initialize before the
+ * storage facade is fully available; eager access at import time can crash the
+ * consumer before its listeners are registered.
  */
-const storageArea = browser.storage.sync;
+function getStorageArea() {
+  const area = browser?.storage?.sync;
+  if (!area) {
+    throw new Error('Storage API unavailable');
+  }
+  return area;
+}
 
 /**
  * Save object to chrome.storage.sync
  */
 export function saveToStorage(obj: Record<string, unknown>): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Keep callback style for broad browser compatibility, but also support
+    // Promise-returning implementations when present.
+    const storageArea = getStorageArea();
     const maybe = storageArea.set(obj, () => {
       const err = browser.runtime.lastError;
       if (err) {
@@ -94,6 +108,8 @@ export function saveToStorage(obj: Record<string, unknown>): Promise<void> {
  */
 export function getFromStorage<T = Record<string, unknown>>(keys: StorageKeys): Promise<T> {
   return new Promise((resolve, reject) => {
+    // Mirror saveToStorage strategy: callback path + Promise path.
+    const storageArea = getStorageArea();
     const maybe = storageArea.get(keys as unknown as string | string[] | Record<string, unknown>, (items: Record<string, unknown>) => {
       const err = browser.runtime.lastError;
       if (err) {
@@ -145,6 +161,20 @@ export function logit(message: string): void {
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
 }
 
 export function isIgnorableExtensionError(error: unknown, operation: ExtensionErrorOperation): boolean {

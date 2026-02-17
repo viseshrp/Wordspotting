@@ -1,4 +1,4 @@
-import { buildCombinedRegex, normalizeKeywords, scanTextForMatches } from './shared/core/scanner';
+import { advanceRegexIfEmptyMatch, buildCombinedRegex, normalizeKeywords, scanTextForMatches } from './shared/core/scanner';
 
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_OVERLAP = 200;
@@ -38,6 +38,7 @@ function scanTextInChunks(keywordList: string[], text: string, chunkSize: number
         return Array.from(foundKeywords);
       }
 
+      advanceRegexIfEmptyMatch(regex, match, chunk.length);
       match = regex.exec(chunk);
     }
 

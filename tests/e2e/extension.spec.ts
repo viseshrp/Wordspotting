@@ -150,3 +150,131 @@ test('keyword detection activates for pre-existing tab after settings update', a
   expect(result.after.hasWords).toBe(true);
   expect(Number(result.after.badgeText)).toBeGreaterThanOrEqual(1);
 });
+
+test('highlight mode keeps keyword detection active after settings update', async ({ serviceWorker }) => {
+  await waitForSettingsInit(serviceWorker);
+
+  const result = await serviceWorker.evaluate(async () => {
+    await chrome.storage.sync.set({
+      wordspotting_website_list: [],
+      wordspotting_word_list: [],
+      wordspotting_extension_on: true,
+      wordspotting_notifications_on: false,
+      wordspotting_highlight_on: false,
+      wordspotting_highlight_color: '#FFFF00'
+    });
+
+    const tab = await chrome.tabs.create({ url: 'https://example.com', active: true });
+    const tabId = tab.id;
+    if (typeof tabId !== 'number') {
+      throw new Error('Tab ID is missing');
+    }
+
+    await new Promise<void>((resolve) => {
+      const waitForComplete = () => chrome.tabs.get(tabId, (info) => {
+        if (info?.status === 'complete') {
+          resolve();
+        } else {
+          setTimeout(waitForComplete, 100);
+        }
+      });
+      waitForComplete();
+    });
+
+    const getWordState = async (id: number) => {
+      const messageState = await new Promise<{ err: string | null; hasWords: boolean }>((resolve) => {
+        chrome.tabs.sendMessage(id, { from: 'popup', subject: 'word_list_request' }, (resp) => {
+          resolve({
+            err: chrome.runtime.lastError?.message || null,
+            hasWords: Array.isArray(resp?.word_list) && resp.word_list.length > 0
+          });
+        });
+      });
+      return messageState;
+    };
+
+    const waitForWordDetection = async (id: number, timeoutMs = 8000) => {
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        const state = await getWordState(id);
+        if (!state.err && state.hasWords) {
+          return state;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return getWordState(id);
+    };
+
+    const getHighlightState = async (id: number) => {
+      const [inPage] = await chrome.scripting.executeScript({
+        target: { tabId: id },
+        func: () => {
+          // Validate user-visible highlight behavior (painted ranges), not just
+          // keyword detection or badge updates. This catches regressions where
+          // scanning still works but highlight application silently fails.
+          const supportsHighlights = typeof CSS !== 'undefined' && 'highlights' in CSS;
+          if (!supportsHighlights) {
+            return {
+              supportsHighlights: false,
+              hasHighlightStyle: false,
+              rangeCount: 0
+            };
+          }
+
+          const hasHighlightStyle = Array.from(document.querySelectorAll('style')).some(
+            (style) => (style.textContent || '').includes('::highlight(wordspotting-match)')
+          );
+          const entry = CSS.highlights.get('wordspotting-match');
+          const rangeCount = entry && typeof (entry as { size?: unknown }).size === 'number'
+            ? ((entry as { size: number }).size)
+            : 0;
+
+          return {
+            supportsHighlights: true,
+            hasHighlightStyle,
+            rangeCount
+          };
+        }
+      });
+
+      return inPage?.result as {
+        supportsHighlights: boolean;
+        hasHighlightStyle: boolean;
+        rangeCount: number;
+      };
+    };
+
+    const waitForHighlightApplied = async (id: number, timeoutMs = 8000) => {
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        const state = await getHighlightState(id);
+        // Require both style injection and at least one range to avoid false
+        // positives from partial setup.
+        if (state.supportsHighlights && state.hasHighlightStyle && state.rangeCount > 0) {
+          return state;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      return getHighlightState(id);
+    };
+
+    await chrome.storage.sync.set({
+      wordspotting_website_list: ['*example.com*'],
+      wordspotting_word_list: ['example'],
+      wordspotting_extension_on: true,
+      wordspotting_highlight_on: true,
+      wordspotting_highlight_color: '#00FF00'
+    });
+
+    const afterWord = await waitForWordDetection(tabId);
+    const afterHighlight = await waitForHighlightApplied(tabId);
+    await chrome.tabs.remove(tabId);
+    return { afterWord, afterHighlight };
+  });
+
+  expect(result.afterWord.err).toBeNull();
+  expect(result.afterWord.hasWords).toBe(true);
+  expect(result.afterHighlight.supportsHighlights).toBe(true);
+  expect(result.afterHighlight.hasHighlightStyle).toBe(true);
+  expect(result.afterHighlight.rangeCount).toBeGreaterThan(0);
+});

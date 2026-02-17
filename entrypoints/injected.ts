@@ -6,22 +6,14 @@ import {
   isUrlAllowedCompiled,
   isValidObj,
   logExtensionError,
-  logit
+  logit,
+  withTimeout
 } from './shared/utils';
 import { hashString, scanTextForKeywords } from './shared/core/scanner';
 
-let scanWorker: Worker | null = null;
 const DEFAULT_CHUNK_SIZE = 150000;
 const DEFAULT_CHUNK_OVERLAP = 200;
-const WORKER_REQUEST_TIMEOUT_MS = 2500;
-let scanRequestId = 0;
-type WorkerResult = string[] | Record<string, Array<{ keyword: string; index: number; length: number }>>;
-const workerRequests = new Map<number, {
-  resolve: (value: WorkerResult | PromiseLike<WorkerResult>) => void;
-  reject: (reason?: Error) => void;
-  timeoutHandle: ReturnType<typeof setTimeout>;
-}>();
-let workerFailed = false;
+const OFFSCREEN_SCAN_TIMEOUT_MS = 5000;
 
 let lastScanSignature: string | null = null;
 type TimeoutHandle = ReturnType<typeof setTimeout>;
@@ -42,7 +34,7 @@ function init() {
         await proceedWithSiteListCheck();
       }
     } catch (e) {
-      logExtensionError('Error checking extension status', e);
+      logExtensionError('Error checking extension status', e, { operation: 'runtime_context' });
     }
   })();
 
@@ -78,9 +70,13 @@ function init() {
           return;
         }
 
+        if (msg?.target === 'offscreen') {
+          return;
+        }
+
         sendResponse({}); // Always respond to avoid leaving the channel open
       } catch (error) {
-        logExtensionError('Error in onMessage', error);
+        logExtensionError('Error in onMessage', error, { operation: 'runtime_context' });
         sendResponse({ word_list: [] });
       }
     })();
@@ -112,7 +108,7 @@ export async function proceedWithSiteListCheck() {
       logit('No matching allowed site. Idling.');
     }
   } catch (e) {
-    logExtensionError('Error in proceedWithSiteListCheck', e);
+    logExtensionError('Error in proceedWithSiteListCheck', e, { operation: 'runtime_context' });
   }
 }
 
@@ -193,7 +189,7 @@ export async function performScan(signal?: AbortSignal) {
 
     sendKeywordCount(foundCount);
   } catch (e) {
-    logExtensionError('Error in performScan', e);
+    logExtensionError('Error in performScan', e, { operation: 'runtime_context' });
   }
 }
 
@@ -202,17 +198,17 @@ async function performStandardScan(keywordList: string[], bodyText: string) {
   try {
     occurringWordList = await scanWithWorker(keywordList, bodyText);
   } catch (e) {
-    logExtensionError('Worker scan failed, falling back', e);
+    logExtensionError('Offscreen worker scan failed, falling back', e, { operation: 'runtime_context' });
     occurringWordList = getWordList(keywordList, bodyText);
   }
   return occurringWordList.length;
 }
 
 async function performHighlightScan(keywordList: string[], color: string, signal?: AbortSignal) {
-  try {
-    const textNodes = getTextNodes(document.body);
-    if (signal?.aborted) return 0;
+  const textNodes = getTextNodes(document.body);
+  if (signal?.aborted) return 0;
 
+  try {
     // Prepare chunks for worker
     const chunks = textNodes.map((node, index) => ({
       id: index,
@@ -224,27 +220,33 @@ async function performHighlightScan(keywordList: string[], color: string, signal
 
     return applyHighlights(results as Record<string, Array<{ keyword: string; index: number; length: number }>>, textNodes, color);
   } catch (e) {
-    logExtensionError('Highlight scan failed', e);
-    // Fallback to standard scan if highlighting fails, but don't highlight
+    logExtensionError('Highlight worker scan failed', e, { operation: 'runtime_context' });
+    // Fall back to non-highlight scan for count/badge continuity.
     return performStandardScan(keywordList, document.body.innerText);
   }
 }
 
 async function scanWithWorkerForHighlights(keywordList: string[], chunks: Array<{ id: number; text: string }>) {
-  const worker = await getScanWorkerAsync();
-  if (!worker) {
-    throw new Error('Worker not available for highlighting');
-  }
-  return new Promise((resolve, reject) => {
-    const id = ++scanRequestId;
-    registerWorkerRequest<Record<string, Array<{ keyword: string; index: number; length: number }>>>(id, resolve, reject);
-    worker.postMessage({
-      type: 'scan_for_highlights',
-      id,
-      keywords: keywordList,
-      chunks
-    });
+  const response = await sendOffscreenScanRequest<{
+    results?: Record<string, Array<{ keyword: string; index: number; length: number }>>;
+    error?: string;
+  }>({
+    from: 'injected',
+    subject: 'scan_highlights_request',
+    keywords: keywordList,
+    chunks
   });
+
+  if (response && typeof response === 'object' && typeof response.error === 'string') {
+    throw new Error(response.error);
+  }
+
+  const results = response && typeof response === 'object' ? response.results : undefined;
+  if (!results || typeof results !== 'object') {
+    throw new Error('Invalid offscreen highlight response');
+  }
+
+  return results;
 }
 
 export function getTextNodes(root: Node | null) {
@@ -366,107 +368,36 @@ export async function getBodyTextSnapshot(signal?: AbortSignal) {
   return text;
 }
 
-async function getScanWorkerAsync() {
-  if (workerFailed) return null;
-  if (scanWorker) return scanWorker;
-
-  try {
-    const workerUrl = browser.runtime.getURL('scan-worker.js');
-    const workerRes = await fetch(workerUrl);
-    const workerCode = await workerRes.text();
-
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const blobUrl = URL.createObjectURL(blob);
-
-    scanWorker = new Worker(blobUrl);
-    setupWorkerListeners(scanWorker);
-    return scanWorker;
-  } catch (e) {
-    logExtensionError('Wordspotting worker creation failed (inline blob)', e);
-    workerFailed = true;
-    return null;
-  }
-}
-
-function setupWorkerListeners(worker: Worker) {
-  worker.addEventListener('message', handleWorkerMessage);
-  worker.addEventListener('error', (e) => {
-    logExtensionError('Wordspotting worker error', e);
-    workerFailed = true;
-    cleanupWorker();
-  });
-}
-
-function handleWorkerMessage(event: MessageEvent) {
-  const data = event.data || {};
-  if (typeof data.id !== 'number') return;
-  const pending = workerRequests.get(data.id);
-  if (!pending) return;
-  workerRequests.delete(data.id);
-  clearTimeout(pending.timeoutHandle);
-
-  if (data.type === 'scan_result') {
-    pending.resolve(Array.isArray(data.words) ? data.words : []);
-  } else if (data.type === 'scan_highlights_result') {
-    pending.resolve(data.results || {});
-  } else if (data.type === 'scan_error') {
-    pending.reject(new Error(data.error || 'Worker scan failed'));
-  }
-}
-
-function cleanupWorker() {
-  if (scanWorker) {
-    scanWorker.terminate();
-    scanWorker = null;
-  }
-  workerRequests.forEach((pending) => {
-    clearTimeout(pending.timeoutHandle);
-    pending.reject(new Error('Worker terminated'));
-  });
-  workerRequests.clear();
-}
-
 async function scanWithWorker(keywordList: string[], text: string) {
-  const worker = await getScanWorkerAsync();
-  if (!worker) {
-    // Fallback for counting only (legacy/safety)
-    return scanTextForKeywords(keywordList, text);
-  }
-  return new Promise<string[]>((resolve, reject) => {
-    const { chunkSize, overlap } = getChunkingConfig(text, keywordList);
-    const id = ++scanRequestId;
-    registerWorkerRequest<string[]>(id, resolve, reject);
-    worker.postMessage({
-      type: 'scan',
-      id,
-      keywords: keywordList,
-      text,
-      chunkSize,
-      overlap
-    });
+  const { chunkSize, overlap } = getChunkingConfig(text, keywordList);
+  const response = await sendOffscreenScanRequest<{ words?: string[]; error?: string }>({
+    from: 'injected',
+    subject: 'scan_text_request',
+    keywords: keywordList,
+    text,
+    chunkSize,
+    overlap
   });
+
+  if (response && typeof response === 'object' && typeof response.error === 'string') {
+    throw new Error(response.error);
+  }
+
+  const words = response && typeof response === 'object' ? response.words : undefined;
+  if (!Array.isArray(words)) {
+    throw new Error('Invalid offscreen scan response');
+  }
+
+  return words;
 }
 
-function registerWorkerRequest<T extends WorkerResult>(
-  id: number,
-  resolve: (value: T | PromiseLike<T>) => void,
-  reject: (reason?: Error) => void
-) {
-  const timeoutHandle = setTimeout(() => {
-    const pending = workerRequests.get(id);
-    if (!pending) return;
-    workerRequests.delete(id);
-    clearTimeout(pending.timeoutHandle);
-    pending.reject(new Error('Worker scan timed out'));
-    workerFailed = true;
-    cleanupWorker();
-  }, WORKER_REQUEST_TIMEOUT_MS);
+async function sendOffscreenScanRequest<T>(request: Record<string, unknown>) {
+  const maybePromise = browser.runtime.sendMessage(request);
+  if (!maybePromise || typeof maybePromise.then !== 'function') {
+    throw new Error('Offscreen scan request did not return a promise');
+  }
 
-  workerRequests.set(id, {
-    resolve: resolve as (value: WorkerResult | PromiseLike<WorkerResult>) => void,
-    reject,
-    timeoutHandle
-  });
+  return await withTimeout(Promise.resolve(maybePromise as Promise<T>), OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scan timed out');
 }
 
 function getChunkingConfig(text: string, keywordList: string[]) {
@@ -537,7 +468,6 @@ function setupObserver() {
   window.addEventListener('pagehide', () => {
     if (observer) observer.disconnect();
     cancelScheduledScan();
-    cleanupWorker();
     if (observerDebounce?.cancel) {
       observerDebounce.cancel();
     }
