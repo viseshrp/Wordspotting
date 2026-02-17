@@ -314,7 +314,7 @@ async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsReq
   // Deterministic gate: do not forward scan requests until offscreen listener is ready.
   await waitForOffscreenReady();
 
-  const responsePromise = Promise.resolve(browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>);
+  const responsePromise = browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>;
   try {
     return await withTimeout(responsePromise, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scanner timed out');
   } catch (error) {
@@ -327,7 +327,7 @@ async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsReq
       throw error;
     }
     await waitForOffscreenReady();
-    const retryPromise = Promise.resolve(browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>);
+    const retryPromise = browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>;
     return await withTimeout(retryPromise, OFFSCREEN_SCAN_TIMEOUT_MS, 'Offscreen scanner timed out');
   }
 }
@@ -342,9 +342,10 @@ async function probeOffscreenReady() {
   try {
     // Probe is used to recover readiness after background service-worker restarts.
     // If offscreen is already alive, this avoids waiting for another ready signal.
-    const responsePromise = Promise.resolve(
-      browser.runtime.sendMessage({ target: 'offscreen', subject: 'ready_check' } as OffscreenReadyProbeRequest) as Promise<unknown>
-    );
+    const responsePromise = browser.runtime.sendMessage({
+      target: 'offscreen',
+      subject: 'ready_check'
+    } as OffscreenReadyProbeRequest) as Promise<unknown>;
     const response = await withTimeout(responsePromise, OFFSCREEN_READY_PROBE_TIMEOUT_MS, 'Offscreen ready probe timed out');
     return Boolean(
       response &&
