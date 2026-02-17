@@ -22,6 +22,8 @@ junior developers and useful for future maintenance.
 3) **Offscreen scanner host** (`entrypoints/offscreen/`)
 - Runs in extension-owned context and owns the scan worker lifecycle.
 - Receives scan requests from background and returns results.
+- Emits a `ready` signal and answers `ready_check` probes so background can
+  wait deterministically for listener availability.
 
 4) **Scan worker** (`entrypoints/scan-worker.ts`)
 - Runs heavy keyword matching off the main thread.
@@ -45,6 +47,7 @@ junior developers and useful for future maintenance.
 Page loads
   -> Background checks tab URL and allowlist
   -> If allowed, background injects CSS + content script
+  -> Background ensures offscreen document exists and is listener-ready
   -> Content script scans text and sends count to background
   -> Background updates badge and (optionally) fires notification
 
@@ -69,6 +72,7 @@ onTabUpdated(tabId, url):
 ```
 content script schedules scan on idle or SPA changes
   -> read keyword list + highlight settings
+  -> background waits for offscreen readiness handshake (or ready probe)
   -> request offscreen scanner run through background
   -> send { wordfound, keyword_count } to background
 
@@ -82,7 +86,7 @@ background receives message
 ```
 if highlight enabled:
   -> build text node list
-  -> worker computes matches per node
+  -> offscreen-hosted worker computes matches per node
   -> create Range objects and apply CSS Highlight
 ```
 

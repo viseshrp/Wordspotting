@@ -16,4 +16,5 @@ Wordspotting scans visible page text on websites you explicitly allow and alerts
 
 - The extension processes page text locally and does not send page content to external servers.
 - The scanner worker is loaded from the extension package (`scan-worker.js`) and runs in an extension-owned offscreen document.
+- Background waits for an explicit offscreen readiness handshake (`ready` / `ready_check`) before forwarding scan requests.
 - The extension does not collect form inputs or keystrokes.

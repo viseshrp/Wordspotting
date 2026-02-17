@@ -20,6 +20,7 @@ The extension requests the following permissions to function:
 *   **Notifications**: Used to display system notifications when a keyword is found.
 *   **Storage**: Used to save your settings locally.
 *   **Scripting**: Used to inject the scanner and highlighting styles only on user-allowlisted pages.
+*   **Offscreen**: Used to run scanner processing in an extension-owned offscreen document.
 
 ## 3. Changes to This Policy
 

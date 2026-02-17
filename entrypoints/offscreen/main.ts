@@ -186,6 +186,7 @@ async function scanHighlightsUsingWorker(request: ScanHighlightsRequest) {
 
 if (typeof browser !== 'undefined' && browser.runtime?.onMessage) {
   browser.runtime.onMessage.addListener((request: OffscreenRequest, _sender, sendResponse) => {
+    // Lightweight readiness probe used by background startup gating.
     if (isReadyCheckRequest(request)) {
       sendResponse({ ready: true });
       return false;
@@ -214,6 +215,7 @@ if (typeof browser !== 'undefined' && browser.runtime?.onMessage) {
     return true;
   });
 
-  // Notify background after listener registration to establish readiness gate.
+  // Send explicit "ready" only after onMessage listener is registered.
+  // This creates a deterministic startup handshake with background.
   void browser.runtime.sendMessage({ from: 'offscreen', subject: 'ready' }).catch(() => undefined);
 }

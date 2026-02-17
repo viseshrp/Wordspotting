@@ -23,6 +23,9 @@ const OFFSCREEN_SCAN_TIMEOUT_MS = 5000;
 const OFFSCREEN_READY_TIMEOUT_MS = 3000;
 const OFFSCREEN_READY_PROBE_TIMEOUT_MS = 1000;
 let creatingOffscreenDocument: Promise<void> | null = null;
+// Readiness state for the offscreen message listener.
+// The service worker can restart independently from the offscreen document,
+// so this state is intentionally recoverable via ready probe + ready signal.
 let offscreenReady = false;
 let resolveOffscreenReady: (() => void) | null = null;
 let offscreenReadyPromise = createOffscreenReadyPromise();
@@ -125,6 +128,7 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // Handshake message from offscreen script, emitted after its listener is registered.
     if (isOffscreenReadyMessage(request)) {
       markOffscreenReady();
       sendResponse({ ack: 'ready' });
@@ -307,6 +311,7 @@ async function handleScanRequest(request: ScanTextRequest | ScanHighlightsReques
 }
 
 async function requestOffscreenScan(request: ScanTextRequest | ScanHighlightsRequest) {
+  // Deterministic gate: do not forward scan requests until offscreen listener is ready.
   await waitForOffscreenReady();
 
   const responsePromise = Promise.resolve(browser.runtime.sendMessage({ target: 'offscreen', ...request }) as Promise<unknown>);
@@ -335,6 +340,8 @@ function isOffscreenReceiverUnavailable(error: unknown) {
 
 async function probeOffscreenReady() {
   try {
+    // Probe is used to recover readiness after background service-worker restarts.
+    // If offscreen is already alive, this avoids waiting for another ready signal.
     const responsePromise = Promise.resolve(
       browser.runtime.sendMessage({ target: 'offscreen', subject: 'ready_check' } as OffscreenReadyProbeRequest) as Promise<unknown>
     );
@@ -363,6 +370,7 @@ async function waitForOffscreenReady() {
     return;
   }
 
+  // If probe misses because offscreen is still booting, wait for explicit ready signal.
   await withTimeout(offscreenReadyPromise, OFFSCREEN_READY_TIMEOUT_MS, 'Offscreen listener did not become ready');
 }
 
@@ -377,6 +385,7 @@ async function ensureOffscreenDocument() {
   }
 
   if (creatingOffscreenDocument) {
+    // Another caller is already creating the document; wait and reuse result.
     await creatingOffscreenDocument;
     return await hasOffscreenDocument(offscreenDocumentUrl);
   }
