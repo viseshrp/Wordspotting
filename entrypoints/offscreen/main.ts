@@ -20,7 +20,8 @@ type ScanHighlightsRequest = {
   keywords: string[];
   chunks: Array<{ id: number; text: string }>;
 };
-type OffscreenRequest = ScanTextRequest | ScanHighlightsRequest;
+type ReadyCheckRequest = { target: 'offscreen'; subject: 'ready_check' };
+type OffscreenRequest = ScanTextRequest | ScanHighlightsRequest | ReadyCheckRequest;
 
 let scanWorker: Worker | null = null;
 let scanRequestId = 0;
@@ -49,6 +50,12 @@ function isScanHighlightsRequest(request: unknown): request is ScanHighlightsReq
     typed.subject === 'scan_highlights_request' &&
     Array.isArray(typed.keywords) &&
     Array.isArray(typed.chunks);
+}
+
+function isReadyCheckRequest(request: unknown): request is ReadyCheckRequest {
+  if (!request || typeof request !== 'object') return false;
+  const typed = request as Partial<ReadyCheckRequest>;
+  return typed.target === 'offscreen' && typed.subject === 'ready_check';
 }
 
 function setupWorkerListeners(worker: Worker) {
@@ -179,6 +186,11 @@ async function scanHighlightsUsingWorker(request: ScanHighlightsRequest) {
 
 if (typeof browser !== 'undefined' && browser.runtime?.onMessage) {
   browser.runtime.onMessage.addListener((request: OffscreenRequest, _sender, sendResponse) => {
+    if (isReadyCheckRequest(request)) {
+      sendResponse({ ready: true });
+      return false;
+    }
+
     if (!isScanTextRequest(request) && !isScanHighlightsRequest(request)) {
       return false;
     }
@@ -201,4 +213,7 @@ if (typeof browser !== 'undefined' && browser.runtime?.onMessage) {
 
     return true;
   });
+
+  // Notify background after listener registration to establish readiness gate.
+  void browser.runtime.sendMessage({ from: 'offscreen', subject: 'ready' }).catch(() => undefined);
 }
