@@ -235,15 +235,15 @@ describe('utils', () => {
     const patterns = utils.buildPatternsForTab(url);
     expect(patterns.root).toBe('*linkedin.com*');
     expect(patterns.subdomain).toBe('*www.linkedin.com*');
+    expect(patterns.section).toBe('*www.linkedin.com/jobs*');
     expect(patterns.path).toBe('*www.linkedin.com/jobs/view/123*');
-    expect(patterns.full).toBe('https://www.linkedin.com/jobs/view/123');
   });
 
   test('buildPatternsForTab handles path with query', () => {
     const url = 'https://example.com/search?q=test';
     const patterns = utils.buildPatternsForTab(url);
+    expect(patterns.section).toBe('*example.com/search*');
     expect(patterns.path).toBe('*example.com/search*');
-    expect(patterns.full).toBe('https://example.com/search?q=test');
   });
   
   test('buildPatternsForTab throws for invalid url', () => {

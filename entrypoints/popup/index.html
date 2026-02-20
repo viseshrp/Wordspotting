@@ -4,45 +4,70 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Wordspotting</title>
+    <link rel="stylesheet" href="../shared/theme.css">
     <link rel="stylesheet" href="./style.css">
     <script type="module" src="./main.ts"></script>
 </head>
 <body>
-    <header>
-        <h1>Wordspotting</h1>
-        <button id="options_btn" class="icon-btn" title="Settings">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-        </button>
-    </header>
+    <div class="page popup-page">
+        <header class="app-bar">
+            <div>
+                <h1>Wordspotting</h1>
+                <p class="subtitle">Current tab scan</p>
+            </div>
+            <div class="app-actions">
+                <button id="options_btn" class="icon-button" title="Settings" aria-label="Settings">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 3.6 15a1.65 1.65 0 0 0-1.51-1H2a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 3.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 20.4 9a1.65 1.65 0 0 0 1.51 1H22a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" fill="currentColor"></path>
+                        <circle cx="12" cy="12" r="3" fill="var(--md-sys-color-surface)"></circle>
+                    </svg>
+                </button>
+            </div>
+        </header>
 
-    <main>
-        <div id="add_site_section" class="add-site-section">
-            <div class="add-site-header">
-                <h2>Add this site to allowlist</h2>
-            </div>
-            <div class="scope-select">
-                <select id="site_scope_select" name="site_scope">
-                    <option value="root" selected>Root domain</option>
-                    <option value="subdomain">This subdomain</option>
-                    <option value="full">Full URL (exact match)</option>
-                </select>
-            </div>
-            <label class="refresh-toggle">
-                <input type="checkbox" id="refresh_on_add">
-                Refresh tab after adding
-            </label>
-            <button id="add_current_site" class="btn-primary">Add</button>
-        </div>
+        <main class="content">
+            <section id="add_site_section" class="group-card add-site-section">
+                <div class="group-header">
+                    <div>
+                        <h2 class="group-title">Add this site to allowlist</h2>
+                        <p class="group-meta">Choose scope for this tab.</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-row">
+                        <label class="field-label" for="site_scope_select">Scope</label>
+                        <div class="select-wrap">
+                            <select id="site_scope_select" name="site_scope">
+                                <option value="root" selected>Root domain</option>
+                                <option value="subdomain">This subdomain</option>
+                                <option value="section">Path section</option>
+                                <option value="path">URL path</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label class="setting refresh-toggle">
+                            <input type="checkbox" id="refresh_on_add">
+                            <span>Refresh tab after adding</span>
+                        </label>
+                    </div>
+                    <div class="form-row form-row-action">
+                        <button id="add_current_site" class="text-button">Add</button>
+                    </div>
+                </div>
+            </section>
 
-        <div class="results-section" id="results_wrapper">
-            <h2>Found Keywords</h2>
-            <div id="keyword_container">
-                <div class="empty-state">Scanning...</div>
-            </div>
-        </div>
-    </main>
+            <section class="group-card results-section" id="results_wrapper">
+                <div class="group-header">
+                    <div>
+                        <h2 class="group-title">Found Keywords</h2>
+                    </div>
+                </div>
+                <div id="keyword_container" class="group-items">
+                    <div class="empty-state">Scanning...</div>
+                </div>
+            </section>
+        </main>
+    </div>
 </body>
 </html>

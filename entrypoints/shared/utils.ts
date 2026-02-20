@@ -266,18 +266,20 @@ export function isUrlAllowedCompiled(url: string | undefined, compiled: RegExp[]
 }
 
 /**
- * Build allowlist patterns (root, subdomain, path, full) from a URL.
+ * Build allowlist patterns (root, subdomain, section, path) from a URL.
  */
-export function buildPatternsForTab(urlString: string): { root: string; subdomain: string; path: string; full: string } {
+export function buildPatternsForTab(urlString: string): { root: string; subdomain: string; section: string; path: string } {
   const url = new URL(urlString);
   const host = url.hostname;
   if (!host) throw new Error('Invalid URL');
-  const full = url.href.split('#')[0];
   const subdomain = `*${host}*`;
   const parts = host.split('.').filter(Boolean);
   const rootHost = parts.length <= 2 ? host : parts.slice(-2).join('.');
   const root = `*${rootHost}*`;
+  const pathSegments = url.pathname.split('/').filter(Boolean);
+  const sectionPath = pathSegments.length > 0 ? `/${pathSegments[0]}` : '';
+  const section = `*${host}${sectionPath}*`;
   const path = `*${host}${url.pathname}*`;
 
-  return { root, subdomain, path, full };
+  return { root, subdomain, section, path };
 }

@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const scopeOptions = [
     { value: 'root', label: 'Root domain' },
     { value: 'subdomain', label: 'This subdomain' },
+    { value: 'section', label: 'Path section' },
     { value: 'path', label: 'URL path' },
-    { value: 'full', label: 'Full URL (exact match)' }
   ];
   const refreshPrefKey = 'wordspotting_refresh_on_add';
   const handleAsyncError = (context: string, operation?: ExtensionErrorOperation) => (error: unknown) => {
@@ -154,13 +154,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Unique keywords
     const uniqueList = [...new Set(list)];
+    const keywordList = document.createElement('ul');
+    keywordList.className = 'list';
 
     uniqueList.forEach((word) => {
-      const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.textContent = word;
-      keywordContainer.appendChild(chip);
+      const item = document.createElement('li');
+      item.className = 'item';
+
+      const itemMain = document.createElement('div');
+      itemMain.className = 'item-main';
+
+      const itemTitle = document.createElement('div');
+      itemTitle.className = 'item-title';
+      itemTitle.textContent = word;
+
+      itemMain.appendChild(itemTitle);
+      item.appendChild(itemMain);
+      keywordList.appendChild(item);
     });
+
+    keywordContainer.appendChild(keywordList);
   }
 
   function renderEmpty(msg: string) {
