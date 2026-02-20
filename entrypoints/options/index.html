@@ -3,120 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <title>Wordspotting Settings</title>
+    <meta name="manifest.open_in_tab" content="true">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../shared/theme.css">
     <link rel="stylesheet" href="./style.css">
     <script type="module" src="./main.ts"></script>
 </head>
 
 <body>
-<div class="container">
+<main class="app">
+    <header>
+        <h1>Wordspotting options</h1>
+        <p class="subtitle">All inputs are case-insensitive. Click on an item to remove it.</p>
+    </header>
+    <section class="settings">
+        <section class="setting-group" aria-labelledby="keywords_label">
+            <div id="keywords_label" class="setting-label">Keywords</div>
+            <p class="setting-help">Specify words or regex patterns to search for.</p>
 
-    <div class="text-center header-block">
-        <h1>Wordspotting Options</h1>
-        <p class="subtitle emphasis"><code>All inputs are case-insensitive. Click on an item to remove it.</code></p>
-    </div>
-
-    <!-- Keyword Options -->
-    <div class="card">
-        <div class="card-header">
-            <h4 class="card-title">Keywords</h4>
-            <button id="clear_keywords" class="btn-text">Clear All</button>
-        </div>
-        <p class="helper-text">Specify words or regex patterns to search for.</p>
-
-        <div class="input-group">
-            <input type="text" placeholder="Add word (Press Enter)" id="bl_word_input">
-            <button type="button" class="btn-primary" id="add_bl_word">ADD</button>
-        </div>
-
-        <div id="bl_word_list_container" class="chip-container"></div>
-        <p class="helper-text muted">Refresh your tab after adding new keywords so scanning sees them.</p>
-    </div>
-
-    <!-- Website Options -->
-    <div class="card">
-        <div class="card-header">
-            <h4 class="card-title">Allowed Websites</h4>
-            <button id="clear_sites" class="btn-text">Clear All</button>
-        </div>
-        <p class="helper-text">
-            Specify sites to enable the extension on. Supports wildcards (*) or regex. Comma-separated allowed.<br>
-            Examples: <code>*example*</code>, <code>news.*</code>
-        </p>
-
-        <div class="input-group">
-            <input type="text" placeholder="Add website (Press Enter)" id="website_input">
-            <button type="button" class="btn-primary" id="add_sites">ADD</button>
-        </div>
-
-        <div id="website_list_container" class="chip-container"></div>
-        <p class="helper-text muted">Refresh your tab after adding sites to apply changes.</p>
-    </div>
-
-    <!-- Settings -->
-    <div class="card">
-        <h4 class="card-title">General Settings</h4>
-
-        <div class="switch-container">
-            <div>
-                <strong>Notifications</strong><br>
-                <small class="muted">Show system notifications when words are found.</small>
+            <div class="input-row">
+                <input type="text" placeholder="Add word (Press Enter)" id="bl_word_input">
+                <button type="button" class="text-button" id="add_bl_word">Add</button>
+                <button id="clear_keywords" type="button" class="text-button danger">Clear All</button>
             </div>
-            <div class="switch">
-                <label>
-                    <input id="notifications_switch" type="checkbox" checked>
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
 
-        <div class="switch-container">
-            <div>
-                <strong>Enable Extension</strong><br>
-                <small class="muted">Toggle all features on/off.</small>
-            </div>
-            <div class="switch">
-                <label>
-                    <input id="extension_switch" type="checkbox" checked>
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
+            <div id="bl_word_list_container" class="chip-container"></div>
+            <p class="setting-help">Refresh your tab after adding new keywords so scanning sees them.</p>
+        </section>
 
-        <div class="switch-container">
-            <div>
-                <strong>Highlight Matches</strong><br>
-                <small class="muted">Highlight found keywords on the page.</small>
-            </div>
-            <div class="switch">
-                <label>
-                    <input id="highlight_switch" type="checkbox">
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
+        <section class="setting-group" aria-labelledby="sites_label">
+            <div id="sites_label" class="setting-label">Allowed Websites</div>
+            <p class="setting-help">
+                Specify sites to enable the extension on. Supports wildcards (*) or regex. Comma-separated allowed.
+                Examples: <code>*example*</code>, <code>news.*</code>
+            </p>
 
-        <div class="setting-row" id="highlight_color_row" style="display: none;">
-            <div>
-                <strong>Highlight Color</strong><br>
-                <small class="muted">Choose the color for highlighted text.</small>
+            <div class="input-row">
+                <input type="text" placeholder="Add website (Press Enter)" id="website_input">
+                <button type="button" class="text-button" id="add_sites">Add</button>
+                <button id="clear_sites" type="button" class="text-button danger">Clear All</button>
             </div>
-            <input type="color" id="highlight_color_input" value="#FFFF00">
-        </div>
 
-        <div class="setting-row">
-            <div>
-                <strong>Theme</strong><br>
-                <small class="muted">Use system default or force light/dark.</small>
-            </div>
-            <select id="theme_select" aria-label="Theme">
-                <option value="system">System</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-            </select>
-        </div>
-    </div>
+            <div id="website_list_container" class="chip-container"></div>
+            <p class="setting-help">Refresh your tab after adding sites to apply changes.</p>
+        </section>
 
-</div>
+        <section class="setting-group" role="group" aria-labelledby="general_settings_label">
+            <div id="general_settings_label" class="setting-label">General Settings</div>
+
+            <label class="setting">
+                <input id="notifications_switch" type="checkbox" checked>
+                <span>Show notifications when words are found.</span>
+            </label>
+
+            <label class="setting">
+                <input id="extension_switch" type="checkbox" checked>
+                <span>Enable extension.</span>
+            </label>
+
+            <label class="setting">
+                <input id="highlight_switch" type="checkbox">
+                <span>Highlight found keywords on the page.</span>
+            </label>
+
+            <label class="setting setting-inline" id="highlight_color_row" style="display: none;">
+                <span>Highlight Color</span>
+                <input type="color" id="highlight_color_input" value="#FFFF00">
+            </label>
+
+            <label class="setting setting-inline">
+                <span>Theme</span>
+                <select id="theme_select" aria-label="Theme">
+                    <option value="system">System</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </label>
+        </section>
+    </section>
+</main>
 </body>
 </html>
