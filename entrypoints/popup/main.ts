@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const scopeOptions = [
     { value: 'root', label: 'Root domain' },
     { value: 'subdomain', label: 'This subdomain' },
+    { value: 'section', label: 'Path section' },
     { value: 'path', label: 'URL path' },
-    { value: 'full', label: 'Full URL (exact match)' }
   ];
   const refreshPrefKey = 'wordspotting_refresh_on_add';
   const handleAsyncError = (context: string, operation?: ExtensionErrorOperation) => (error: unknown) => {
