@@ -37,9 +37,9 @@ describe('settings defaults', () => {
     const partial = { wordspotting_notifications_on: false };
     const result = applySettingsDefaults(partial);
     expect(result.wordspotting_notifications_on).toBe(false);
-    expect(result.wordspotting_extension_on).toBe(true); // default
+    expect(result.wordspotting_extension_on).toBe(true);
   });
-  
+
   test('applySettingsDefaults keeps defaults when partial has undefined values', () => {
     const partial = {
       wordspotting_notifications_on: undefined,
@@ -74,7 +74,7 @@ describe('settings defaults', () => {
     expect(settings.wordspotting_notifications_on).toBe(false);
     expect(settings.wordspotting_extension_on).toBe(true);
   });
-  
+
   test('getSettings without keys requests full defaults lookup', async () => {
     const mockBrowser = browser as unknown as BrowserMock;
     mockBrowser.storage.sync.get = vi.fn((_keys: unknown, cb?: (items: Record<string, unknown>) => void) => cb?.({}));

@@ -45,6 +45,7 @@ const browserMock = {
 
 (globalThis as unknown as { browser: typeof browserMock }).browser = browserMock;
 (globalThis as unknown as { chrome: typeof browserMock }).chrome = browserMock;
+(globalThis as unknown as { jest: typeof vi }).jest = vi;
 
 (globalThis as unknown as { defineUnlistedScript: (fn: () => void) => () => void }).defineUnlistedScript = (fn) => fn;
 (globalThis as unknown as { defineBackground: (fn: () => void) => () => void }).defineBackground = (fn) => fn;
@@ -58,10 +59,13 @@ const browserMock = {
 (globalThis as unknown as { cancelIdleCallback: () => void }).cancelIdleCallback = () => {};
 (globalThis as unknown as { MutationObserver: typeof MutationObserver }).MutationObserver = class {
   cb: () => void;
+
   constructor(callback: () => void) {
     this.cb = callback;
   }
+
   observe() {}
+
   disconnect() {}
 } as unknown as typeof MutationObserver;
 

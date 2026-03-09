@@ -5,18 +5,20 @@ export default defineConfig({
     include: ['tests/**/*.spec.ts'],
     exclude: ['tests/e2e/**/*.spec.ts'],
     environment: 'jsdom',
+    globals: true,
     setupFiles: ['tests/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: 'coverage',
       thresholds: {
-        lines: 85,
-        statements: 85,
-        functions: 85,
-        branches: 70,
+        statements: 90,
+        branches: 90,
+        functions: 90,
+        lines: 90
       },
-      include: ['entrypoints/shared/utils.ts', 'entrypoints/shared/settings.ts'],
-    },
-  },
+      include: ['entrypoints/shared/**/*.ts'],
+      exclude: ['**/*.d.ts']
+    }
+  }
 });

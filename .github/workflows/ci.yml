@@ -58,7 +58,7 @@ jobs:
       - run: pnpm install
       - run: pnpm smoke
       - run: pnpm exec playwright install --with-deps chromium
-      - run: xvfb-run -a pnpm smoke:e2e
+      - run: xvfb-run -a pnpm test:e2e
 
       - name: Upload Playwright artifacts on failure
         if: failure()

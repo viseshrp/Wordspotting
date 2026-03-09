@@ -1,4 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
+
 let content: typeof import('../entrypoints/injected');
 
 type BrowserMock = {
@@ -28,13 +29,11 @@ describe('content helpers', () => {
 
     console.warn = vi.fn();
 
-    // Mock CSS highlights
     (globalThis as unknown as { CSS: unknown }).CSS = { highlights: { set: vi.fn(), delete: vi.fn() } };
     (globalThis as unknown as { Highlight: unknown }).Highlight = vi.fn();
     (globalThis as unknown as { Range: unknown }).Range = vi.fn(() => ({ setStart: vi.fn(), setEnd: vi.fn() }));
     (globalThis as unknown as { NodeFilter: unknown }).NodeFilter = { SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER_REJECT: 2 };
 
-    // Mock Worker
     (globalThis as unknown as { Worker: unknown }).Worker = vi.fn(() => ({
       addEventListener: vi.fn(),
       postMessage: vi.fn(),
@@ -57,6 +56,7 @@ describe('content helpers', () => {
 
   afterEach(() => {
     vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   test('getWordList finds keywords case-insensitively', () => {
@@ -78,8 +78,12 @@ describe('content helpers', () => {
 
   test('debounce only calls once', () => {
     let count = 0;
-    const fn = content.debounce(() => { count += 1; }, 10);
-    fn(); fn(); fn();
+    const fn = content.debounce(() => {
+      count += 1;
+    }, 10);
+    fn();
+    fn();
+    fn();
     vi.advanceTimersByTime(20);
     expect(count).toBe(1);
   });
