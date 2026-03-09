@@ -229,6 +229,43 @@ describe('utils', () => {
     expect(utils.compileSitePatterns(null as unknown as string[])).toEqual([]);
   });
 
+  test('buildPatternsForTab derives root, subdomain, section, and path patterns', () => {
+    expect(utils.buildPatternsForTab('https://www.linkedin.com/jobs/view/123?trk=foo')).toEqual({
+      root: '*linkedin.com*',
+      subdomain: '*www.linkedin.com*',
+      section: '*www.linkedin.com/jobs*',
+      path: '*www.linkedin.com/jobs/view/123*'
+    });
+  });
+
+  test('buildPatternsForTab handles hosts without a section path', () => {
+    expect(utils.buildPatternsForTab('https://example.com/')).toEqual({
+      root: '*example.com*',
+      subdomain: '*example.com*',
+      section: '*example.com*',
+      path: '*example.com/*'
+    });
+  });
+
+  test('withTimeout resolves when the promise finishes in time', async () => {
+    await expect(utils.withTimeout(Promise.resolve('ok'), 50, 'timeout')).resolves.toBe('ok');
+  });
+
+  test('withTimeout rejects when the promise exceeds the timeout', async () => {
+    vi.useFakeTimers();
+    const pending = new Promise<string>(() => {});
+    const wrapped = utils.withTimeout(pending, 25, 'too slow');
+    const assertion = expect(wrapped).rejects.toThrow('too slow');
+    await vi.advanceTimersByTimeAsync(30);
+    await assertion;
+  });
+
+  test('getErrorMessage normalizes different thrown values', () => {
+    expect(utils.getErrorMessage(new Error('boom'))).toBe('boom');
+    expect(utils.getErrorMessage('plain failure')).toBe('plain failure');
+    expect(utils.getErrorMessage({ code: 500 })).toBe('[object Object]');
+  });
+
   test('scanTextForMatches finds all occurrences', () => {
     const matches = scanTextForMatches(['foo'], 'foo bar foo');
     expect(matches).toHaveLength(2);
