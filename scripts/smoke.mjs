@@ -1,6 +1,6 @@
+import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { execFileSync } from 'node:child_process';
 
 const requiredFiles = [
   'package.json',
@@ -16,7 +16,7 @@ const requiredFiles = [
   'public/assets/ws48.png',
   'entrypoints/shared/utils.ts',
   'entrypoints/shared/settings.ts',
-  'entrypoints/shared/core/scanner.ts',
+  'entrypoints/shared/core/scanner.ts'
 ];
 
 const missing = requiredFiles.filter((file) => !existsSync(resolve(process.cwd(), file)));

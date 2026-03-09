@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: 'tests/e2e',
   timeout: 60000,
   expect: {
-    timeout: 10000,
+    timeout: 10000
   },
   retries: 0,
   reporter: [['list']],
@@ -15,6 +15,6 @@ export default defineConfig({
     headless: false,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
-  },
+    video: 'retain-on-failure'
+  }
 });

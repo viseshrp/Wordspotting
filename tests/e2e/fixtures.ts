@@ -1,4 +1,4 @@
-import { test as base, type BrowserContext, type Worker } from '@playwright/test';
+import { chromium, test as base, type BrowserContext, type Worker } from '@playwright/test';
 import path from 'node:path';
 
 type ExtensionFixtures = {
@@ -24,7 +24,7 @@ export const test = base.extend<ExtensionFixtures>({
       launchArgs.push('--headless=new');
     }
 
-    const context = await base.chromium.launchPersistentContext('', {
+    const context = await chromium.launchPersistentContext('', {
       headless,
       args: launchArgs,
     });
